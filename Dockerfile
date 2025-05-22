@@ -10,13 +10,15 @@ COPY artifact.zip ./artifact.zip
 RUN apt-get update && apt-get install -y unzip curl \
     && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs \
-    && npm install -g serve
+    && npm install -g serve \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Unzip the artifact
+# Unzip the artifact and move contents into backend-app
 RUN unzip artifact.zip -d backend-project && \
-    BACKEND_DIR=$(find backend-project -mindepth 1 -maxdepth 1 -type d | head -n 1) && \
-    echo "Detected project folder: $BACKEND_DIR" && \
-    mv "$BACKEND_DIR" backend-app
+    BACKEND_DIR=$(find backend-project -mindepth 1 -maxdepth 1 | head -n 1) && \
+    echo "Detected project folder or file: $BACKEND_DIR" && \
+    mkdir -p backend-app && \
+    mv "$BACKEND_DIR"/* backend-app/ || mv "$BACKEND_DIR" backend-app
 
 # Change working directory to the actual project code
 WORKDIR /app/backend-app
