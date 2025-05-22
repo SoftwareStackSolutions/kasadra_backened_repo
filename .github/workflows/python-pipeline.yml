@@ -3,7 +3,7 @@ name: python CI/CD pipeline
 on:
   pull_request:
     branches: [development]
-    types: [closed]
+    
   workflow_dispatch:
 
 permissions:
