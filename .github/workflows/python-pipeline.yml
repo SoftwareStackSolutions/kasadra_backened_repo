@@ -1,12 +1,10 @@
 name: python CI/CD pipeline
 
 on:
- push:
-    branches: [development, main]
  pull_request:
     branches: [development]
-    
- workflow_dispatch:
+    types: [closed]
+
 
 permissions:
   contents: write
@@ -17,111 +15,122 @@ permissions:
 
 jobs:
 
-  codeql-scan:
-    name: CodeQL Scanning
+  Build-from-develop:
+    name: Build from develop
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    outputs:
+      should_run: ${{ steps.set_output.outputs.should_run }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - id: set_output
+        run: echo "should_run=true" >> $GITHUB_OUTPUT
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: python
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+  # codeql-scan:
+  #   name: CodeQL Scanning
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v4
 
-      - name: Run CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:python"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Initialize CodeQL
+  #       uses: github/codeql-action/init@v3
+  #       with:
+  #         languages: python
 
-  testing:
-    name: Run Unit Tests and Pytest
-    runs-on: ubuntu-latest
-    needs: codeql-scan
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+  #     - name: Autobuild
+  #       uses: github/codeql-action/autobuild@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+  #     - name: Run CodeQL Analysis
+  #       uses: github/codeql-action/analyze@v3
+  #       with:
+  #         category: "/language:python"
+        # env:
+        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -e .
+  # testing:
+  #   name: Run Unit Tests and Pytest
+  #   runs-on: ubuntu-latest
+  #   needs: codeql-scan
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v4
 
-      - name: Run unittest
-        run: python -m unittest discover -s tests
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.10"
 
-      - name: Run pytest
-        run: |
-          export PYTHONPATH="$PYTHONPATH:$(pwd)"
-          pytest tests --junitxml=pytest-report.xml
+      # - name: Install Dependencies
+      #   run: |
+      #     pip install -r requirements.txt
+      #     pip install -e .
 
-      - name: Upload Test Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-report
-          path: pytest-report.xml
+      # - name: Run unittest
+      #   run: python -m unittest discover -s tests
 
-  build-and-publish-artifact:
-    name: Build and Publish Artifact Package
-    runs-on: ubuntu-latest
-    needs: testing
-    steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
+      # - name: Run pytest
+      #   run: |
+      #     export PYTHONPATH="$PYTHONPATH:$(pwd)"
+      #     pytest tests --junitxml=pytest-report.xml
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+  #     - name: Upload Test Report
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: pytest-report
+  #         path: pytest-report.xml
 
-      - name: Build Package
-        run: |
-          pip install build
-          python -m build --sdist --wheel --outdir dist/
-          cd dist && zip -r ../python-package.zip .
+  # build-and-publish-artifact:
+  #   name: Build and Publish Artifact Package
+  #   runs-on: ubuntu-latest
+  #   needs: testing
+  #   steps:
+  #     - name: Checkout Source Code
+  #       uses: actions/checkout@v4
 
-      - name: Upload Package Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-package
-          path: python-package.zip
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: "3.10"
 
-      - name: Checkout Artifact Repo
-        uses: actions/checkout@v4
-        with:
-          repository: SoftwareStackSolutions/Artifact_Storage
-          ref: main
-          token: ${{ secrets.MY_GITHUB_TOKEN }}
-          path: Artifact_Storage
+      # - name: Build Package
+      #   run: |
+      #     pip install build
+      #     python -m build --sdist --wheel --outdir dist/
+      #     cd dist && zip -r ../python-package.zip .
 
-      - name: Push Zipped Artifact with Versioning
-        run: |
-          mkdir -p Artifact_Storage/Backend_Artifact
-          version=v$(date +%Y%m%d%H%M%S)
-          cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${version}.zip
-          cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
+      # - name: Upload Package Artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: python-package
+      #     path: python-package.zip
 
-          cd Artifact_Storage
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Backend_Artifact/*.zip
-          git commit -m "Add Backend Artifact ${version}" || echo "Nothing to commit"
-          git pull --rebase
-          git push origin main
+      # - name: Checkout Artifact Repo
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: SoftwareStackSolutions/Artifact_Storage
+      #     ref: main
+      #     token: ${{ secrets.MY_GITHUB_TOKEN }}
+          # path: Artifact_Storage
+
+      # - name: Push Zipped Artifact with Versioning
+      #   run: |
+      #     mkdir -p Artifact_Storage/Backend_Artifact
+      #     version=v$(date +%Y%m%d%H%M%S)
+      #     cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${version}.zip
+      #     cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
+
+          # cd Artifact_Storage
+          # git config user.name "github-actions[bot]"
+          # git config user.email "github-actions[bot]@users.noreply.github.com"
+          # git add Backend_Artifact/*.zip
+          # git commit -m "Add Backend Artifact ${version}" || echo "Nothing to commit"
+          # git pull --rebase
+          # git push origin main
 
   Create-PR-to-Master-Branch:
     name: Create PR to Master Branch
-    needs: build-and-publish-artifact
+    # needs: build-and-publish-artifact
     runs-on: ubuntu-latest
     outputs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
