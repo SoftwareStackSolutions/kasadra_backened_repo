@@ -129,6 +129,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Check for differences before PR
+        run: |
+          echo "Checking for differences between development and main..."
+          git fetch origin
+          if git diff --quiet origin/main..origin/development; then
+            echo "No changes to create PR."
+            exit 0
+          fi
+
       - name: Create Pull Request from development to main
         id: create_pr
         uses: repo-sync/pull-request@v2
@@ -244,7 +253,7 @@ jobs:
       - name: Patch deployment to use imagePullSecret
         run: |
           kubectl patch deployment react-app \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}'
 
       - name: Verify Deployment
         run: |
