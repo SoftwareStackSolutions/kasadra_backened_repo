@@ -1,7 +1,28 @@
-- package-ecosystem: "github-actions"
+version: 2
+updates:
+  # 1. Keep Python dependencies updated (e.g., requirements.txt)
+  - package-ecosystem: "pip"
+    directory: "/"  # location of requirements.txt
+    schedule:
+      interval: "weekly"  # options: daily, weekly, monthly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(pip)"
+
+  # 2. Keep GitHub Actions updated (e.g., actions/checkout, setup-python, etc.)
+  - package-ecosystem: "github-actions"
     directory: "/"  # .github/workflows is scanned automatically
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
     commit-message:
       prefix: "deps(actions)"
+
+  # 3. Keep Docker base image updated
+  - package-ecosystem: "docker"
+    directory: "/"  # location of your Dockerfile
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(docker)"
