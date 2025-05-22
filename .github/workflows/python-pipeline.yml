@@ -157,8 +157,8 @@ jobs:
 
       - name: Prepare artifact for Docker build
         run: |
-         cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
 
+         cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
 
 
       - name: Log in to GHCR
