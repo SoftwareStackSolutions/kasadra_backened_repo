@@ -57,7 +57,7 @@ jobs:
           path: pytest-report.xml
 
   build-and-publish-artifact:
-    name: Build and Publish Artifact Package
+    name: Build and Publishing Artifact Package
     runs-on: ubuntu-latest
     needs: testing
     steps:
@@ -156,7 +156,7 @@ jobs:
 
       - name: Prepare artifact for Docker build
         run: |
-          cp Artifact_Storage/backend_Artifact/backend_Artifact-latest.zip ./artifact.zip
+          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -214,7 +214,7 @@ jobs:
       - name: Patch deployment to use imagePullSecret
         run: |
           kubectl patch deployment python-app \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}'
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
 
       - name: Verify Deployment
         run: |
