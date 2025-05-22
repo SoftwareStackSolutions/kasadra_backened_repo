@@ -17,16 +17,6 @@ permissions:
 
 jobs:
 
-  Build-from-develop:
-    name: Build from develop
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
-    outputs:
-      should_run: ${{ steps.set_output.outputs.should_run }}
-    steps:
-      - id: set_output
-        run: echo "should_run=true" >> $GITHUB_OUTPUT
-
   codeql-scan:
     name: CodeQL Scanning
     runs-on: ubuntu-latest
