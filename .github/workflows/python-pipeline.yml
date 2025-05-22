@@ -127,25 +127,18 @@ jobs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
 
-      - name: Fetch main branch
-        run: git fetch origin main
-
-      - name: Check for commits between development and main
-        id: check_diff
+      - name: Check for differences before PR
         run: |
           echo "Checking for differences between development and main..."
-          COMMITS=$(git rev-list origin/main..HEAD)
-          if [ -z "$COMMITS" ]; then
-            echo "No new commits to PR. Skipping PR creation."
-            echo "has_diff=false" >> $GITHUB_OUTPUT
-          else
-            echo "New commits found."
-            echo "has_diff=true" >> $GITHUB_OUTPUT
+          git fetch origin
+          if git diff --quiet origin/main..origin/development; then
+            echo "No changes to create PR."
+            exit 0
+          fi
 
       - name: Create Pull Request from development to main
-        if: steps.check_diff.outputs.has_diff == 'true'
         id: create_pr
         uses: repo-sync/pull-request@v2
         with:
@@ -153,7 +146,18 @@ jobs:
           destination_branch: main
           pr_title: "Auto PR: development to main"
           pr_body: |
-            This PR was created automatically by the CI/CD pipeline from development to main.
+            This PR was created from the development to main branch.
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+
+      - name: Require Manual Approval
+        uses: trstringer/manual-approval@v1
+        with:
+          approvers: ${{ secrets.APPROVERS }}  
+          issue-title: "Manual Approval Required"
+          issue-body: "Please approve or deny the pull request."
+          minimum-approvals: 1
+          secret: ${{ secrets.MY_GITHUB_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
@@ -248,7 +252,7 @@ jobs:
 
       - name: Patch deployment to use imagePullSecret
         run: |
-          kubectl patch deployment python-backend \
+          kubectl patch deployment react-app \
             --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}'
 
       - name: Verify Deployment
