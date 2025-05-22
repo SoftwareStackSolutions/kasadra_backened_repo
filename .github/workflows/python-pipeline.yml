@@ -1,4 +1,4 @@
-name: python CI/CD - Feature to Development
+name: python CI/CD pipeline
 
 on:
   pull_request:
