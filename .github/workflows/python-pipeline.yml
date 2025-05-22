@@ -25,33 +25,9 @@ jobs:
       - id: set_output
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
-  # codeql-scan:
-  #   name: CodeQL Scanning
-  #   needs: Build-from-develop
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-
-  #     - name: Initialize CodeQL
-  #       uses: github/codeql-action/init@v3
-  #       with:
-  #         languages: python
-
-  #     - name: Autobuild
-  #       uses: github/codeql-action/autobuild@v3
-
-  #     - name: Run CodeQL Analysis
-  #       uses: github/codeql-action/analyze@v3
-  #       with:
-  #         category: "/language:python"
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   testing:
     name: Run Unit Tests and Pytest
     runs-on: ubuntu-latest
-    # needs: codeql-scan
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -153,7 +129,7 @@ jobs:
       - name: Require Manual Approval
         uses: trstringer/manual-approval@v1
         with:
-          approvers: ${{ secrets.APPROVERS }}  
+          approvers: ${{ secrets.APPROVERS }}
           issue-title: "Manual Approval Required"
           issue-body: "Please approve or deny the pull request."
           minimum-approvals: 1
@@ -163,26 +139,26 @@ jobs:
 
   Container-Build-and-Publish-into-Registry:
     name: Container Build and Publish into Registry
-    needs: Create-PR-to-Master-Branch
+    needs: build-and-publish-artifact
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main repository ((latest main branch))
-        uses: actions/checkout@v3
+      - name: Checkout main repository (latest main branch)
+        uses: actions/checkout@v4
         with:
           ref: main
 
       - name: Checkout artifact repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: SoftwareStackSolutions/Artifact_Storage
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           path: Artifact_Storage
 
       - name: Prepare artifact for Docker build
-          run:|
-          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
+        run: |
+          cp Artifact_Storage/backend_Artifact/backend_Artifact-latest.zip ./artifact.zip
 
-      - name: Log in to GitHub Container Registry (GHCR)
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -190,18 +166,13 @@ jobs:
           password: ${{ secrets.MY_GITHUB_TOKEN }}
 
       - name: Build Docker image
-        run: |
-          docker build -t python-app:latest -f Dockerfile . 
-            
-      - name: Tag image for GHCR
-        run: |
-          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker tag python-app:latest ghcr.io/${REPO_OWNER_LC}/python-app:latest
-      
-      - name: Push image to GHCR
+        run: docker build -t backend-app:latest -f Dockerfile .
+
+      - name: Tag and Push Docker image
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker push ghcr.io/${REPO_OWNER_LC}/python:latest
+          docker tag backend-app:latest ghcr.io/${REPO_OWNER_LC}/backend-app:latest
+          docker push ghcr.io/${REPO_OWNER_LC}/backend-app:latest
 
   Deploy-Application-to-GKE:
     name: Deploy Application to GKE
@@ -243,7 +214,7 @@ jobs:
       - name: Patch deployment to use imagePullSecret
         run: |
           kubectl patch deployment python-app \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}'
 
       - name: Verify Deployment
         run: |
