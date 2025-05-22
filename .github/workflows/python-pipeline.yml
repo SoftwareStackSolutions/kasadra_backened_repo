@@ -27,6 +27,7 @@ jobs:
 
   codeql-scan:
     name: CodeQL Scanning
+    needs: Build-from-develop
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -162,7 +163,7 @@ jobs:
 
   Container-Build-and-Publish-into-Registry:
     name: Container Build and Publish into Registry
-    needs: build-and-publish-artifact
+    needs: Create-PR-to-Master-Branch
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main repository (kasadra-frontend-repo)
