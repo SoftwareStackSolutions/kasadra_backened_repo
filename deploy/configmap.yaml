@@ -1,0 +1,8 @@
+configmap.yml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+data:
+  ENVIRONMENT: "production"

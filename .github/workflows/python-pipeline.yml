@@ -1,0 +1,252 @@
+name: python CI/CD pipeline
+
+on:
+ push:
+    branches: [development, main]
+ pull_request:
+    branches: [development]
+    
+ workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+  security-events: write
+  actions: read
+
+jobs:
+
+  codeql-scan:
+    name: CodeQL Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  testing:
+    name: Run Unit Tests and Pytest
+    runs-on: ubuntu-latest
+    needs: codeql-scan
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Run unittest
+        run: python -m unittest discover -s tests
+
+      - name: Run pytest
+        run: |
+          export PYTHONPATH="$PYTHONPATH:$(pwd)"
+          pytest tests --junitxml=pytest-report.xml
+
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report
+          path: pytest-report.xml
+
+  build-and-publish-artifact:
+    name: Build and Publish Artifact Package
+    runs-on: ubuntu-latest
+    needs: testing
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Build Package
+        run: |
+          pip install build
+          python -m build --sdist --wheel --outdir dist/
+          cd dist && zip -r ../python-package.zip .
+
+      - name: Upload Package Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: python-package.zip
+
+      - name: Checkout Artifact Repo
+        uses: actions/checkout@v4
+        with:
+          repository: SoftwareStackSolutions/Artifact_Storage
+          ref: main
+          token: ${{ secrets.MY_GITHUB_TOKEN }}
+          path: Artifact_Storage
+
+      - name: Push Zipped Artifact with Versioning
+        run: |
+          mkdir -p Artifact_Storage/Backend_Artifact
+          version=v$(date +%Y%m%d%H%M%S)
+          cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${version}.zip
+          cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
+
+          cd Artifact_Storage
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Backend_Artifact/*.zip
+          git commit -m "Add Backend Artifact ${version}" || echo "Nothing to commit"
+          git pull --rebase
+          git push origin main
+
+  Create-PR-to-Master-Branch:
+    name: Create PR to Master Branch
+    needs: build-and-publish-artifact
+    runs-on: ubuntu-latest
+    outputs:
+      pr_url: ${{ steps.create_pr.outputs.pr_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create Pull Request from development to main
+        id: create_pr
+        uses: repo-sync/pull-request@v2
+        with:
+          source_branch: development
+          destination_branch: main
+          pr_title: "Auto PR: development to main"
+          pr_body: |
+            This PR was created from the development to main branch.
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+
+      - name: Require Manual Approval
+        uses: trstringer/manual-approval@v1
+        with:
+          approvers: ${{ secrets.APPROVERS }}  
+          issue-title: "Manual Approval Required"
+          issue-body: "Please approve or deny the pull request."
+          minimum-approvals: 1
+          secret: ${{ secrets.MY_GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+
+  Container-Build-and-Publish-into-Registry:
+    name: Container Build and Publish into Registry
+    needs: Create-PR-to-Master-Branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Main Repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Checkout Artifact Repository
+        uses: actions/checkout@v3
+        with:
+          repository: SoftwareStackSolutions/Artifact_Storage
+          token: ${{ secrets.MY_GITHUB_TOKEN }}
+          path: Artifact_Storage
+
+      - name: Debug Artifact Files
+        run: ls -l Artifact_Storage/Backend_Artifact
+
+      - name: Prepare Artifact for Docker Build
+        run: |
+          mkdir -p backend-artifact
+          unzip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip -d backend-artifact
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image to DockerHub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/python-backend:latest
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.MY_GITHUB_TOKEN }}
+
+      - name: Tag and Push to GHCR
+        run: |
+          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          docker tag ${{ secrets.DOCKER_USERNAME }}/python-backend:latest ghcr.io/${REPO_OWNER_LC}/python-backend:latest
+          docker push ghcr.io/${REPO_OWNER_LC}/python-backend:latest
+
+  Deploy-Application-to-GKE:
+    name: Deploy Application to GKE
+    needs: Container-Build-and-Publish-into-Registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up kubectl
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_ZONE }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+
+      - name: Create GHCR imagePullSecret in GKE
+        run: |
+          kubectl delete secret ghcr-secret --ignore-not-found
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
+            --docker-email=no@email.com
+
+      - name: Deploy to GKE
+        run: |
+          kubectl apply -f deployment.yaml
+          kubectl apply -f service.yaml
+          sleep 59
+
+      - name: Patch deployment to use imagePullSecret
+        run: |
+          kubectl patch deployment react-app \
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
+
+      - name: Verify Deployment
+        run: |
+          kubectl get pods -o wide
+          kubectl get svc -o wide
