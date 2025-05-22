@@ -1,8 +1,6 @@
 name: python CI/CD pipeline
 
 on:
- push:
-    branches: [development, main]
  pull_request:
     branches: [development]
     
@@ -108,4 +106,150 @@ jobs:
         run: |
           mkdir -p Artifact_Storage/Backend_Artifact
           version=v$(date +%Y%m%d%H%M%S)
-          cp python-package.zip Artifact_Storage
+          cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${version}.zip
+          cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
+
+          cd Artifact_Storage
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Backend_Artifact/*.zip
+          git commit -m "Add Backend Artifact ${version}" || echo "Nothing to commit"
+          git pull --rebase
+          git push origin main
+
+  Create-PR-to-Master-Branch:
+    name: Create PR to Master Branch
+    needs: build-and-publish-artifact
+    runs-on: ubuntu-latest
+    outputs:
+      pr_url: ${{ steps.create_pr.outputs.pr_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fetch main branch
+        run: git fetch origin main
+
+      - name: Check for commits between development and main
+        id: check_diff
+        run: |
+          echo "Checking for differences between development and main..."
+          COMMITS=$(git rev-list origin/main..HEAD)
+          if [ -z "$COMMITS" ]; then
+            echo "No new commits to PR. Skipping PR creation."
+            echo "has_diff=false" >> $GITHUB_OUTPUT
+          else
+            echo "New commits found."
+            echo "has_diff=true" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request from development to main
+        if: steps.check_diff.outputs.has_diff == 'true'
+        id: create_pr
+        uses: repo-sync/pull-request@v2
+        with:
+          source_branch: development
+          destination_branch: main
+          pr_title: "Auto PR: development to main"
+          pr_body: |
+            This PR was created automatically by the CI/CD pipeline from development to main.
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+
+  Container-Build-and-Publish-into-Registry:
+    name: Container Build and Publish into Registry
+    needs: Create-PR-to-Master-Branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Main Repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Checkout Artifact Repository
+        uses: actions/checkout@v3
+        with:
+          repository: SoftwareStackSolutions/Artifact_Storage
+          token: ${{ secrets.MY_GITHUB_TOKEN }}
+          path: Artifact_Storage
+
+      - name: Debug Artifact Files
+        run: ls -l Artifact_Storage/Backend_Artifact
+
+      - name: Prepare Artifact for Docker Build
+        run: |
+          mkdir -p backend-artifact
+          unzip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip -d backend-artifact
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image to DockerHub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/python-backend:latest
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.MY_GITHUB_TOKEN }}
+
+      - name: Tag and Push to GHCR
+        run: |
+          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          docker tag ${{ secrets.DOCKER_USERNAME }}/python-backend:latest ghcr.io/${REPO_OWNER_LC}/python-backend:latest
+          docker push ghcr.io/${REPO_OWNER_LC}/python-backend:latest
+
+  Deploy-Application-to-GKE:
+    name: Deploy Application to GKE
+    needs: Container-Build-and-Publish-into-Registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up kubectl
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_ZONE }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+
+      - name: Create GHCR imagePullSecret in GKE
+        run: |
+          kubectl delete secret ghcr-secret --ignore-not-found
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
+            --docker-email=no@email.com
+
+      - name: Deploy to GKE
+        run: |
+          kubectl apply -f deployment.yaml
+          kubectl apply -f service.yaml
+          sleep 59
+
+      - name: Patch deployment to use imagePullSecret
+        run: |
+          kubectl patch deployment python-backend \
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}'
+
+      - name: Verify Deployment
+        run: |
+          kubectl get pods -o wide
+          kubectl get svc -o wide
