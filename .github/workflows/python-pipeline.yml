@@ -166,7 +166,7 @@ jobs:
     needs: Create-PR-to-Master-Branch
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main repository (kasadra-backend-repo)
+      - name: Checkout main repository ((latest main branch))
         uses: actions/checkout@v3
         with:
           ref: main
