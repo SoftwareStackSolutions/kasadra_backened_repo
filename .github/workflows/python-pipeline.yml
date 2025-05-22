@@ -207,10 +207,15 @@ jobs:
             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
             --docker-email=no@email.com
 
+      - name: Debug file tree
+        run: |
+          echo "Checking file structure..."
+          ls -R
+
       - name: Deploy to GKE
         run: |
-          kubectl apply -f deployment.yaml
-          kubectl apply -f service.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
           sleep 59
 
       - name: Patch deployment to use imagePullSecret
