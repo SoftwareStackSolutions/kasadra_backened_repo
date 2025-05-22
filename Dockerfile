@@ -6,8 +6,11 @@ WORKDIR /app
 # Copy the backend artifact ZIP file
 COPY artifact.zip ./artifact.zip
 
-# Install unzip
-RUN apt-get update && apt-get install -y unzip && npm install -g serve
+# Install unzip, curl, Node.js, and npm, then install serve
+RUN apt-get update && apt-get install -y unzip curl \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g serve
 
 # Unzip the artifact
 RUN unzip artifact.zip -d backend-project && \
