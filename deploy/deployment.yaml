@@ -1,9 +1,10 @@
+# k8s/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: python-app
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: python-app
@@ -14,9 +15,6 @@ spec:
     spec:
       containers:
         - name: python-app
-          image: ghcr.io/softwarestacksolutions/python-app:latest
+          image: ghcr.io/your-username/python-app:latest
           ports:
-            - containerPort: 8000
-          imagePullPolicy: Always
-      imagePullSecrets:
-        - name: ghcr-secret
+            - containerPort: 80
