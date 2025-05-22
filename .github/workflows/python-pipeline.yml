@@ -191,17 +191,17 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t react-app:latest -f Dockerfile . 
+          docker build -t python-app:latest -f Dockerfile . 
             
       - name: Tag image for GHCR
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker tag react-app:latest ghcr.io/${REPO_OWNER_LC}/react-app:latest
+          docker tag python-app:latest ghcr.io/${REPO_OWNER_LC}/python-app:latest
       
       - name: Push image to GHCR
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker push ghcr.io/${REPO_OWNER_LC}/react-app:latest
+          docker push ghcr.io/${REPO_OWNER_LC}/python:latest
 
   Deploy-Application-to-GKE:
     name: Deploy Application to GKE
