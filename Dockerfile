@@ -4,7 +4,7 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Copy the backend artifact ZIP file
-COPY Artifact_Storage/Frontend_Artifact/Frontend_Artifact-latest.zip ./artifact.zip
+COPY Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
 
 # Install unzip
 RUN apt-get update && apt-get install -y unzip && rm -rf /var/lib/apt/lists/*
