@@ -1,10 +1,12 @@
 name: python CI/CD pipeline
 
 on:
-  pull_request:
+ push:
+    branches: [development, main]
+ pull_request:
     branches: [development]
     
-  workflow_dispatch:
+ workflow_dispatch:
 
 permissions:
   contents: write
