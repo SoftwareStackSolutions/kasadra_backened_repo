@@ -1,10 +1,7 @@
-version: 2
-updates:
-  # 1. Keep Python dependencies updated (e.g., requirements.txt)
-  - package-ecosystem: "pip"
-    directory: "/"  # location of requirements.txt
+- package-ecosystem: "github-actions"
+    directory: "/"  # .github/workflows is scanned automatically
     schedule:
-      interval: "weekly"  # options: daily, weekly, monthly
+      interval: "weekly"
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "deps(pip)"
+      prefix: "deps(actions)"
