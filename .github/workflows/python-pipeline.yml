@@ -1,4 +1,4 @@
-name: python CI/CD pipeline
+name: python CI/CD pipeline  [feature to development]
 
 on:
   pull_request:
@@ -28,6 +28,7 @@ jobs:
     name: CodeQL Scan
     runs-on: ubuntu-latest
      needs:Build-from-develop
+        if:needs.Build-from-develop.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v4
 
