@@ -37,11 +37,14 @@ jobs:
         with:
           languages: python
 
-      - name: Autodetect and build
+      # Replace autobuild with your manual build if needed
+      - name: Autobuild
         uses: github/codeql-action/autobuild@v3
+        # If autobuild doesn't work, replace with manual build steps here
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
+        # No manual SARIF upload here — the analyze action uploads results automatically
 
   testing:
     name: Run Unit Tests and Pytests
@@ -130,9 +133,9 @@ jobs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
 
-      - name: Create and Merge Pull Request from development to main
+      - name: Create Pull Request from development to main
         id: create_pr
         uses: repo-sync/pull-request@v2
         with:
@@ -140,10 +143,22 @@ jobs:
           destination_branch: main
           pr_title: "Auto PR: development to main"
           pr_body: |
-            This PR was auto-generated from the development to main branch.
-          github_token: ${{ secrets.MY_GITHUB_TOKEN }}
-          auto_approve: true
-          merge_method: merge
+            This PR was created from the development to main branch.
+          draft: false
+          allow_maintainer_edit: true
+          # DO NOT enable auto-merge here, so no merging happens automatically
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+
+      - name: Wait for Manual Approval (no issue creation)
+        uses: trstringer/manual-approval@v1
+        with:
+          approvers: ${{ secrets.APPROVERS }}
+          minimum-approvals: 1
+          mode: manual
+          secret: ${{ secrets.MY_GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
   container-build-and-publish:
     name: Container Build and Publish into Registry
@@ -215,6 +230,11 @@ jobs:
             --docker-username=${{ github.actor }} \
             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
             --docker-email=no@email.com
+
+      - name: Debug file tree
+        run: |
+          echo "Checking file structure..."
+          ls -R
 
       - name: Deploy to GKE
         run: |
