@@ -37,15 +37,13 @@ jobs:
         with:
           languages: python
 
-      # Replace autobuild with your manual build if needed
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
-        # If autobuild doesn't work, replace with manual build steps here
+      
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
-        # No manual SARIF upload here — the analyze action uploads results automatically
-
+        
   testing:
     name: Run Unit Tests and Pytests
     runs-on: ubuntu-latest
