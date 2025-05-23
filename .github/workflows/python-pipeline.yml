@@ -37,15 +37,17 @@ jobs:
         with:
           languages: python
 
-      - name: Install dependencies (build project)
+      - name: Install dependencies for build (fixes SARIF error)
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e .
 
+      # Removed autobuild, replaced with explicit install above
+
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
-
+        # No manual SARIF upload here (analyze does it automatically)
 
   testing:
     name: Run Unit Tests and Pytests
