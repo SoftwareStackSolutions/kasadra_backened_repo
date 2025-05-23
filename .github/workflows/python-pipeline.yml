@@ -27,6 +27,7 @@ jobs:
   codeql-scan:
     name: CodeQL Scan
     runs-on: ubuntu-latest
+     needs:Build-from-develop
     steps:
       - uses: actions/checkout@v4
 
