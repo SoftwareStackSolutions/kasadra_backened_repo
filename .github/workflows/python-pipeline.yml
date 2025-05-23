@@ -44,7 +44,7 @@ jobs:
   testing:
     name: Run Unit Tests and Pytests
     runs-on: ubuntu-latest
-    needs: codeql-scan
+    # needs: codeql-scan
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
