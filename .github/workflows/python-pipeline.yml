@@ -25,7 +25,7 @@ jobs:
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
   testing:
-    name: Run Unit Tests and Pytest
+    name: Run Unit Tests and Pytests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -127,7 +127,7 @@ jobs:
       - name: Require Manual Approval
         uses: trstringer/manual-approval@v1
         with:
-          approvers: ${{ secrets.APPROVERS }}
+          approvers: meera-digi,AshwiniDevOpz
           issue-title: "Manual Approval Required"
           issue-body: "Please approve or deny the pull request."
           minimum-approvals: 1
