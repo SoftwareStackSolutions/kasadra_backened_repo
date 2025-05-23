@@ -1,4 +1,4 @@
-name: python CI/CD pipeline
+name: python CI/CD pipeline - feature to development
 
 on:
   pull_request:
@@ -14,8 +14,8 @@ permissions:
   actions: read
 
 jobs:
-  Build-from-develop:
-    name: checkout source code
+  checkout-source-code:
+    name: Checkout Source Code
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     outputs:
@@ -27,7 +27,8 @@ jobs:
   codeql-scan:
     name: CodeQL Scan
     runs-on: ubuntu-latest
-     needs:Build-from-develop
+    needs: checkout-source-code
+    if: needs.checkout-source-code.outputs.should_run == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -45,6 +46,7 @@ jobs:
   testing:
     name: Run Unit Tests and Pytests
     runs-on: ubuntu-latest
+    needs: codeql-scan
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -120,14 +122,14 @@ jobs:
           git pull --rebase
           git push origin main
 
-  Create-PR-to-Master-Branch:
-    name: Create PR to Master Branch
+  create-pr-to-main:
+    name: Create PR to Main Branch
     needs: build-and-publish-artifact
     runs-on: ubuntu-latest
     outputs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v2
 
       - name: Create Pull Request from development to main
@@ -152,9 +154,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-  Container-Build-and-Publish-into-Registry:
+  container-build-and-publish:
     name: Container Build and Publish into Registry
-    needs: Create-PR-to-Master-Branch
+    needs: create-pr-to-main
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main repository (latest main branch)
@@ -192,9 +194,9 @@ jobs:
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           docker push ghcr.io/${REPO_OWNER_LC}/python-app:latest
 
-  Deploy-Application-to-GKE:
+  deploy-to-gke:
     name: Deploy Application to GKE
-    needs: Container-Build-and-Publish-into-Registry
+    needs: container-build-and-publish
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main repository
@@ -237,7 +239,7 @@ jobs:
       - name: Patch deployment to use imagePullSecret
         run: |
           kubectl patch deployment python-app \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}'
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
 
       - name: Verify Deployment
         run: |
