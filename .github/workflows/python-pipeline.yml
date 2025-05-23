@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   Build-from-develop:
-    name: Build from develop
+    name: checkout source code
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     outputs:
@@ -94,7 +94,6 @@ jobs:
           version=v$(date +%Y%m%d%H%M%S)
           cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${version}.zip
           cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
-
           cd Artifact_Storage
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
