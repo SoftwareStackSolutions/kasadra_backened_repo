@@ -1,4 +1,4 @@
-name: python CI/CD pipeline -feature to development
+name: python CI/CD pipeline - feature to development
 
 on:
   pull_request:
@@ -42,6 +42,7 @@ jobs:
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
+
 
   testing:
     name: Run Unit Tests and Pytests
@@ -122,14 +123,14 @@ jobs:
           git pull --rebase
           git push origin main
 
-  create-pr-to-master-branch:
-    name: Create PR to Master Branch
+  create-pr-to-main:
+    name: Create PR to Main Branch
     needs: build-and-publish-artifact
     runs-on: ubuntu-latest
     outputs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v2
 
       - name: Create Pull Request from development to main
@@ -154,9 +155,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-  container-build-and-publish-into-registry:
+  container-build-and-publish:
     name: Container Build and Publish into Registry
-    needs: create-pr-to-master-branch
+    needs: create-pr-to-main
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main repository (latest main branch)
@@ -194,9 +195,9 @@ jobs:
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           docker push ghcr.io/${REPO_OWNER_LC}/python-app:latest
 
-  deploy-application-to-gke:
+  deploy-to-gke:
     name: Deploy Application to GKE
-    needs: container-build-and-publish-into-registry
+    needs: container-build-and-publish
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main repository
@@ -239,7 +240,7 @@ jobs:
       - name: Patch deployment to use imagePullSecret
         run: |
           kubectl patch deployment python-app \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}'
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
 
       - name: Verify Deployment
         run: |
