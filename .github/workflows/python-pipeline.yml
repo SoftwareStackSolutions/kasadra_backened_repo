@@ -37,8 +37,9 @@ jobs:
         with:
           languages: python
 
-      - name: Autodetect and build
-        uses: github/codeql-action/autobuild@v3
+      - name: Build the Code
+        run: |
+          pip install -r requirements.txt || true
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
@@ -48,11 +49,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: codeql-scan
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
@@ -80,11 +79,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: testing
     steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
@@ -130,7 +127,7 @@ jobs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Create Pull Request from development to main
         id: create_pr
@@ -144,7 +141,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-      - name: Wait for Manual Approval (no issue creation)
+      - name: Wait for Manual Approval
         uses: trstringer/manual-approval@v1
         with:
           approvers: ${{ secrets.APPROVERS }}
@@ -159,13 +156,11 @@ jobs:
     needs: create-pr-to-main
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main repository (latest main branch)
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: main
 
-      - name: Checkout artifact repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: SoftwareStackSolutions/Artifact_Storage
           token: ${{ secrets.MY_GITHUB_TOKEN }}
@@ -184,14 +179,10 @@ jobs:
       - name: Build Docker image
         run: docker build -t python-app:latest -f Dockerfile .
 
-      - name: Tag image for GHCR
+      - name: Tag and Push Docker image
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           docker tag python-app:latest ghcr.io/${REPO_OWNER_LC}/python-app:latest
-
-      - name: Push image to GHCR
-        run: |
-          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           docker push ghcr.io/${REPO_OWNER_LC}/python-app:latest
 
   deploy-to-gke:
@@ -199,8 +190,7 @@ jobs:
     needs: container-build-and-publish
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: main
 
@@ -224,11 +214,6 @@ jobs:
             --docker-username=${{ github.actor }} \
             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
             --docker-email=no@email.com
-
-      - name: Debug file tree
-        run: |
-          echo "Checking file structure..."
-          ls -R
 
       - name: Deploy to GKE
         run: |
