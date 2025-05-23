@@ -39,11 +39,12 @@ jobs:
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
-      
+        # If autobuild does not work, add your build commands here.
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
-        
+        # SARIF upload handled automatically here
+
   testing:
     name: Run Unit Tests and Pytests
     runs-on: ubuntu-latest
@@ -142,9 +143,7 @@ jobs:
           pr_title: "Auto PR: development to main"
           pr_body: |
             This PR was created from the development to main branch.
-          draft: false
-          allow_maintainer_edit: true
-          # DO NOT enable auto-merge here, so no merging happens automatically
+          # No issue creation parameter - this action does not create issues by default
         env:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
