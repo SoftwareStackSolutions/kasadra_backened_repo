@@ -43,7 +43,6 @@ jobs:
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
 
-
   testing:
     name: Run Unit Tests and Pytests
     runs-on: ubuntu-latest
