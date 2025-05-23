@@ -147,7 +147,7 @@ jobs:
       - name: Wait for Manual Approval (no issue creation)
         uses: trstringer/manual-approval@v1
         with:
-          approvers: ${{ secrets.APPROVERS }}
+          approvers: meera-digi,AshwiniDevOpz
           minimum-approvals: 1
           mode: manual
           secret: ${{ secrets.MY_GITHUB_TOKEN }}
