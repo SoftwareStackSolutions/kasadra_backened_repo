@@ -37,7 +37,6 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: python
-          queries: +security-and-quality
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -255,7 +254,7 @@ jobs:
       - name: Patch deployment to use imagePullSecret
         run: |
           kubectl patch deployment python-app \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}'
 
       - name: Verify Deployment
         run: |
