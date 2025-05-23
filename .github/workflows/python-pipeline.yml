@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   Build-from-develop:
-    name: Build from develop
+    name: checkout source code
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     outputs:
