@@ -24,27 +24,27 @@ jobs:
       - id: set_output
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
-  # codeql-scan:
-  #   name: CodeQL Scan
-  #   runs-on: ubuntu-latest
-  #   needs: checkout-source-code
-  #   if: needs.checkout-source-code.outputs.should_run == 'true'
-  #   steps:
-  #     - name: Checkout Source Code
-  #       uses: actions/checkout@v4
+  codeql-scan:
+    name: CodeQL Scan
+    runs-on: ubuntu-latest
+    needs: checkout-source-code
+    if: needs.checkout-source-code.outputs.should_run == 'true'
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
 
-  #     - name: Enable CodeQL Default Setup
-  #       uses: github/codeql-action/init@v3
-  #       with:
-  #         languages: python
+      - name: Enable CodeQL Default Setup
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
 
-  #     - name: Perform CodeQL Analysis
-  #       uses: github/codeql-action/analyze@v3
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
 
   testing:
     name: Run Unit Tests and Pytests
     runs-on: ubuntu-latest
-    # needs: codeql-scan
+    needs: codeql-scan
     if: needs.codeql-scan.result == 'success'
     steps:
       - name: Checkout Code
@@ -149,6 +149,11 @@ jobs:
       - name: Wait for PR Merge
         run: |
           PR_NUMBER=$(gh pr list --state open --json number --jq '.[0].number' --repo "${{ github.repository }}")
+          SOURCE_BRANCH=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefName -q .headRefName)
+          TARGET_BRANCH=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json baseRefName -q .baseRefName)
+
+          echo "⏳ Waiting for PR #$PR_NUMBER to be merged into $TARGET_BRANCH from $SOURCE_BRANCH..."
+          
           while true; do
             STATE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
@@ -159,6 +164,18 @@ jobs:
               sleep 30
             fi
           done
+
+          echo "🔄 Fetching branches to verify no remaining differences..."
+          git fetch origin "$SOURCE_BRANCH" "$TARGET_BRANCH"
+
+          if git diff --quiet "origin/$TARGET_BRANCH..origin/$SOURCE_BRANCH"; then
+            echo "✅ No changes remain between '$SOURCE_BRANCH' and '$TARGET_BRANCH'."
+          else
+            echo "❌ There are still changes between '$SOURCE_BRANCH' and '$TARGET_BRANCH'!"
+            echo "Changed files:"
+            git diff --name-only "origin/$TARGET_BRANCH..origin/$SOURCE_BRANCH"
+            exit 1
+          fi
         env:
           GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
