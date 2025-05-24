@@ -149,6 +149,11 @@ jobs:
       - name: Wait for PR Merge
         run: |
           PR_NUMBER=$(gh pr list --state open --json number --jq '.[0].number' --repo "${{ github.repository }}")
+          SOURCE_BRANCH=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefName -q .headRefName)
+          TARGET_BRANCH=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json baseRefName -q .baseRefName)
+
+          echo "⏳ Waiting for PR #$PR_NUMBER to be merged into $TARGET_BRANCH from $SOURCE_BRANCH..."
+          
           while true; do
             STATE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
@@ -159,9 +164,8 @@ jobs:
               sleep 30
             fi
           done
-        env:
-          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
+         
   container-build-and-publish:
     name: Container Build and Publish into Registry
     needs: create-pr-to-main
@@ -202,54 +206,54 @@ jobs:
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           docker push ghcr.io/${REPO_OWNER_LC}/python-app:latest
 
-  deploy-to-gke:
-    name: Deploy Application to GKE
-    needs: container-build-and-publish
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout main repository
-        uses: actions/checkout@v3
-        with:
-          ref: main
+  # deploy-to-gke:
+  #   name: Deploy Application to GKE
+  #   needs: container-build-and-publish
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout main repository
+  #       uses: actions/checkout@v3
+  #       with:
+  #         ref: main
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+  #     - name: Authenticate to GCP
+  #       uses: google-github-actions/auth@v2
+  #       with:
+  #         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set up kubectl
-        uses: google-github-actions/get-gke-credentials@v2
-        with:
-          cluster_name: ${{ secrets.GKE_CLUSTER }}
-          location: ${{ secrets.GKE_ZONE }}
-          project_id: ${{ secrets.GCP_PROJECT }}
+  #     - name: Set up kubectl
+  #       uses: google-github-actions/get-gke-credentials@v2
+  #       with:
+  #         cluster_name: ${{ secrets.GKE_CLUSTER }}
+  #         location: ${{ secrets.GKE_ZONE }}
+  #         project_id: ${{ secrets.GCP_PROJECT }}
 
-      - name: Create GHCR imagePullSecret in GKE
-        run: |
-          kubectl delete secret ghcr-secret --ignore-not-found
-          kubectl create secret docker-registry ghcr-secret \
-            --docker-server=ghcr.io \
-            --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
-            --docker-email=no@email.com
+  #     - name: Create GHCR imagePullSecret in GKE
+  #       run: |
+  #         kubectl delete secret ghcr-secret --ignore-not-found
+  #         kubectl create secret docker-registry ghcr-secret \
+  #           --docker-server=ghcr.io \
+  #           --docker-username=${{ github.actor }} \
+  #           --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
+  #           --docker-email=no@email.com
 
-      - name: Debug file tree
-        run: |
-          echo "Checking file structure..."
-          ls -R
+  #     - name: Debug file tree
+  #       run: |
+  #         echo "Checking file structure..."
+  #         ls -R
 
-      - name: Deploy to GKE
-        run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
-          sleep 59
+  #     - name: Deploy to GKE
+  #       run: |
+  #         kubectl apply -f k8s/deployment.yaml
+  #         kubectl apply -f k8s/service.yaml
+  #         sleep 59
 
-      - name: Patch deployment to use imagePullSecret
-        run: |
-          kubectl patch deployment python-app \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}'
+  #     - name: Patch deployment to use imagePullSecret
+  #       run: |
+  #         kubectl patch deployment python-app \
+  #           --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}'
 
-      - name: Verify Deployment
-        run: |
-          kubectl get pods -o wide
-          kubectl get svc -o wide
+  #     - name: Verify Deployment
+  #       run: |
+  #         kubectl get pods -o wide
+  #         kubectl get svc -o wide
