@@ -1,4 +1,4 @@
-name: python CI/CD pipeline - feature to development
+name: python CI/CD - Feature to Development
 
 on:
   pull_request:
@@ -17,7 +17,7 @@ jobs:
   checkout-source-code:
     name: Checkout Source Code
     runs-on: ubuntu-latest
-    if: github.event.pull_request && github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
     outputs:
       should_run: ${{ steps.set_output.outputs.should_run }}
     steps:
@@ -25,27 +25,33 @@ jobs:
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
   codeql-scan:
-    name: CodeQL Scan
+    name: CodeQL Scanning
     runs-on: ubuntu-latest
     needs: checkout-source-code
     if: needs.checkout-source-code.outputs.should_run == 'true'
     steps:
-      - name: Checkout Source Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Enable CodeQL Default Setup
+      - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: python
 
-      - name: Perform CodeQL Analysis
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Run CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   testing:
-    name: Run Unit Tests and Pytests
+    name: Run Unit Tests and Pytest
     runs-on: ubuntu-latest
     needs: codeql-scan
-    if: needs.codeql-scan.result == 'success'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -113,6 +119,7 @@ jobs:
           version=v$(date +%Y%m%d%H%M%S)
           cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${version}.zip
           cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
+
           cd Artifact_Storage
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -164,37 +171,96 @@ jobs:
     needs: create-pr-to-main
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main repository (latest main branch)
+      - name: Checkout Main Repository
         uses: actions/checkout@v3
         with:
           ref: main
 
-      - name: Checkout artifact repository
-        uses: actions/checkout@v4
+      - name: Checkout Artifact Repository
+        uses: actions/checkout@v3
         with:
           repository: SoftwareStackSolutions/Artifact_Storage
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           path: Artifact_Storage
 
-      - name: Prepare artifact for Docker build
-        run: cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
+      - name: Debug Artifact Files
+        run: ls -l Artifact_Storage/Backend_Artifact
 
-      - name: Log in to GHCR
+      - name: Prepare Artifact for Docker Build
+        run: |
+          mkdir -p backend-artifact
+          unzip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip -d backend-artifact
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image to DockerHub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/python-backend:latest
+
+      - name: Log in to GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.MY_GITHUB_TOKEN }}
 
-      - name: Build Docker image
-        run: docker build -t python-app:latest -f Dockerfile .
-
-      - name: Tag image for GHCR
+      - name: Tag and Push to GHCR
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker tag python-app:latest ghcr.io/${REPO_OWNER_LC}/python-app:latest
+          docker tag ${{ secrets.DOCKER_USERNAME }}/python-backend:latest ghcr.io/${REPO_OWNER_LC}/python-backend:latest
+          docker push ghcr.io/${REPO_OWNER_LC}/python-backend:latest
 
-      - name: Push image to GHCR
+  deploy-application-to-gke:
+    name: Deploy Application to GKE
+    needs: container-build-and-publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Main Repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up kubectl
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_ZONE }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+
+      - name: Create GHCR imagePullSecret in GKE
         run: |
-          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker push ghcr.io/${REPO_OWNER_LC}/python-app:latest
+          kubectl delete secret ghcr-secret --ignore-not-found
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
+            --docker-email=no@email.com
+
+      - name: Deploy to GKE
+        run: |
+          kubectl apply -f deployment.yaml
+          kubectl apply -f service.yaml
+          sleep 59
+
+      - name: Patch Deployment to Use ImagePullSecret
+        run: |
+          kubectl patch deployment react-app \
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
+
+      - name: Verify Deployment
+        run: |
+          kubectl get pods -o wide
+          kubectl get svc -o wide
