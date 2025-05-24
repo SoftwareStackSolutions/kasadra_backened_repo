@@ -17,7 +17,7 @@ jobs:
   checkout-source-code:
     name: Checkout Source Code
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request && github.event.pull_request.merged == true
     outputs:
       should_run: ${{ steps.set_output.outputs.should_run }}
     steps:
