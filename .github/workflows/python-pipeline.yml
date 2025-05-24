@@ -17,8 +17,7 @@ jobs:
   checkout-source-code:
     name: Checkout Source Code
     runs-on: ubuntu-latest
-    if: >
-      github.event.pull_request.merged == true 
+    if: github.event.pull_request.merged == true
     outputs:
       should_run: ${{ steps.set_output.outputs.should_run }}
     steps:
@@ -142,13 +141,13 @@ jobs:
           pr_body: |
             This PR was created from the development to main branch.
         env:
-          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN}}
-     
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
       - name: Wait for PR Merge
         run: |
+          PR_NUMBER=$(gh pr list --state open --json number --jq '.[0].number' --repo "${{ github.repository }}")
           while true; do
-            STATE=$(gh pr view "$PR_NUMBER" --repo clouddevops-2023/SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
+            STATE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
               echo "✅ PR #$PR_NUMBER has been merged!"
               break
@@ -159,6 +158,7 @@ jobs:
           done
         env:
           GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+
   container-build-and-publish:
     name: Container Build and Publish into Registry
     needs: create-pr-to-main
@@ -197,4 +197,4 @@ jobs:
       - name: Push image to GHCR
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker push ghcr.io/${REPO_OWNER_LC}/python-app:
+          docker push ghcr.io/${REPO_OWNER_LC}/python-app:latest
