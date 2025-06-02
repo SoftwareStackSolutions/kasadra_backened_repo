@@ -170,42 +170,29 @@ jobs:
     name: Container Build and Publish into Registry
     needs: create-pr-to-main
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Main Repository
+      - name: Checkout main repository (kasadra-backend-repo)
         uses: actions/checkout@v3
         with:
           ref: main
 
-      - name: Checkout Artifact Repository
+      - name: Checkout artifact repository
         uses: actions/checkout@v3
         with:
           repository: SoftwareStackSolutions/Artifact_Storage
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           path: Artifact_Storage
 
-      - name: Debug Artifact Files
-        run: ls -l Artifact_Storage/Backend_Artifact
-
-      - name: Prepare Artifact for Docker Build
+      - name: Prepare artifact for Docker build
         run: |
-          unzip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip -d .
+          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
 
       - name: List Unzipped Files
-        run: ls -R
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and Push Docker Image to DockerHub
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/python-backend:latest
+        run: |
+          unzip -l artifact.zip
+          unzip artifact.zip -d ./unzipped
+          ls -R ./unzipped
 
       - name: Log in to GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
@@ -214,11 +201,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.MY_GITHUB_TOKEN }}
 
-      - name: Tag and Push to GHCR
+      - name: Build Docker image
+        run: |
+          docker build -t python-app:latest -f Dockerfile .
+
+      - name: Tag image for GHCR
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker tag ${{ secrets.DOCKER_USERNAME }}/python-backend:latest ghcr.io/${REPO_OWNER_LC}/python-backend:latest
-          docker push ghcr.io/${REPO_OWNER_LC}/python-backend:latest
+          docker tag python-app:latest ghcr.io/${REPO_OWNER_LC}/python-app:latest
+
+      - name: Push image to GHCR
+        run: |
+          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          docker push ghcr.io/${REPO_OWNER_LC}/python-app:latest
 
   deploy-application-to-gke:
     name: Deploy Application to GKE
