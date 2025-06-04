@@ -45,8 +45,10 @@ jobs:
 
       - name: Run Pytest
         run: |
-          export PYTHONPATH="$PYTHONPATH:$(pwd)/api:$(pwd)/app"
-          pytest tests api/tests --junitxml=pytest-report.xml
+          echo "Setting PYTHONPATH..."
+          export PYTHONPATH="$PYTHONPATH:$(pwd)"
+          TEST_DIRS=$(find . -type d -name "tests" | paste -sd " ")
+          pytest $TEST_DIRS --junitxml=pytest-report.xml
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
