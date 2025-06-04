@@ -25,28 +25,28 @@ jobs:
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
   codeql-scan:
-    name: CodeQL Scanning
-    runs-on: ubuntu-latest
+    name: Scan CodeQL
     needs: checkout-source-code
-    if: needs.checkout-source-code.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python]
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: python
+          languages: ${{ matrix.language }}
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Run CodeQL Analysis
+      - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:python"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   testing:
     name: Run Unit Tests and Pytest
@@ -136,7 +136,7 @@ jobs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Create Pull Request from development to main
         id: create_pr
@@ -170,15 +170,14 @@ jobs:
     name: Container Build and Publish into Registry
     needs: create-pr-to-main
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout main repository (kasadra-backend-repo)
-        uses: actions/checkout@v3
+      - name: Checkout main repository
+        uses: actions/checkout@v4
         with:
           ref: main
 
       - name: Checkout artifact repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: SoftwareStackSolutions/Artifact_Storage
           token: ${{ secrets.MY_GITHUB_TOKEN }}
@@ -221,7 +220,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Main Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: main
 
