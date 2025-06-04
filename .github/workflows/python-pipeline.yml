@@ -40,13 +40,13 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -e .
-          
+
       - name: Run pytest
-         run:|
-           echo "Listing project structure..."
-           ls -R
-           export PYTHONPATH="$PYTHONPATH:$(pwd)/api:$(pwd)/app"
-           pytest tests api/tests --junitxml=pytest-report.xml
+        run: |
+          echo "Listing project structure..."
+          ls -R
+          export PYTHONPATH="$PYTHONPATH:$(pwd)/api:$(pwd)/app"
+          pytest tests api/tests --junitxml=pytest-report.xml
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
@@ -136,7 +136,6 @@ jobs:
               echo "Not merged yet. Waiting for approval..."
               sleep 30
             fi
-          done
         env:
           GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
@@ -186,50 +185,3 @@ jobs:
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           docker push ghcr.io/${REPO_OWNER_LC}/python-app:latest
-
-  # deploy-application-to-gke:
-  #   name: Deploy Application to GKE
-  #   needs: container-build-and-publish
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Main Repository
-  #       uses: actions/checkout@v3
-  #       with:
-  #         ref: main
-
-  #     - name: Authenticate to GCP
-  #       uses: google-github-actions/auth@v2
-  #       with:
-  #         credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-  #     - name: Set up kubectl
-  #       uses: google-github-actions/get-gke-credentials@v2
-  #       with:
-  #         cluster_name: ${{ secrets.GKE_CLUSTER }}
-  #         location: ${{ secrets.GKE_ZONE }}
-  #         project_id: ${{ secrets.GCP_PROJECT }}
-
-  #     - name: Create GHCR imagePullSecret in GKE
-  #       run: |
-  #         kubectl delete secret ghcr-secret --ignore-not-found
-  #         kubectl create secret docker-registry ghcr-secret \
-  #           --docker-server=ghcr.io \
-  #           --docker-username=${{ github.actor }} \
-  #           --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
-  #           --docker-email=no@email.com
-
-  #     - name: Deploy to GKE
-  #       run: |
-  #         kubectl apply -f deployment.yaml
-  #         kubectl apply -f service.yaml
-  #         sleep 59
-
-  #     - name: Patch Deployment to Use ImagePullSecret
-  #       run: |
-  #         kubectl patch deployment react-app \
-  #           --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
-
-  #     - name: Verify Deployment
-  #       run: |
-  #         kubectl get pods -o wide
-  #         kubectl get svc -o wide
