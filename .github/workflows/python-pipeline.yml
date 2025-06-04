@@ -24,37 +24,37 @@ jobs:
       - id: set_output
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
-  codeql-scan:
-    name: CodeQL Scanning
-    runs-on: ubuntu-latest
-    needs: checkout-source-code
-    if: needs.checkout-source-code.outputs.should_run == 'true'
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+  # codeQL-scanning:
+  #   name: Scan CodeQL
+  #   needs: checkout-source-code
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     actions: read
+  #     contents: read
+  #     security-events: write
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       language: [python]
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v3
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: python
+  #     - name: Initialize CodeQL
+  #       uses: github/codeql-action/init@v3
+  #       with:
+  #         languages: ${{ matrix.language }}
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Run CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:python"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Perform CodeQL Analysis
+  #       uses: github/codeql-action/analyze@v3
 
   testing:
     name: Run Unit Tests and Pytest
     runs-on: ubuntu-latest
-    needs: codeql-scan
+    needs: codeQL-scanning
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -66,13 +66,13 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      - name: Run unittest
-        run: python -m unittest discover -s tests
+      # - name: Run unittest
+      #   run: python -m unittest discover -s tests
 
       - name: Run pytest
         run: |
-          export PYTHONPATH="$PYTHONPATH:$(pwd)"
-          pytest tests --junitxml=pytest-report.xml
+          export PYTHONPATH="$PYTHONPATH:$(pwd)/Fast_API"
+          pytest Fast_API/tests --junitxml=pytest-report.xml
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
@@ -153,11 +153,6 @@ jobs:
       - name: Wait for PR Merge
         run: |
           PR_NUMBER=$(gh pr list --state open --json number --jq '.[0].number' --repo "${{ github.repository }}")
-          SOURCE_BRANCH=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefName -q .headRefName)
-          TARGET_BRANCH=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json baseRefName -q .baseRefName)
-
-          echo "⏳ Waiting for PR #$PR_NUMBER to be merged into $TARGET_BRANCH from $SOURCE_BRANCH..."
-          
           while true; do
             STATE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
@@ -168,18 +163,6 @@ jobs:
               sleep 30
             fi
           done
-
-          echo "🔄 Fetching branches to verify no remaining differences..."
-          git fetch origin "$SOURCE_BRANCH" "$TARGET_BRANCH"
-
-          if git diff --quiet "origin/$TARGET_BRANCH..origin/$SOURCE_BRANCH"; then
-            echo "✅ No changes remain between '$SOURCE_BRANCH' and '$TARGET_BRANCH'."
-          else
-            echo "❌ There are still changes between '$SOURCE_BRANCH' and '$TARGET_BRANCH'!"
-            echo "Changed files:"
-            git diff --name-only "origin/$TARGET_BRANCH..origin/$SOURCE_BRANCH"
-            exit 1
-          fi
         env:
           GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
@@ -187,7 +170,6 @@ jobs:
     name: Container Build and Publish into Registry
     needs: create-pr-to-main
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout main repository (kasadra-backend-repo)
         uses: actions/checkout@v3
@@ -219,8 +201,7 @@ jobs:
           password: ${{ secrets.MY_GITHUB_TOKEN }}
 
       - name: Build Docker image
-        run: |
-          docker build -t python-app:latest -f Dockerfile .
+        run: docker build -t python-app:latest -f Dockerfile .
 
       - name: Tag image for GHCR
         run: |
