@@ -24,34 +24,9 @@ jobs:
       - id: set_output
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
-  # codeQL-scanning:
-  #   name: Scan CodeQL
-  #   needs: checkout-source-code
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     actions: read
-  #     contents: read
-  #     security-events: write
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       language: [python]
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v3
-
-  #     - name: Initialize CodeQL
-  #       uses: github/codeql-action/init@v3
-  #       with:
-  #         languages: ${{ matrix.language }}
-
-  #     - name: Perform CodeQL Analysis
-  #       uses: github/codeql-action/analyze@v3
-
   testing:
     name: Run Unit Tests and Pytest
     runs-on: ubuntu-latest
-    # needs: codeQL-scanning
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -65,9 +40,6 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -e .
-
-      # - name: Run unittest
-      #   run: python -m unittest discover -s tests
 
       - name: Run pytest
         run: |
