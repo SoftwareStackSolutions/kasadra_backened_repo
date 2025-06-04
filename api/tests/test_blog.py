@@ -1,16 +1,12 @@
 import sys
 import os
 
-# Add parent dir (Fast_API) to sys.path
+# Add parent dir (Fast_API) to sys.path for import resolution
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
-
-import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 from api.router.blog import router
-
 
 app = FastAPI()
 app.include_router(router)
@@ -56,5 +52,3 @@ def test_get_blog_not_found():
     response = client.get("/blog/10")
     assert response.status_code == 404
     assert response.json() == {"error": "Blog 10 not found"}
-
-
