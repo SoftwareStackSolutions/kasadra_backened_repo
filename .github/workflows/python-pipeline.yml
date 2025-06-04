@@ -42,9 +42,9 @@ jobs:
           pip install -e .
 
       - name: Run pytest
-        run: |
-          export PYTHONPATH="$PYTHONPATH:$(pwd)/Fast_API"
-          pytest Fast_API/tests --junitxml=pytest-report.xml
+         run:|
+         export PYTHONPATH=$(pwd)
+         pytest ./Fast_API/tests --junitxml=pytest-report.xml
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
