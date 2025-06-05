@@ -1,8 +1,7 @@
 from fastapi import APIRouter, status, Response
 from enum import Enum
 from typing import Optional
-
-
+# FastAPI router for blog-related endpoints
 router = APIRouter(
     prefix='/blog',
     tags=['blog']
