@@ -69,12 +69,6 @@ jobs:
           export PYTHONPATH="$PYTHONPATH:$(pwd)"
           pytest --junitxml=pytest-report.xml
 
-      - name: Upload Test Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-report
-          path: pytest-report.xml
-
   build-and-publish-artifact:
     name: Build and Publish Artifact Package
     runs-on: ubuntu-latest
@@ -171,7 +165,7 @@ jobs:
           git commit -m "Add Backend_Artifact ${{ steps.version.outputs.version }}"
           git push origin main
 
-  create-pr-to-main:
+  create-pr-development-main:
     name: Create PR to Main Branch
     needs: build-and-publish-artifact
     runs-on: ubuntu-latest
@@ -199,7 +193,7 @@ jobs:
           while true; do
             STATE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
-              echo "✅ PR #$PR_NUMBER has been merged!"
+              echo "PR #$PR_NUMBER has been merged!"
               break
             else
               echo "Not merged yet. Waiting for approval..."
@@ -211,7 +205,7 @@ jobs:
 
   container-build-and-publish-into-registry:
     name: Container Build and Publish into Registry
-    needs: create-pr-to-main
+    needs: create-pr-development-main
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main repository
