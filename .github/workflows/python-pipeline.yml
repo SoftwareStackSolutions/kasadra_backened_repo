@@ -125,23 +125,23 @@ jobs:
       - name: Check for existing latest version hash
         id: skip-check
         run: |
-          cd Artifact_Storage/Frontend_Artifact    
-          latest_file=$(ls Frontend_Artifact-v*.zip 2>/dev/null | sort -V | tail -n 1)
+          cd Artifact_Storage/Backend_Artifact    
+          latest_file=$(ls Backend_Artifact-v*.zip 2>/dev/null | sort -V | tail -n 1)
           if [[ -f "$latest_file" ]]; then
             unzip -p "$latest_file" | sha256sum | cut -d' ' -f1 > ../latest_hash.txt
           else
             echo "no_previous_hash" > ../latest_hash.txt
           fi
 
-      - name: Download React artifact
+      - name: Download python artifact
         uses: actions/download-artifact@v4
         with:
-          name: React-Artifact-code
-          path: React-Artifact-code
+          name: python-Artifact-code
+          path: python-Artifact-code
 
       - name: Generate current artifact hash
         run: |
-          cd React-Artifact-code
+          cd python-Artifact-code
           zip -r react-temp.zip .
           unzip -p react-temp.zip | sha256sum | cut -d' ' -f1 > ../current_hash.txt
 
