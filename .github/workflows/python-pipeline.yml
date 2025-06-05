@@ -185,6 +185,7 @@ jobs:
               echo "Not merged yet. Waiting for approval..."
               sleep 30
             fi
+          done
         env:
           GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
