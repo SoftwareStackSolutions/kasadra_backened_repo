@@ -44,7 +44,7 @@ jobs:
         with:
           category: "/language:python"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
   testing:
     name: Run Unit Tests and Pytest
