@@ -70,7 +70,7 @@ jobs:
       - name: Run Pytest
         run: |
           export PYTHONPATH="$PYTHONPATH:$(pwd)"
-          pytest --junitxml=pytest-report.xml
+          pytest tests--junitxml=pytest-report.xml
 
   build-and-publish-artifact:
     name: Build and Publish Artifact Package
