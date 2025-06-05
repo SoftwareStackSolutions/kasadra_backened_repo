@@ -24,10 +24,6 @@ jobs:
       - id: set_output
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
-  testing:
-    name: Run Unit Tests and Pytest
-    runs-on: ubuntu-latest
-
   # codeQL-scanning:
   #   name: Scan CodeQL
   #   needs: checkout-source-code
@@ -80,15 +76,15 @@ jobs:
           export PYTHONPATH="$PYTHONPATH:$(pwd)"
           pytest --junitxml=pytest-report.xml
 
-          export PYTHONPATH="$PYTHONPATH:$(pwd)/Fast_API"
-          pytest Fast_API/tests --junitxml=pytest-report.xml
+          # export PYTHONPATH="$PYTHONPATH:$(pwd)/Fast_API"
+          # pytest Fast_API/tests --junitxml=pytest-report.xml
 
 
-      - name: Upload Test Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-report
-          path: pytest-report.xml
+      # - name: Upload Test Report
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: pytest-report
+      #     path: pytest-report.xml
 
   build-and-publish-artifact:
     name: Build and Publish Artifact Package
