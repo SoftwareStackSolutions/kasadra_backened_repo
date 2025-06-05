@@ -40,7 +40,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          
+
       - name: Run unittest
         run: python -m unittest discover -s tests
 
@@ -88,19 +88,68 @@ jobs:
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           path: Artifact_Storage
 
-      - name: Push Zipped Artifact with Versioning
-        run: |
-          mkdir -p Artifact_Storage/Backend_Artifact
-          version=v$(date +%Y%m%d%H%M%S)
-          cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${version}.zip
-          cp python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
+      - name: Create Artifact Directory
+        run: mkdir -p Artifact_Storage/Backend_Artifact
 
+      - name: Check for existing latest version hash
+        id: skip-check
+        run: |
+          cd Artifact_Storage/Frontend_Artifact    
+          latest_file=$(ls Frontend_Artifact-v*.zip 2>/dev/null | sort -V | tail -n 1)
+          if [[ -f "$latest_file" ]]; then
+            unzip -p "$latest_file" | sha256sum | cut -d' ' -f1 > ../latest_hash.txt
+          else
+            echo "no_previous_hash" > ../latest_hash.txt
+          fi
+
+      - name: Download React artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: React-Artifact-code
+          path: React-Artifact-code
+
+      - name: Generate current artifact hash
+        run: |
+          cd React-Artifact-code
+          zip -r react-temp.zip .
+          unzip -p react-temp.zip | sha256sum | cut -d' ' -f1 > ../current_hash.txt
+
+      - name: Check for changes
+        id: hash-diff
+        run: |
+          if cmp -s latest_hash.txt current_hash.txt; then
+            echo "no_change=true" >> $GITHUB_OUTPUT
+          else
+            echo "no_change=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Skip if no changes
+        if: steps.hash-diff.outputs.no_change == 'true'
+        run: echo "No changes in python Artifact code — skipping commit and push."
+
+      - name: Determine next version
+        if: steps.hash-diff.outputs.no_change == 'false'
+        id: version
+        run: |
+          cd Artifact_Storage/Backend_Artifact
+          count=$(ls Backend_Artifact-v*.zip 2>/dev/null | wc -l)
+          echo "version=v$((count + 1))" >> $GITHUB_OUTPUT
+
+      - name: Rename and move artifact
+        if: steps.hash-diff.outputs.no_change == 'false'
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          mv python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
+          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
+
+      - name: Commit and push ZIP to development branch
+        if: steps.hash-diff.outputs.no_change == 'false'
+        run: |
           cd Artifact_Storage
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Backend_Artifact/*.zip
-          git commit -m "Add Backend Artifact ${version}" || echo "Nothing to commit"
-          git pull --rebase
+          git add Backend_Artifact/Backend_Artifact-*.zip
+          git commit -m "Add Backend_Artifact ${{ steps.version.outputs.version }}"
           git push origin main
 
   create-pr-to-main:
@@ -158,8 +207,7 @@ jobs:
           path: Artifact_Storage
 
       - name: Prepare artifact for Docker build
-        run: |
-          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
+        run: cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
 
       - name: List Unzipped Files
         run: |
@@ -186,3 +234,55 @@ jobs:
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           docker push ghcr.io/${REPO_OWNER_LC}/python-app:latest
+
+  deploy-application-to-gke:
+    name: Deploy Application to GKE
+    needs: container-build-and-publish-into-registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up kubectl
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_ZONE }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+
+      - name: Create GHCR imagePullSecret in GKE
+        run: |
+          kubectl delete secret ghcr-secret --ignore-not-found
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
+            --docker-email=no@email.com
+
+      - name: Debug file tree
+        run: |
+          echo "Checking file structure..."
+          ls -R
+
+      - name: Deploy to GKE
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          sleep 59
+
+      - name: Patch deployment to use imagePullSecret
+        run: |
+          kubectl patch deployment python-app \
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
+
+      - name: Verify Deployment
+        run: |
+          kubectl get pods -o wide
+          kubectl get svc -o wide
