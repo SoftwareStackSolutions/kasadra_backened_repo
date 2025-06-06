@@ -49,11 +49,11 @@ jobs:
 
   testing:
     name: Run Unit Tests with Pytest
-    needs:  codeql-scan
+    needs: codeql-scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -64,7 +64,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          #pip install -e.
 
       - name: Run Pytest
         run: |
@@ -158,10 +157,10 @@ jobs:
           echo "Found artifact zip: $ZIPFILE"
           mv python-Artifact-code/python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
           cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
-         
+
       - name: Validate ZIP presence
-          if:steps.hash-diff.outputs.no_change == 'false'
-          run:ls -lh Artifact_Storage/Backend_Artifact
+        if: steps.hash-diff.outputs.no_change == 'false'
+        run: ls -lh Artifact_Storage/Backend_Artifact
 
       - name: Commit and push ZIP to development branch
         if: steps.hash-diff.outputs.no_change == 'false'
@@ -181,7 +180,7 @@ jobs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Create Pull Request from development to main
         id: create_pr
@@ -217,12 +216,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: main
 
       - name: Checkout artifact repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: SoftwareStackSolutions/Artifact_Storage
           token: ${{ secrets.MY_GITHUB_TOKEN }}
@@ -263,7 +262,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: main
 
