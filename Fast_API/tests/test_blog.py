@@ -6,7 +6,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
 
+
 import tests
+import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 from api.router.blog import router
