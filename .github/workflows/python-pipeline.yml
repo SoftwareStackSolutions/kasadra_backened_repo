@@ -47,7 +47,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
   testing:
-    name: Run Unit Tests and Pytest
+    name: Run unit tests with pytest
     runs-on: ubuntu-latest
     needs: codeql-scan
     steps:
