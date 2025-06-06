@@ -54,7 +54,7 @@ def test_get_blog_found():
 
 def test_get_blog_not_found():
     response = client.get("/blog/10")
-    assert response.status_code == 4043
+    assert response.status_code == 404
     assert response.json() == {"error": "Blog 10 not found"}
 
 
