@@ -67,7 +67,7 @@ jobs:
       - name: Run Pytest
         run: |
           export PYTHONPATH="$PYTHONPATH:$(pwd)"
-          pytest tests--junitxml=pytest-report.xml
+          pytest --junitxml=pytest-report.xml
 
   build-and-publish-artifact:
     name: Build and Publish Artifact Package
@@ -166,7 +166,7 @@ jobs:
           git push origin main
 
   create-pr-development-main:
-    name: Create PR to Main Branch
+    name: Create PR development to main Branch
     needs: build-and-publish-artifact
     runs-on: ubuntu-latest
     outputs:
