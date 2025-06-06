@@ -154,8 +154,14 @@ jobs:
         if: steps.hash-diff.outputs.no_change == 'false'
         run: |
           VERSION=${{ steps.version.outputs.version }}
+          ZIPFILE=$(find python-Artifact-code -name '*.zip' | head -n 1)
+          echo "Found artifact zip: $ZIPFILE"
           mv python-Artifact-code/python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
           cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
+         
+      - name: Validate ZIP presence
+           if:steps.hash-diff.outputs.no_change == 'false'
+           run:ls -lh Artifact_Storage/Backend_Artifact
 
       - name: Commit and push ZIP to development branch
         if: steps.hash-diff.outputs.no_change == 'false'
