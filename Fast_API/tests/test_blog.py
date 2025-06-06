@@ -5,6 +5,7 @@ import os
 # Add parent dir (Fast_API) to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import tests
 import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
@@ -53,7 +54,7 @@ def test_get_blog_found():
 
 def test_get_blog_not_found():
     response = client.get("/blog/10")
-    assert response.status_code == 404
+    assert response.status_code == 4043
     assert response.json() == {"error": "Blog 10 not found"}
 
 
