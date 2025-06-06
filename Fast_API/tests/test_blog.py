@@ -1,11 +1,9 @@
+# import modules
 import sys
 import os
 
 # Add parent dir (Fast_API) to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
-
 
 import tests
 import pytest

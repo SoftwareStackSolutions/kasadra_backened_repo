@@ -26,6 +26,7 @@ jobs:
 
   codeql-scan:
     name: CodeQL Scanning
+    needs: checkout-source-code
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -47,7 +48,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
   testing:
-    name: Run Unit Tests and Pytest
+    name: Run Unit Tests with Pytest
+    needs:  codeql-scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
