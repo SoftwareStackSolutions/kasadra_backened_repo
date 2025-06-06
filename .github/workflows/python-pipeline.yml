@@ -160,8 +160,8 @@ jobs:
           cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
          
       - name: Validate ZIP presence
-           if:steps.hash-diff.outputs.no_change == 'false'
-           run:ls -lh Artifact_Storage/Backend_Artifact
+          if:steps.hash-diff.outputs.no_change == 'false'
+          run:ls -lh Artifact_Storage/Backend_Artifact
 
       - name: Commit and push ZIP to development branch
         if: steps.hash-diff.outputs.no_change == 'false'
