@@ -1,6 +1,6 @@
 fastapi 
 uvicorn
-pytest
+pytest 
 httpx
 pytest-asyncio
 
