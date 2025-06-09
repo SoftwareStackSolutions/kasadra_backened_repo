@@ -292,5 +292,5 @@ jobs:
 
       - name: Patch deployment to use imagePullSecret
         run: |
-          kubectl patch deployment react-app \
+          kubectl patch deployment python-application \
             --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'       
