@@ -94,13 +94,13 @@ jobs:
       - name: Checkout Artifact Repo
         uses: actions/checkout@v4
         with:
-          repository: demo-Organization-m/Artifact_Storage
+          repository: /SoftwareStackSolutions/Artifact_Storage
           ref: main
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           path: Artifact_Storage
   
-      - name: Create Artifact Directory
-        run: mkdir -p Artifact_Storage/Backend_Artifact
+      # - name: Create Artifact Directory
+      #   run: mkdir -p Artifact_Storage/Backend_Artifact
   
       - name: Check for existing latest version hash
         id: skip-check
@@ -167,15 +167,14 @@ jobs:
           git push origin main
 
 
-  create-pr-development-main:
-    name: Create PR development to main Branch
+  create-pr-development-to-main:
     needs: build-and-publish-artifact
     runs-on: ubuntu-latest
     outputs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v2
 
       - name: Create Pull Request from development to main
         id: create_pr
@@ -191,11 +190,10 @@ jobs:
 
       - name: Wait for PR Merge
         run: |
-          PR_NUMBER=$(gh pr list --state open --json number --jq '.[0].number' --repo "${{ github.repository }}")
           while true; do
-            STATE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json state -q .state)
+            STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra-frontend-repo --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
-              echo "PR #$PR_NUMBER has been merged!"
+              echo "✅ PR #$PR_NUMBER has been merged!"
               break
             else
               echo "Not merged yet. Waiting for approval..."
@@ -203,16 +201,98 @@ jobs:
             fi
           done
         env:
-          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-      - name: Build Docker image for FastAPI
-        run: docker build -t fastapi-backend:latest -f Dockerfile .
+         GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-      - name: Tag Docker image for GHCR
+  Container-Build-and-Publish-into-Registry:
+    name: Container Build and Publish into Registry
+    needs: create-pr-development-to-main
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout main repository (kasadra_backened_repo)
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Checkout artifact repository
+        uses: actions/checkout@v3
+        with:
+          repository: SoftwareStackSolutions/Artifact_Storage
+          token: ${{ secrets.MY_GITHUB_TOKEN }}
+          path: Artifact_Storage
+
+      
+      - name: Prepare artifact for Docker build
+        run: |
+          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
+          
+   
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.MY_GITHUB_TOKEN }}
+
+      
+      - name: Build Docker image
+        run: |
+          docker build -t python-application:latest -f Dockerfile . 
+            
+      - name: Tag image for GHCR
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker tag fastapi-backend:latest ghcr.io/${REPO_OWNER_LC}/fastapi-backend:latest
-
+          docker tag python-application:latest ghcr.io/${REPO_OWNER_LC}/python-application:latest
+      
       - name: Push image to GHCR
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker push ghcr.io/${REPO_OWNER_LC}/fastapi-backend:latest
+          docker push ghcr.io/${REPO_OWNER_LC}/python-application:latest     
+
+  Deploy-Application-to-GKE:
+    name: Deploy Application to GKE
+    needs: Container-Build-and-Publish-into-Registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+  
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+  
+      - name: Set up kubectl
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_ZONE }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+  
+      - name: Create GHCR imagePullSecret in GKE
+        run: |
+          kubectl delete secret ghcr-secret --ignore-not-found
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
+            --docker-email=no@email.com
+  
+      - name: Deploy to GKE
+        run: |
+          kubectl apply -f service.yaml
+          kubectl apply -f deployment.yaml
+          sleep 59
+          kubectl rollout restart deployment react-app
+          kubectl rollout status deployment/react-app
+          kubectl get pods
+          kubectl get svc -o wide
+
+      - name: Patch deployment to use imagePullSecret
+        run: |
+          kubectl patch deployment react-app \
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'       
