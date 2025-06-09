@@ -288,21 +288,18 @@ jobs:
             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
             --docker-email=no@email.com
 
-      - name: Debug file tree
-        run: ls -R
-
-      - name: Deploy to GKE
-        run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
+           - name: Deploy to GKE
+           run: |
+          kubectl apply -f service.yaml
+          kubectl apply -f deployment.yaml
           sleep 59
+          kubectl rollout restart deployment python-app
+          kubectl rollout status deployment/python-app
+          kubectl get pods
+          kubectl get svc -o wide
 
       - name: Patch deployment to use imagePullSecret
         run: |
-          kubectl patch deployment python-app \
+          kubectl patch deployment react-app \
             --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
-
-      - name: Verify Deployment
-        run: |
-          kubectl get pods -o wide
-          kubectl get svc -o wide
+  
