@@ -100,8 +100,8 @@ jobs:
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           path: Artifact_Storage
   
-      - name: Create Artifact Directory
-        run: mkdir -p Artifact_Storage/Backend_Artifact
+      # - name: Create Artifact Directory
+      #   run: mkdir -p Artifact_Storage/Backend_Artifact
   
       - name: Check for existing latest version hash
         id: skip-check
