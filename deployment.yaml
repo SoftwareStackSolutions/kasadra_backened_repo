@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: python-application
-          image:  ghcr.io/SoftwareStackSolutions/python-application:latest
+          image:  ghcr.io/softwarestacksolutions/python-application:latest
           ports:
             - containerPort: 3001
           imagePullPolicy: Always
