@@ -192,7 +192,7 @@ jobs:
       - name: Wait for PR Merge
         run: |
           while true; do
-            STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra-frontend-repo --json state -q .state)
+            STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
               echo "✅ PR #$PR_NUMBER has been merged!"
               break
