@@ -1,21 +1,22 @@
-# Use an official Python image
 FROM python:3.10-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install unzip
+# Copy artifact
+COPY artifact.zip /app/artifact.zip
+
+# Install unzip and any required build tools
 RUN apt-get update && apt-get install -y unzip
 
-# Copy and unzip the Python artifact
-COPY artifact.zip ./artifact.zip
+# Unzip package
 RUN unzip artifact.zip -d .
 
-# Install dependencies
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Optional: Install dependencies if needed
+# RUN pip install .
 
-# Expose the port FastAPI runs on
+# Expose FastAPI port
 EXPOSE 8000
 
-# Run FastAPI app using Uvicorn
+# Run the FastAPI app (adjust path/module name as needed)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
