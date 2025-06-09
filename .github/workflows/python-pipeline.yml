@@ -14,77 +14,76 @@ permissions:
   actions: read
 
 jobs:
-  build-and-publish-artifact:
-    name: Build and Publish Artifact Package
+  Build:
+    name: Build
+    # needs: Unit-Testing
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
 
     steps:
-      - name: Checkout Source Code
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Debug – Show workspace files
-        run: |
-          echo "Root directory listing:"
-          ls -lah
-          echo "All files recursively:"
-          find . -type f
-
-      - name: Verify FastAPI Files Exist
-        run: |
-          if [[ ! -d "Fast_API" || ! -f "Fast_API/main.py" || ! -f "requirements.txt" ]]; then
-            echo "❌ Required FastAPI files (Fast_API/, Fast_API/main.py, or requirements.txt) not found."
-            exit 1
-          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: '3.10'
 
-      - name: Package FastAPI App
+      - name: Install build module
+        run: pip install build
+
+      - name: Build Python package
         run: |
-          mkdir -p package
-          cp -r Fast_API requirements.txt package/
-          cd package
+          python -m build --sdist --wheel --outdir dist/
+          cd dist
           zip -r ../python-package.zip .
 
-      - name: Upload Python Artifact
+      - name: Upload Python artifact
         uses: actions/upload-artifact@v4
         with:
-          name: python-Artifact-code
+          name: Python-Artifact-code
           path: python-package.zip
 
-      - name: Checkout Artifact Repo
+  Packaging-and-Publishing-into-Artifact-package:
+    name: Packaging and Publishing into Artifact-package
+    needs: Build
+    if: success()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout target repo
         uses: actions/checkout@v4
         with:
           repository: SoftwareStackSolutions/Artifact_Storage
           ref: main
-          token: ${{ secrets.MY_GITHUB_TOKEN }}
+          token: ${{ secrets.My_GITHUB_TOKEN }}
           path: Artifact_Storage
 
-      - name: Create Artifact Directory
+      - name: Create artifact directory
         run: mkdir -p Artifact_Storage/Backend_Artifact
 
       - name: Check for existing latest version hash
         id: skip-check
         run: |
-          cd Artifact_Storage/Backend_Artifact
+          cd Artifact_Storage/Backend_Artifact    
           latest_file=$(ls Backend_Artifact-v*.zip 2>/dev/null | sort -V | tail -n 1)
           if [[ -f "$latest_file" ]]; then
-            unzip -p "$latest_file" | sha256sum | cut -d' ' -f1 > ../../latest_hash.txt
+            unzip -p "$latest_file" | sha256sum | cut -d' ' -f1 > ../latest_hash.txt
           else
-            echo "no_previous_hash" > ../../latest_hash.txt
+            echo "no_previous_hash" > ../latest_hash.txt
           fi
 
-      - name: Download Python Artifact
+      - name: Download Python artifact
         uses: actions/download-artifact@v4
         with:
-          name: python-Artifact-code
-          path: python-Artifact-code
+          name: Python-Artifact-code
+          path: Python-Artifact-code
 
       - name: Generate current artifact hash
         run: |
-          cd python-Artifact-code
+          cd Python-Artifact-code
           unzip -p python-package.zip | sha256sum | cut -d' ' -f1 > ../current_hash.txt
 
       - name: Check for changes
@@ -98,7 +97,7 @@ jobs:
 
       - name: Skip if no changes
         if: steps.hash-diff.outputs.no_change == 'true'
-        run: echo "✅ No changes in FastAPI artifact — skipping commit and push."
+        run: echo "No changes in Python Artifact code — skipping commit and push."
 
       - name: Determine next version
         if: steps.hash-diff.outputs.no_change == 'false'
@@ -112,13 +111,8 @@ jobs:
         if: steps.hash-diff.outputs.no_change == 'false'
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          ZIPFILE=$(find python-Artifact-code -name '*.zip' | head -n 1)
-          mv $ZIPFILE Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
+          mv Python-Artifact-code/python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
           cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
-
-      - name: Validate ZIP presence
-        if: steps.hash-diff.outputs.no_change == 'false'
-        run: ls -lh Artifact_Storage/Backend_Artifact
 
       - name: Commit and push ZIP to artifact repo
         if: steps.hash-diff.outputs.no_change == 'false'
