@@ -100,9 +100,6 @@ jobs:
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           path: Artifact_Storage
   
-      # - name: Create Artifact Directory
-      #   run: mkdir -p Artifact_Storage/Backend_Artifact
-  
       - name: Check for existing latest version hash
         id: skip-check
         run: |
@@ -288,8 +285,8 @@ jobs:
           kubectl apply -f service.yaml
           kubectl apply -f deployment.yaml
           sleep 59
-          kubectl rollout restart deployment python-application
-          kubectl rollout status deployment/python-application
+          # kubectl rollout restart deployment python-application
+          # kubectl rollout status deployment/python-application
           kubectl get pods
           kubectl get svc -o wide
 
