@@ -22,12 +22,17 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
+      - name: Debug – Show workspace files
+        run: |
+          echo "Root directory listing:"
+          ls -lah
+          echo "All files recursively:"
+          find . -type f
+
       - name: Verify FastAPI Files Exist
         run: |
-          echo "Checking for required FastAPI source files..."
-          ls -l
-          if [[ ! -f "main.py" || ! -f "requirements.txt" || ! -d "app" ]]; then
-            echo "❌ Missing FastAPI files (main.py, requirements.txt, or app/ folder)"
+          if [[ ! -d "Fast_API" || ! -f "app.py" || ! -f "requirements.txt" ]]; then
+            echo "❌ Required FastAPI files (Fast_API/, app.py, or requirements.txt) not found."
             exit 1
           fi
 
@@ -39,7 +44,7 @@ jobs:
       - name: Package FastAPI App
         run: |
           mkdir -p package
-          cp -r app main.py requirements.txt package/
+          cp -r Fast_API app.py requirements.txt package/
           cd package
           zip -r ../python-package.zip .
 
