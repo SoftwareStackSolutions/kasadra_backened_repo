@@ -31,8 +31,8 @@ jobs:
 
       - name: Verify FastAPI Files Exist
         run: |
-          if [[ ! -d "Fast_API" || ! -f "app.py" || ! -f "requirements.txt" ]]; then
-            echo "❌ Required FastAPI files (Fast_API/, app.py, or requirements.txt) not found."
+          if [[ ! -d "Fast_API" || ! -f "Fast_API/main.py" || ! -f "requirements.txt" ]]; then
+            echo "❌ Required FastAPI files (Fast_API/, Fast_API/main.py, or requirements.txt) not found."
             exit 1
           fi
 
@@ -44,7 +44,7 @@ jobs:
       - name: Package FastAPI App
         run: |
           mkdir -p package
-          cp -r Fast_API app.py requirements.txt package/
+          cp -r Fast_API requirements.txt package/
           cd package
           zip -r ../python-package.zip .
 
@@ -98,7 +98,7 @@ jobs:
 
       - name: Skip if no changes
         if: steps.hash-diff.outputs.no_change == 'true'
-        run: echo "No changes in FastAPI artifact — skipping commit and push."
+        run: echo "✅ No changes in FastAPI artifact — skipping commit and push."
 
       - name: Determine next version
         if: steps.hash-diff.outputs.no_change == 'false'
