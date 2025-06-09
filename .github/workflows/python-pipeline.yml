@@ -22,15 +22,24 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
+      - name: Verify FastAPI Files Exist
+        run: |
+          echo "Checking for required FastAPI source files..."
+          ls -l
+          if [[ ! -f "main.py" || ! -f "requirements.txt" || ! -d "app" ]]; then
+            echo "❌ Missing FastAPI files (main.py, requirements.txt, or app/ folder)"
+            exit 1
+          fi
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      - name: Package FastAPI App Manually
+      - name: Package FastAPI App
         run: |
           mkdir -p package
-          cp -r src/app src/main.py requirements.txt package/
+          cp -r app main.py requirements.txt package/
           cd package
           zip -r ../python-package.zip .
 
@@ -84,7 +93,7 @@ jobs:
 
       - name: Skip if no changes
         if: steps.hash-diff.outputs.no_change == 'true'
-        run: echo "No changes in Python Artifact code — skipping commit and push."
+        run: echo "No changes in FastAPI artifact — skipping commit and push."
 
       - name: Determine next version
         if: steps.hash-diff.outputs.no_change == 'false'
@@ -106,7 +115,7 @@ jobs:
         if: steps.hash-diff.outputs.no_change == 'false'
         run: ls -lh Artifact_Storage/Backend_Artifact
 
-      - name: Commit and push ZIP to main branch of artifact repo
+      - name: Commit and push ZIP to artifact repo
         if: steps.hash-diff.outputs.no_change == 'false'
         run: |
           cd Artifact_Storage
