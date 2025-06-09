@@ -95,7 +95,7 @@ jobs:
       - name: Checkout Artifact Repo
         uses: actions/checkout@v4
         with:
-          repository: /SoftwareStackSolutions/Artifact_Storage
+          repository: SoftwareStackSolutions/Artifact_Storage
           ref: main
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           path: Artifact_Storage
@@ -192,7 +192,7 @@ jobs:
       - name: Wait for PR Merge
         run: |
           while true; do
-            STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra-frontend-repo --json state -q .state)
+            STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
               echo "✅ PR #$PR_NUMBER has been merged!"
               break
