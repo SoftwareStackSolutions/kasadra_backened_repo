@@ -16,6 +16,7 @@ permissions:
 jobs:
   checkout-source-code:
     name: Checkout Source Code
+    # needs: codeql-scan
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     outputs:
