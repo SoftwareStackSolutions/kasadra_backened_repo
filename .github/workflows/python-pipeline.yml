@@ -288,8 +288,8 @@ jobs:
           kubectl apply -f service.yaml
           kubectl apply -f deployment.yaml
           sleep 59
-          kubectl rollout restart deployment react-app
-          kubectl rollout status deployment/react-app
+          kubectl rollout restart deployment python-application
+          kubectl rollout status deployment/python-application
           kubectl get pods
           kubectl get svc -o wide
 
