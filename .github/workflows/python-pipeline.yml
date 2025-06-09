@@ -14,14 +14,12 @@ permissions:
   actions: read
 
 jobs:
-  Build:
-    name: Build
-    # needs: Unit-Testing
+  Build-and-Publishing-into-Artifact-package:
+    name: Build and Publishing into  Artifact package
     runs-on: ubuntu-latest
-   
 
     steps:
-      - name: Checkout repository
+      - name: Checkout source repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -44,14 +42,7 @@ jobs:
           name: Python-Artifact-code
           path: python-package.zip
 
-  Packaging-and-Publishing-into-Artifact-package:
-    name: Packaging and Publishing into Artifact-package
-    needs: Build
-    if: success()
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout target repo
+      - name: Checkout Artifact Repository
         uses: actions/checkout@v4
         with:
           repository: SoftwareStackSolutions/Artifact_Storage
@@ -65,24 +56,17 @@ jobs:
       - name: Check for existing latest version hash
         id: skip-check
         run: |
-          cd Artifact_Storage/Backend_Artifact    
+          cd Artifact_Storage/Backend_Artifact
           latest_file=$(ls Backend_Artifact-v*.zip 2>/dev/null | sort -V | tail -n 1)
           if [[ -f "$latest_file" ]]; then
-            unzip -p "$latest_file" | sha256sum | cut -d' ' -f1 > ../latest_hash.txt
+            unzip -p "$latest_file" | sha256sum | cut -d' ' -f1 > ../../latest_hash.txt
           else
-            echo "no_previous_hash" > ../latest_hash.txt
+            echo "no_previous_hash" > ../../latest_hash.txt
           fi
-
-      - name: Download Python artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: Python-Artifact-code
-          path: Python-Artifact-code
 
       - name: Generate current artifact hash
         run: |
-          cd Python-Artifact-code
-          unzip -p python-package.zip | sha256sum | cut -d' ' -f1 > ../current_hash.txt
+          unzip -p python-package.zip | sha256sum | cut -d' ' -f1 > current_hash.txt
 
       - name: Check for changes
         id: hash-diff
@@ -109,10 +93,10 @@ jobs:
         if: steps.hash-diff.outputs.no_change == 'false'
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          mv Python-Artifact-code/python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
+          mv python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
           cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
 
-      - name: Commit and push ZIP to artifact repo
+      - name: Commit and push to Artifact Storage Repo
         if: steps.hash-diff.outputs.no_change == 'false'
         run: |
           cd Artifact_Storage
