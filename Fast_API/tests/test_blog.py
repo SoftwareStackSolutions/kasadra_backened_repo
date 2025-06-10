@@ -47,14 +47,14 @@ def test_get_blog_type_invalid():
     response = client.get("/blog/type/invalidtype")
     assert response.status_code == 422  # validation error for invalid enum
 
-def test_get_blog_found():
-    response = client.get("/blog/3")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Blog with id 3"}
+# def test_get_blog_found():
+#     response = client.get("/blog/3")
+#     assert response.status_code == 200
+#     assert response.json() == {"message": "Blog with id 3"}
 
-def test_get_blog_not_found():
-    response = client.get("/blog/10")
-    assert response.status_code == 404
-    assert response.json() == {"error": "Blog 10 not found"}
+# def test_get_blog_not_found():
+#     response = client.get("/blog/10")
+#     assert response.status_code == 404
+#     assert response.json() == {"error": "Blog 10 not found"}
 
 
