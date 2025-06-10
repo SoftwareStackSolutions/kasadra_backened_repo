@@ -14,9 +14,9 @@ spec:
     spec:
       containers:
         - name: python-application
-          image:  ghcr.io/SoftwareStackSolutions/python-application:latest
+          image:  ghcr.io/softwarestacksolutions/python-application:latest
           ports:
-            - containerPort: 3001
+            - containerPort: 8000
           imagePullPolicy: Always
       imagePullSecrets:
         - name: ghcr-secret
