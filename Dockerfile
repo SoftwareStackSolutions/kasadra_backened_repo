@@ -1,11 +1,6 @@
 FROM python:3.10-slim
-
-<<<<<<< HEAD
 # Set working directory
 WORKDIR /app 
-=======
-WORKDIR /app
->>>>>>> 3279e1d55dbd1a19bdb4aa03f33c1a16fde7447b
 
 COPY artifact.zip .
 
