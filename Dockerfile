@@ -1,7 +1,7 @@
 FROM python:3.10-slim
 
 # Set working directory
-WORKDIR /app
+WORKDIR /app 
 
 # Copy artifact
 COPY artifact.zip /app/artifact.zip
