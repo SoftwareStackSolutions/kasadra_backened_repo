@@ -78,20 +78,20 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
-  
+
       - name: Install zip tool
         run: sudo apt-get update && sudo apt-get install -y zip
-  
+
       - name: Zip Fast_API folder into artifact
         run: |
-          zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore" 
-  
+          zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore"
+
       - name: Upload Python Artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-Artifact-code
           path: python-package.zip
-  
+
       - name: Checkout Artifact Repo
         uses: actions/checkout@v4
         with:
@@ -99,7 +99,7 @@ jobs:
           ref: main
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           path: Artifact_Storage
-  
+
       - name: Check for existing latest version hash
         id: skip-check
         run: |
@@ -110,18 +110,18 @@ jobs:
           else
             echo "no_previous_hash" > ../../latest_hash.txt
           fi
-  
+
       - name: Download Python Artifact
         uses: actions/download-artifact@v4
         with:
           name: python-Artifact-code
           path: python-Artifact-code
-  
+
       - name: Generate current artifact hash
         run: |
           cd python-Artifact-code
           unzip -p python-package.zip | sha256sum | cut -d' ' -f1 > ../current_hash.txt
-  
+
       - name: Check for changes
         id: hash-diff
         run: |
@@ -130,11 +130,11 @@ jobs:
           else
             echo "no_change=false" >> $GITHUB_OUTPUT
           fi
-  
+
       - name: Skip if no changes
         if: steps.hash-diff.outputs.no_change == 'true'
         run: echo "No changes in Python Artifact code — skipping commit and push."
-  
+
       - name: Determine next version
         if: steps.hash-diff.outputs.no_change == 'false'
         id: version
@@ -142,18 +142,18 @@ jobs:
           cd Artifact_Storage/Backend_Artifact
           count=$(ls Backend_Artifact-v*.zip 2>/dev/null | wc -l)
           echo "version=v$((count + 1))" >> $GITHUB_OUTPUT
-  
+
       - name: Rename and move artifact
         if: steps.hash-diff.outputs.no_change == 'false'
         run: |
           VERSION=${{ steps.version.outputs.version }}
           mv python-Artifact-code/python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
           cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
-  
+
       - name: Validate ZIP presence
         if: steps.hash-diff.outputs.no_change == 'false'
         run: ls -lh Artifact_Storage/Backend_Artifact
-  
+
       - name: Commit and push ZIP to main branch
         if: steps.hash-diff.outputs.no_change == 'false'
         run: |
@@ -164,13 +164,12 @@ jobs:
           git commit -m "Add Backend_Artifact ${{ steps.version.outputs.version }}"
           git push origin main
 
-
   create-pr-development-to-main:
     name: Create-PR-Development-to-Main
     needs: build-and-publish-artifact
     runs-on: ubuntu-latest
     outputs:
-      pr_url: ${{ steps.create_pr.outputs.pr_url }}
+      pr_number: ${{ steps.extract_pr_number.outputs.pr_number }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -187,8 +186,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
+      - name: Extract PR Number
+        id: extract_pr_number
+        run: |
+          echo "pr_number=$(echo '${{ steps.create_pr.outputs.pr_url }}' | grep -o '[0-9]*$')" >> $GITHUB_OUTPUT
+
       - name: Wait for PR Merge
         run: |
+          PR_NUMBER=${{ steps.extract_pr_number.outputs.pr_number }}
           while true; do
             STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
@@ -200,16 +205,14 @@ jobs:
             fi
           done
         env:
-         GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
   Container-Build-and-Publish-into-Registry:
     name: Container Build and Publish into Registry
     needs: create-pr-development-to-main
     runs-on: ubuntu-latest
-
     steps:
-
-      - name: Checkout main repository (kasadra_backened_repo)
+      - name: Checkout main repository
         uses: actions/checkout@v3
         with:
           ref: main
@@ -221,12 +224,10 @@ jobs:
           token: ${{ secrets.MY_GITHUB_TOKEN }}
           path: Artifact_Storage
 
-      
       - name: Prepare artifact for Docker build
         run: |
           cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
-          
-   
+
       - name: Log in to GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
         with:
@@ -234,20 +235,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.MY_GITHUB_TOKEN }}
 
-      
       - name: Build Docker image
         run: |
-          docker build -t python-application:latest -f Dockerfile . 
-            
+          docker build -t python-application:latest -f Dockerfile .
+
       - name: Tag image for GHCR
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
           docker tag python-application:latest ghcr.io/${REPO_OWNER_LC}/python-application:latest
-      
+
       - name: Push image to GHCR
         run: |
           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker push ghcr.io/${REPO_OWNER_LC}/python-application:latest      
+          docker push ghcr.io/${REPO_OWNER_LC}/python-application:latest
 
   Deploy-Application-to-GKE:
     name: Deploy Application to GKE
@@ -259,19 +259,18 @@ jobs:
         with:
           ref: main
 
-  
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
-  
+
       - name: Set up kubectl
         uses: google-github-actions/get-gke-credentials@v2
         with:
           cluster_name: ${{ secrets.GKE_CLUSTER }}
           location: ${{ secrets.GKE_ZONE }}
           project_id: ${{ secrets.GCP_PROJECT }}
-  
+
       - name: Create GHCR imagePullSecret in GKE
         run: |
           kubectl delete secret ghcr-secret --ignore-not-found
@@ -280,11 +279,11 @@ jobs:
             --docker-username=${{ github.actor }} \
             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
             --docker-email=no@email.com
-  
+
       - name: Deploy to GKE
         run: |
           kubectl apply -f deployment.yaml
-          kubectl apply -f service.yaml 
+          kubectl apply -f service.yaml
           sleep 59
           kubectl rollout restart deployment python-application
           kubectl get pods
@@ -293,4 +292,4 @@ jobs:
       - name: Patch deployment to use imagePullSecret
         run: |
           kubectl patch deployment python-application \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'       
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
