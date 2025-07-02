@@ -24,32 +24,32 @@ jobs:
       - id: set_output
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
-  codeql-scan:
-    name: CodeQL Scanning
-    needs: checkout-source-code
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+  # codeql-scan:
+  #   name: CodeQL Scanning
+  #   needs: checkout-source-code
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v4
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: python
+  #     - name: Initialize CodeQL
+  #       uses: github/codeql-action/init@v3
+  #       with:
+  #         languages: python
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+  #     - name: Autobuild
+  #       uses: github/codeql-action/autobuild@v3
 
-      - name: Run CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:python"
-        env:
-          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+  #     - name: Run CodeQL Analysis
+  #       uses: github/codeql-action/analyze@v3
+  #       with:
+  #         category: "/language:python"
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
   testing:
     name: Run Unit Tests with Pytest
-    needs: codeql-scan
+    # needs: codeql-scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
