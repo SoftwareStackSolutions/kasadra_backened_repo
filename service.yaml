@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: python-application-service
 spec:
-  type: LoadBalancer
+  type: LoadBalancer ## ClusterIP
   selector:
     app: python-application
   ports:
