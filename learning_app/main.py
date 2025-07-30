@@ -3,10 +3,12 @@ import os
 import sys
 import uvicorn
 
+
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Optional
+
 
 root_dir = os.path.dirname(__file__)
 sys.path.append(root_dir)
