@@ -4,14 +4,13 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 
-from app.database.db import get_session
+from learning_app.database.db import get_session
 from models.student import Student, TokenTable
-from app.common import get_student_by_email
+from learning_app.common import get_student_by_email
 
 router = APIRouter()
 class StudentCreate(BaseModel):
-    studentName: str
-    fullName: str
+    name: str
     email: str
     password: str
 
@@ -20,8 +19,7 @@ class LoginRequestDetails(BaseModel):
     password: str    
 
 class StudentUpdate(BaseModel):
-    studentName: str 
-    fullName: str    
+    name: str   
     email: str
     password: str 
 
@@ -35,10 +33,9 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
         if student_exists:
             response = {"status":"error", "message": "Email already registered", "data": {}}
             raise HTTPException (status_code=status.HTTP_409_CONFLICT, detail=response)
-        new_student = Student(student_name=student.studentName,
+        new_student = Student(name=student.name,
                         email=student.email,
-                        password=student.password,
-                        full_name=student.fullName)
+                        password=student.password)
 
         db.add(new_student)
         await db.commit()
@@ -69,7 +66,7 @@ async def student_login(request: LoginRequestDetails, db : Session = Depends(get
             raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail=response)
         
         if request.password == student.password:
-            response = {"status":"success", "message": "Loggged in successfully", "data": {"userId": student.student_id, "studentName": student.student_name}}
+            response = {"status":"success", "message": "Loggged in successfully", "data": {"userId": student.student_id, "studentName": student.name}}
             return {"detail": response}
         else:
             # logger.info("Post employee_login response: Incorrect password.")

@@ -20,8 +20,8 @@ class Weekday(Enum):
     sun = 6
 
 async def get_student_by_email(request,session):
-  student_email = (request.email).lower()
-  query_stmt = select(Student).where(func.lower(Student.email) == student_email)
+  email = (request.email).lower()
+  query_stmt = select(Student).where(func.lower(Student.email) == email)
   result = await session.execute(query_stmt)
   user = result.scalar()
   return user

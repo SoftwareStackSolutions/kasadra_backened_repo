@@ -8,8 +8,7 @@ class Student(Base):
     __tablename__ = "student"
 
     student_id=Column(Integer, primary_key=True, nullable=False, autoincrement=True)
-    student_name=Column(String,unique=True, nullable=False)
-    full_name=Column(String, nullable=False)
+    name=Column(String,unique=True, nullable=False)
     email = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)
 
