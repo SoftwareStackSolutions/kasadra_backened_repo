@@ -16,7 +16,7 @@ class Student(Base):
 
 
 class TokenTable(Base):
-    __tablename__ = "token"
+    __tablename__ = "token1"
 
     student_id = Column(Integer, ForeignKey(Student.id), nullable=False)
     access_token = Column(String(450), primary_key=True)

@@ -37,7 +37,7 @@ class StudentCreate(BaseModel):
     }
 
 class LoginRequestDetails(BaseModel):
-    Email: str
+    Email: EmailStr
     Password: str    
 
 @router.post("/create", tags=["students"])
@@ -60,7 +60,7 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
         db.add(new_student)
         await db.commit()
         await db.refresh(new_student)
-        response = {"status":"success", "message": "Student created successfully", "data": {"studentID": new_student.id}}
+        response = {"status":"success", "message": "Student created successfully", "data": {"id": new_student.id}}
         return {"detail": response}
     
     except HTTPException as e:
@@ -85,8 +85,8 @@ async def student_login(request: LoginRequestDetails, db : Session = Depends(get
             response = {"status":"error", "message": "Incorrect email.", "data": {}}
             raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail=response)
         
-        if request.password == student.password:
-            response = {"status":"success", "message": "Loggged in successfully", "data": {"userId": student.student_id, "studentName": student.name}}
+        if request.Password == student.password:
+            response = {"status":"success", "message": "Loggged in successfully", "data": {"id": student.id, "studentName": student.name}}
             return {"detail": response}
         else:
             # logger.info("Post employee_login response: Incorrect password.")
