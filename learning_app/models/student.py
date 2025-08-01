@@ -7,16 +7,18 @@ from models.base import Base
 class Student(Base):
     __tablename__ = "student"
 
-    student_id=Column(Integer, primary_key=True, nullable=False, autoincrement=True)
+    id=Column(Integer, primary_key=True, nullable=False, autoincrement=True)
     name=Column(String,unique=True, nullable=False)
     email = Column(String, unique=True, nullable=False)
+    phone_no = Column(String, unique=False, nullable=False)
     password = Column(String, nullable=False)
+    confirm_password = Column(String, nullable=False)
 
 
 class TokenTable(Base):
-    __tablename__ = "token1"
+    __tablename__ = "token"
 
-    student_id = Column(Integer, ForeignKey(Student.student_id), nullable=False)
+    student_id = Column(Integer, ForeignKey(Student.id), nullable=False)
     access_token = Column(String(450), primary_key=True)
     refresh_token = Column(String(450), nullable=False)
     status = Column(Boolean)

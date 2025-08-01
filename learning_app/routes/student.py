@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, status, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 from sqlalchemy import func
+import re
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 
@@ -10,18 +11,34 @@ from learning_app.common import get_student_by_email
 
 router = APIRouter()
 class StudentCreate(BaseModel):
-    name: str
-    email: str
-    password: str
+    Name: str
+    Email: EmailStr
+    PhoneNo: str = Field(..., alias="Phone No")
+    Password: str
+    Confirmpassword: str = Field(..., alias="Confirm Password")
+    
+    @field_validator("PhoneNo")
+    @classmethod
+    def validate_phone_number(cls, value):
+        if not re.fullmatch(r"\d{10}", value):
+            raise ValueError("Phone number must be a 10-digit number")
+        return value
+    
+    @model_validator(mode="after")
+    def check_password_match(self) -> "StudentCreate":
+        if self.Password != self.Confirmpassword:
+            raise ValueError("Password incorrect")
+        return self
+
+    model_config = {
+        "populate_by_name": True,
+        "alias_generator": None,
+        "json_encoders": {}
+    }
 
 class LoginRequestDetails(BaseModel):
-    email: str
-    password: str    
-
-class StudentUpdate(BaseModel):
-    name: str   
-    email: str
-    password: str 
+    Email: str
+    Password: str    
 
 @router.post("/create", tags=["students"])
 async def create_student(student: StudentCreate, db: Session = Depends(get_session)):
@@ -33,14 +50,17 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
         if student_exists:
             response = {"status":"error", "message": "Email already registered", "data": {}}
             raise HTTPException (status_code=status.HTTP_409_CONFLICT, detail=response)
-        new_student = Student(name=student.name,
-                        email=student.email,
-                        password=student.password)
+        new_student = Student(name=student.Name,
+                        email=student.Email,
+                        phone_no=student.PhoneNo,
+                        password=student.Password,
+                        confirm_password=student.Confirmpassword
+                        )
 
         db.add(new_student)
         await db.commit()
         await db.refresh(new_student)
-        response = {"status":"success", "message": "Student created successfully", "data": {"studentID": new_student.student_id}}
+        response = {"status":"success", "message": "Student created successfully", "data": {"studentID": new_student.id}}
         return {"detail": response}
     
     except HTTPException as e:
