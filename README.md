@@ -1,4 +1,4 @@
 # kasandra_backened_repo
 repo for python pipeline
-$test
-$test1
+
+This repo maintains the backend applications 
