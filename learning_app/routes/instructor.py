@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 
 from learning_app.database.db import get_session
-from models.student import Student, TokenTable
-from learning_app.common import get_student_by_email
+from models.instructor import Instructor, TokenTable
+from learning_app.common import get_instructor_by_email
 
 router = APIRouter()
-class StudentCreate(BaseModel):
+class InstructorCreate(BaseModel):
     Name: str
     Email: EmailStr
     PhoneNo: str = Field(..., alias="Phone No")
@@ -25,7 +25,7 @@ class StudentCreate(BaseModel):
         return value
     
     @model_validator(mode="after")
-    def check_password_match(self) -> "StudentCreate":
+    def check_password_match(self) -> "InstructorCreate":
         if self.Password != self.Confirmpassword:
             raise ValueError("Password incorrect")
         return self
@@ -40,27 +40,27 @@ class LoginRequestDetails(BaseModel):
     Email: EmailStr
     Password: str    
 
-@router.post("/create", tags=["students"])
-async def create_student(student: StudentCreate, db: Session = Depends(get_session)):
-    new_student = None
+@router.post("/create", tags=["instructors"])
+async def create_instructor(instructor: InstructorCreate, db: Session = Depends(get_session)):
+    new_instructor = None
 
     try:
         #employye_name_exists = employee_crud.get_employee_by_email(session, email=employee.email)
-        student_exists = await get_student_by_email(student, db)
-        if student_exists:
+        instructor_exists = await get_instructor_by_email(instructor, db)
+        if instructor_exists:
             response = {"status":"error", "message": "Email already registered", "data": {}}
             raise HTTPException (status_code=status.HTTP_409_CONFLICT, detail=response)
-        new_student = Student(name=student.Name,
-                        email=student.Email,
-                        phone_no=student.PhoneNo,
-                        password=student.Password,
-                        confirm_password=student.Confirmpassword
+        new_instructor = Instructor(name=instructor.Name,
+                        email=instructor.Email,
+                        phone_no=instructor.PhoneNo,
+                        password=instructor.Password,
+                        confirm_password=instructor.Confirmpassword
                         )
 
-        db.add(new_student)
+        db.add(new_instructor)
         await db.commit()
-        await db.refresh(new_student)
-        response = {"status":"success", "message": "Student created successfully", "data": {"id": new_student.id}}
+        await db.refresh(new_instructor)
+        response = {"status":"success", "message": "Instructor created successfully", "data": {"id": new_instructor.id}}
         return {"detail": response}
     
     except HTTPException as e:
@@ -69,24 +69,24 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
     
     except Exception as e:
         # logger.debug(f"Error in create_user endpoint: {str(e)}")
-        response = {"status": "error", "message": f"Failed to create student: {str(e)}", "data": {"studentID": new_student }}
+        response = {"status": "error", "message": f"Failed to create instructor: {str(e)}", "data": {"id": new_instructor }}
         raise HTTPException(status_code=500, detail=response)
-    
-        
-@router.post("/login", tags=["students"])
-async def student_login(request: LoginRequestDetails, db : Session = Depends(get_session)):
+
+
+@router.post("/login", tags=["instructors"])
+async def instructor_login(request: LoginRequestDetails, db : Session = Depends(get_session)):
 
     try:
-        student = await get_student_by_email(request, db)
-        if student is None:
+        instructor = await get_instructor_by_email(request, db)
+        if instructor is None:
             # import pdb;pdb.set_trace()
         
             # logger.info("Get EmployeeByEmail response: Incorrect email")
             response = {"status":"error", "message": "Incorrect email.", "data": {}}
             raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail=response)
         
-        if request.Password == student.password:
-            response = {"status":"success", "message": "Loggged in successfully", "data": {"id": student.id, "studentName": student.name}}
+        if request.Password == instructor.password:
+            response = {"status":"success", "message": "Loggged in successfully", "data": {"id": instructor.id, "instructorName": instructor.name}}
             return {"detail": response}
         else:
             # logger.info("Post employee_login response: Incorrect password.")
