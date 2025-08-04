@@ -5,9 +5,9 @@ import re
 from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 
-from learning_app.database.db import get_session
+from database.db import get_session
 from models.instructor import Instructor, TokenTable
-from learning_app.common import get_instructor_by_email
+from common import get_instructor_by_email
 
 router = APIRouter()
 class InstructorCreate(BaseModel):
