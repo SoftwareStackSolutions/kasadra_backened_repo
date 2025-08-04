@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 
 from learning_app.database.db import get_session
-from models.student import Student, TokenTable
-from learning_app.common import get_student_by_email
+from models.instructor import Instructor, TokenTable
+from learning_app.common import get_instructor_by_email
 
 router = APIRouter()
 class InstructorCreate(BaseModel):
@@ -46,11 +46,11 @@ async def create_instructor(instructor: InstructorCreate, db: Session = Depends(
 
     try:
         #employye_name_exists = employee_crud.get_employee_by_email(session, email=employee.email)
-        instructor_exists = await get_student_by_email(instructor, db)
+        instructor_exists = await get_instructor_by_email(instructor, db)
         if instructor_exists:
             response = {"status":"error", "message": "Email already registered", "data": {}}
             raise HTTPException (status_code=status.HTTP_409_CONFLICT, detail=response)
-        new_instructor = Student(name=instructor.Name,
+        new_instructor = Instructor(name=instructor.Name,
                         email=instructor.Email,
                         phone_no=instructor.PhoneNo,
                         password=instructor.Password,
@@ -77,7 +77,7 @@ async def create_instructor(instructor: InstructorCreate, db: Session = Depends(
 async def instructor_login(request: LoginRequestDetails, db : Session = Depends(get_session)):
 
     try:
-        instructor = await get_student_by_email(request, db)
+        instructor = await get_instructor_by_email(request, db)
         if instructor is None:
             # import pdb;pdb.set_trace()
         
