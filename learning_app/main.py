@@ -62,3 +62,17 @@ async def universal_exception_handler(request, exc):
     )
 
 
+#####################################################################
+
+## Owner= Akhilesh
+
+
+from database.db import init_db  # ✅ NOT from models.base
+
+
+
+@app.on_event("startup")
+async def startup_event():
+    await init_db()
+
+#####################################################################
