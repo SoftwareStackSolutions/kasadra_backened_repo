@@ -17,3 +17,5 @@ email-validator
 python-jose
 pyjwt
 fastapi[standard]
+
+asyncpg
