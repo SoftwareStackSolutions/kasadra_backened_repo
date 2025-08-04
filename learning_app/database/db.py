@@ -1,10 +1,43 @@
+# from sqlalchemy.orm import sessionmaker
+# from sqlalchemy.ext.asyncio import AsyncSession
+
+# from database.dbconfig import engine
+
+# async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+# async def get_session() -> AsyncSession:
+#     async with async_session() as session:
+#         yield session
+
+
+
+#############################################################################################
+
+## Owner= Akhilesh
+
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.dbconfig import engine
+from models.base import Base
+from models import student, instructor  # all models must be imported
+from dbconfig import SQLALCHEMY_DATABASE_URL
 
-async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+# Create engine
+engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True)
 
+# Create session
+async_session = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+# Session dependency for FastAPI
 async def get_session() -> AsyncSession:
     async with async_session() as session:
         yield session
+
+# Function to create tables on app startup
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

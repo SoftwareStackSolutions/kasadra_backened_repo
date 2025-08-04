@@ -8,6 +8,7 @@ from sqlalchemy.future import select
 from sqlalchemy import func
 
 from models.student import Student
+from models.instructor import Instructor
 # from data.image_url import IMAGE_URL
 
 class Weekday(Enum):
@@ -20,8 +21,16 @@ class Weekday(Enum):
     sun = 6
 
 async def get_student_by_email(request,session):
-  student_email = (request.email).lower()
-  query_stmt = select(Student).where(func.lower(Student.email) == student_email)
+  email = (request.Email).lower()
+  query_stmt = select(Student).where(func.lower(Student.email) == email)
+  result = await session.execute(query_stmt)
+  user = result.scalar()
+  return user
+
+
+async def get_instructor_by_email(request,session):
+  email = (request.Email).lower()
+  query_stmt = select(Instructor).where(func.lower(Instructor.email) == email)
   result = await session.execute(query_stmt)
   user = result.scalar()
   return user

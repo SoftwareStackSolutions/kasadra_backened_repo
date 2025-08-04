@@ -16,13 +16,13 @@ sys.path.append(os.path.join(root_dir, "database"))
 sys.path.append(os.path.join(root_dir, "models"))
 sys.path.append(os.path.join(root_dir, "routes"))
 sys.path.append(os.path.join(root_dir, "data"))
-sys.path.append(os.path.join(root_dir, "lib_beapi"))
-sys.path.append(os.path.join(root_dir, "config_beapi"))
+
 
 from database.dbconfig import engine
 from models.base import Base
 
 from routes import student
+from routes import instructor
 
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
@@ -35,6 +35,7 @@ app = FastAPI(
 )
 
 app.include_router(student.router, prefix="/student")
+app.include_router(instructor.router, prefix="/instructor")
 
 
 app.add_middleware(
@@ -61,3 +62,17 @@ async def universal_exception_handler(request, exc):
     )
 
 
+#####################################################################
+
+## Owner= Akhilesh
+
+
+from database.db import init_db  # ✅ NOT from models.base
+
+
+
+@app.on_event("startup")
+async def startup_event():
+    await init_db()
+
+#####################################################################
