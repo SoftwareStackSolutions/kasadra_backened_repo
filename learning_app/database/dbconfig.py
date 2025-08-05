@@ -7,7 +7,9 @@ import asyncpg
 ## Owner= Akhilesh ML
 
 
-SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://admin:admin12@34.57.39.15:5432/kasadara"
+# SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://admin:admin12@34.57.39.15:5432/kasadara"
+
+SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://admin:admin12@postgres-service.kasadara.svc.cluster.local:5432/kasadara"
 
 #####################################################################
 
