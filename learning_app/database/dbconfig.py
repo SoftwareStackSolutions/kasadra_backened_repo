@@ -8,10 +8,24 @@ import asyncpg
 
 
 # SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://admin:admin12@34.57.39.15:5432/kasadara"
+# SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://admin:admin12@postgres-service.kasadara.svc.cluster.local:5432/kasadara"
 
-SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://admin:admin12@postgres-service.kasadara.svc.cluster.local:5432/kasadara"
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Loads .env if present
+
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME")
+
+SQLALCHEMY_DATABASE_URL = (
+    f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+
 
 #####################################################################
-
 
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL)
