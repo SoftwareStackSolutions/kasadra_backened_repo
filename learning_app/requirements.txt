@@ -49,6 +49,8 @@ pytz
 python-multipart        # For file uploads
 python-dotenv           # For .env config loading
 
+# pandas~=2.0.3
+# pillow~=11.1.0
 
 
 ################################################################################
