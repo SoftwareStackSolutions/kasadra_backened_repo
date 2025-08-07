@@ -22,7 +22,7 @@ DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("POSTGRES_DB")
 
 SQLALCHEMY_DATABASE_URL = (
-    f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{DB_HOST}:{DB_PORT}/{POSTGRES_DB}"
+    f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 
