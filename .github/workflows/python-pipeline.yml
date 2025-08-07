@@ -190,7 +190,7 @@ jobs:
           while true; do
             STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
-              echo "✅ PR #$PR_NUMBER has been merged!"
+              echo " PR #$PR_NUMBER has been merged!"
               break
             else
               echo "Not merged yet. Waiting for approval..."
@@ -279,9 +279,6 @@ jobs:
             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
             --docker-email=no@email.com \
             --namespace=kasadara
-
-  
-
 
       - name: Deploy to GKE
         run: |
