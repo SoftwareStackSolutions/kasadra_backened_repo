@@ -15,9 +15,14 @@ spec:
     spec:
       containers:
         - name: python-application
-          image:  ghcr.io/softwarestacksolutions/python-application:latest
+          image: ghcr.io/softwarestacksolutions/python-application:latest
           ports:
-            - containerPort: 3000
+            - containerPort: 3000  # Match this to your app's actual port
           imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: db-config     # Inject DB config (DB_USER, DB_NAME, DB_HOST)
+            - secretRef:
+                name: db-secret     # Inject DB_PASSWORD
       imagePullSecrets:
-        - name: ghcr-secret
+        - name: ghcr-secret         # For pulling from GitHub Container Registry
