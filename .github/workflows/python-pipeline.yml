@@ -279,16 +279,33 @@ jobs:
             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
             --docker-email=no@email.com
   
+      # - name: Deploy to GKE
+      #   run: |
+      #     kubectl apply -f deployment.yaml
+      #     kubectl apply -f service.yaml 
+      #     sleep 59
+      #     kubectl rollout restart deployment python-application
+      #     kubectl get pods
+      #     kubectl get svc -o wide
+
+      # - name: Patch deployment to use imagePullSecret
+      #   run: |
+      #     kubectl patch deployment python-application \
+      #       --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'       
+
+
       - name: Deploy to GKE
         run: |
-          kubectl apply -f deployment.yaml
-          kubectl apply -f service.yaml 
+          kubectl apply -f deployment.yaml -n kasadara
+          kubectl apply -f service.yaml -n kasadara
           sleep 59
-          kubectl rollout restart deployment python-application
-          kubectl get pods
-          kubectl get svc -o wide
-
+          kubectl rollout restart deployment python-application -n kasadara
+          kubectl get pods -n kasadara
+          kubectl get svc -n kasadara -o wide
+      
       - name: Patch deployment to use imagePullSecret
         run: |
           kubectl patch deployment python-application \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'       
+            -n kasadara \
+            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
+
