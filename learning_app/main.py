@@ -18,6 +18,7 @@ sys.path.append(os.path.join(root_dir, "routes"))
 sys.path.append(os.path.join(root_dir, "data"))
 
 
+
 from database.dbconfig import engine
 from models.base import Base
 
