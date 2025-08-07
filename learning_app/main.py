@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from typing import Optional
 
 
+
 root_dir = os.path.dirname(__file__)
 sys.path.append(root_dir)
 sys.path.append(os.path.join(root_dir, "database"))
