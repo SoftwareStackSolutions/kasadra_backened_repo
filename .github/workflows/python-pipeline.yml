@@ -278,6 +278,7 @@ jobs:
             --docker-username=${{ github.actor }} \
             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
             --docker-email=no@email.com
+            --namespace=kasadara
   
       # - name: Deploy to GKE
       #   run: |
