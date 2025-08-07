@@ -272,27 +272,15 @@ jobs:
   
       - name: Create GHCR imagePullSecret in GKE
         run: |
-          kubectl delete secret ghcr-secret --ignore-not-found
+          kubectl delete secret ghcr-secret --ignore-not-found --namespace=kasadara
           kubectl create secret docker-registry ghcr-secret \
             --docker-server=ghcr.io \
             --docker-username=${{ github.actor }} \
             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
             --docker-email=no@email.com \
             --namespace=kasadara
-  
-      # - name: Deploy to GKE
-      #   run: |
-      #     kubectl apply -f deployment.yaml
-      #     kubectl apply -f service.yaml 
-      #     sleep 59
-      #     kubectl rollout restart deployment python-application
-      #     kubectl get pods
-      #     kubectl get svc -o wide
 
-      # - name: Patch deployment to use imagePullSecret
-      #   run: |
-      #     kubectl patch deployment python-application \
-      #       --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'       
+  
 
 
       - name: Deploy to GKE
