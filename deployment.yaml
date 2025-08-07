@@ -17,7 +17,7 @@ spec:
         - name: python-application
           image: ghcr.io/softwarestacksolutions/python-application:latest
           ports:
-            - containerPort: 3000  # Match this to your app's actual port
+            - containerPort: 8000  # Match this to your app's actual port
           imagePullPolicy: Always
           envFrom:
             - configMapRef:
