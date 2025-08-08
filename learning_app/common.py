@@ -7,30 +7,10 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy.future import select
 from sqlalchemy import func
 
-from models.student import Student
-from models.instructor import Instructor
-# from data.image_url import IMAGE_URL
+from models.user import User
 
-class Weekday(Enum):
-    mon = 0
-    tue = 1
-    wed = 2
-    thu = 3
-    fri = 4
-    sat = 5
-    sun = 6
+async def get_user_by_email(email: str, session):
+    query_stmt = select(User).where(func.lower(User.email) == email.lower())
+    result = await session.execute(query_stmt)
+    return result.scalar()
 
-async def get_student_by_email(request,session):
-  email = (request.Email).lower()
-  query_stmt = select(Student).where(func.lower(Student.email) == email)
-  result = await session.execute(query_stmt)
-  user = result.scalar()
-  return user
-
-
-async def get_instructor_by_email(request,session):
-  email = (request.Email).lower()
-  query_stmt = select(Instructor).where(func.lower(Instructor.email) == email)
-  result = await session.execute(query_stmt)
-  user = result.scalar()
-  return user
