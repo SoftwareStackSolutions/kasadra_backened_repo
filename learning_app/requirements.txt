@@ -1,5 +1,5 @@
 
-##owner = Akhilesh ML
+##owner = Akhilesh
 
 # Core Framework & Server
 fastapi[standard]
