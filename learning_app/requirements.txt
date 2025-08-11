@@ -1,26 +1,5 @@
-# python-dotenv~=1.0.1
-# # streamlit~=1.42.2
-# # openai~=1.64.0
-# # pandas~=2.0.3
-# # crewai~=0.102.0
-# # pillow~=11.1.0
-# SQLAlchemy~=2.0.36
-# fastapi~=0.115.4
-# pydantic~=2.10.6
-# uvicorn
-# sqlalchemy
-# passlib
-# bcrypt
-# email-validator
-# python-jose
-# pyjwt
-# fastapi[standard]
-# asyncpg
-
-################################################################################
 
 ##owner = Akhilesh
-
 
 # Core Framework & Server
 fastapi[standard]
@@ -49,6 +28,7 @@ pytz
 python-multipart        # For file uploads
 python-dotenv           # For .env config loading
 
+#testing
 pytest
 requests
 pytest-html 
