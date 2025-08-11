@@ -49,6 +49,9 @@ pytz
 python-multipart        # For file uploads
 python-dotenv           # For .env config loading
 
+pytest
+requests
+pytest-html 
 
 
 ################################################################################
