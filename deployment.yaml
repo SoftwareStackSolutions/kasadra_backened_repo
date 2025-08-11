@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: python-application
+  namespace: kasadara
 spec:
   replicas: 1
   selector:
@@ -14,9 +15,35 @@ spec:
     spec:
       containers:
         - name: python-application
-          image:  ghcr.io/softwarestacksolutions/python-application:latest
-          ports:
-            - containerPort: 3000
+          image: ghcr.io/softwarestacksolutions/python-application:latest
           imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: POSTGRES_USER
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: DB_PORT
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: POSTGRES_PASSWORD
       imagePullSecrets:
         - name: ghcr-secret
