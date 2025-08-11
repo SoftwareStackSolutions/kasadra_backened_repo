@@ -6,6 +6,7 @@
     "Password": "dhoni@1",
     "Confirm Password": "dhoni@1"
   },
+  
   "get_all_students_response": {
     "detail": {
       "status": "success",
