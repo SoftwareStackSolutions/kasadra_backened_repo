@@ -1,103 +1,214 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
-from sqlalchemy import func
-import re
 from sqlalchemy.orm import Session
-from sqlalchemy.future import select
-
+import re
+from sqlalchemy import select
+from utils.passwd import hash_password, verify_password
+from models.user import User, RoleEnum
 from database.db import get_session
-from models.student import Student, TokenTable
-from common import get_student_by_email
+from common import get_user_by_email
+from utils.auth import create_access_token
+from datetime import timedelta
+
 
 router = APIRouter()
+
+#  Pydantic Schemas 
 class StudentCreate(BaseModel):
     Name: str
     Email: EmailStr
     PhoneNo: str = Field(..., alias="Phone No")
     Password: str
     Confirmpassword: str = Field(..., alias="Confirm Password")
-    
+
     @field_validator("PhoneNo")
     @classmethod
-    def validate_phone_number(cls, value):
+    def validate_phone(cls, value):
         if not re.fullmatch(r"\d{10}", value):
-            raise ValueError("Phone number must be a 10-digit number")
+            raise ValueError("Phone number must be 10 digits")
         return value
-    
+
     @model_validator(mode="after")
-    def check_password_match(self) -> "StudentCreate":
+    def check_password_match(self):
         if self.Password != self.Confirmpassword:
-            raise ValueError("Password incorrect")
+            raise ValueError("Passwords do not match")
         return self
 
     model_config = {
-        "populate_by_name": True,
-        "alias_generator": None,
-        "json_encoders": {}
+        "populate_by_name": True
     }
 
 class LoginRequestDetails(BaseModel):
     Email: EmailStr
-    Password: str    
+    Password: str
+
 
 @router.post("/create", tags=["students"])
 async def create_student(student: StudentCreate, db: Session = Depends(get_session)):
-    new_student = None
-
     try:
-        #employye_name_exists = employee_crud.get_employee_by_email(session, email=employee.email)
-        student_exists = await get_student_by_email(student, db)
+        student_exists = await get_user_by_email(student.Email, db)
         if student_exists:
-            response = {"status":"error", "message": "Email already registered", "data": {}}
-            raise HTTPException (status_code=status.HTTP_409_CONFLICT, detail=response)
-        new_student = Student(name=student.Name,
-                        email=student.Email,
-                        phone_no=student.PhoneNo,
-                        password=student.Password,
-                        confirm_password=student.Confirmpassword
-                        )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "status": "error",
+                    "message": "Email already registered",
+                    "data": {}
+                }
+            )
+
+        new_student = User(
+            name=student.Name,
+            email=student.Email,
+            phone_no=student.PhoneNo,
+            password=hash_password(student.Password),
+            confirm_password=hash_password(student.Confirmpassword),
+            role=RoleEnum.student
+        )
 
         db.add(new_student)
         await db.commit()
         await db.refresh(new_student)
-        response = {"status":"success", "message": "Student created successfully", "data": {"id": new_student.id}}
-        return {"detail": response}
-    
-    except HTTPException as e:
-        # Re-raise the original HTTPException
-        raise e        
-    
-    except Exception as e:
-        # logger.debug(f"Error in create_user endpoint: {str(e)}")
-        response = {"status": "error", "message": f"Failed to create student: {str(e)}", "data": {"studentID": new_student }}
-        raise HTTPException(status_code=500, detail=response)
-    
-        
-@router.post("/login", tags=["students"])
-async def student_login(request: LoginRequestDetails, db : Session = Depends(get_session)):
 
-    try:
-        student = await get_student_by_email(request, db)
-        if student is None:
-            # import pdb;pdb.set_trace()
-        
-            # logger.info("Get EmployeeByEmail response: Incorrect email")
-            response = {"status":"error", "message": "Incorrect email.", "data": {}}
-            raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail=response)
-        
-        if request.Password == student.password:
-            response = {"status":"success", "message": "Loggged in successfully", "data": {"id": student.id, "studentName": student.name}}
-            return {"detail": response}
-        else:
-            # logger.info("Post employee_login response: Incorrect password.")
-            response = {"status":"error", "message": "Incorrect password.", "data": {}}
-            raise HTTPException (status_code=status.HTTP_401_UNAUTHORIZED, detail=response)
-        
+        return {
+            "detail": {
+                "status": "success",
+                "message": "Student created successfully",
+                "data": {"id": new_student.id}
+            }
+        }
+
     except HTTPException as e:
-         # Re-raise the original HTTPException
-        raise e     
-    
+        raise e
+
     except Exception as e:
-        # logger.debug(f"Error in employee_login endpoint for employeename:{str(e)}")
-        response = {"status": "error", "message": f"Failed to process login request:: {str(e)}", "data": {}}
-        raise HTTPException(status_code=500, detail=response)   
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": f"Failed to create student: {str(e)}",
+                "data": {}
+            }
+        )
+
+# get instructors
+
+@router.get("/all", tags=["students"])
+async def get_all_students(db: Session = Depends(get_session)):
+    try:
+        stmt = select(User).where(User.role == RoleEnum.student)
+        result = await db.execute(stmt)
+        students = result.scalars().all()
+
+        return {
+            "detail": {
+                "status": "success",
+                "message": "Students fetched successfully",
+                "data": [ 
+                    {
+                        "id": i.id,
+                        "name": i.name,
+                        "email": i.email,
+                        "phone_no": i.phone_no
+                    } for i in students
+                ]
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": f"Failed to fetch students: {str(e)}",
+                "data": {}
+            }
+        )
+# get instuctor by id
+
+@router.get("/{student_id}", tags=["students"])
+async def get_instructor_by_id(student_id: int, db: Session = Depends(get_session)):
+    try:
+        stmt = select(User).where(User.id == student_id, User.role == RoleEnum.student)
+        result = await db.execute(stmt)
+        student = result.scalar_one_or_none()
+
+        if not student:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "status": "error",
+                    "message": f"Student with ID {student_id} not found",
+                    "data": {}
+                }
+            )
+
+        return {
+            "detail": {
+                "status": "success",
+                "message": "Student fetched successfully",
+                "data": {
+                    "id": student.id,
+                    "name": student.name,
+                    "email": student.email,
+                    "phone_no": student.phone_no
+                }
+            }
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": f"Failed to fetch instructor: {str(e)}",
+                "data": {}
+            }
+        )
+
+@router.post("/login", tags=["students"])
+async def student_login(request: LoginRequestDetails, db: Session = Depends(get_session)):
+    try:
+        student = await get_user_by_email(request.Email, db)
+
+        if student is None or student.role != RoleEnum.student:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"status": "error", "message": "Incorrect email.", "data": {}}
+            )
+
+        if not verify_password(request.Password, student.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"status": "error", "message": "Incorrect password.", "data": {}}
+            )
+
+        # Create JWT token
+        access_token = create_access_token(
+            data={"sub": student.id},
+            expires_delta=timedelta(minutes=30)
+        )
+
+        return {
+            "detail": {
+                "status": "success",
+                "message": "Logged in successfully",
+                "data": {
+                    "id": student.id,
+                    "studentName": student.name,
+                    "access_token": access_token,
+                    "token_type": "bearer"
+                }
+            }
+        }
+
+    except HTTPException as e:
+        raise e
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": f"Failed to process login request: {str(e)}",
+                "data": {}
+            }
+        )
