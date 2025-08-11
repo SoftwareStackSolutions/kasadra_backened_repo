@@ -1,0 +1,38 @@
+{
+  "create_student": {
+    "Name": "Dhoni",
+    "Email": "dhoni@gmail.com",
+    "Phone No": "7788665121",
+    "Password": "dhoni@1",
+    "Confirm Password": "dhoni@1"
+  },
+  
+  "get_all_students_response": {
+    "detail": {
+      "status": "success",
+      "message": "Students fetched successfully",
+      "data": [
+        {
+          "id": 1,
+          "name": "Nila",
+          "email": "nila@gmail.com",
+          "phone_no": "7788665544"
+        }
+      ]
+    }
+  },
+  "create_instructor":{
+    "Name": "Virat",
+    "Email": "virat@gmail.com",
+    "Phone No": "7788665111",
+    "Password": "virat@1",
+    "Confirm Password": "virat@1"
+  },
+  "get_all_instructors_response":{
+    "detail": {
+                "status": "success",
+                "message": "Instructor created successfully"
+            }
+  }
+}
+

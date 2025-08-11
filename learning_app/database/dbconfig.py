@@ -1,7 +1,10 @@
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
- 
-# SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://postgres:admin12@localhost:5432/kasadara"
+# from sqlalchemy.orm import sessionmaker
+
+# SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://postgres:admin12@localhost/kasadara"
+
+# engine = create_async_engine(SQLALCHEMY_DATABASE_URL)
 
 #####################################################################
 ## Owner= Akhilesh ML
@@ -25,7 +28,6 @@ SQLALCHEMY_DATABASE_URL = (
     f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
-
+engine = create_async_engine(SQLALCHEMY_DATABASE_URL)
 #####################################################################
 
-engine = create_async_engine(SQLALCHEMY_DATABASE_URL)
