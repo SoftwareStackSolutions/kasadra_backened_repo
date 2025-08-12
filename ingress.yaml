@@ -3,19 +3,38 @@ kind: Ingress
 metadata:
   name: python-app-ingress
   namespace: kasadara
-  annotations:
-    kubernetes.io/ingress.class: "gce"  
 spec:
   rules:
-  - http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: python-application-service
-            port:
-              number: 80
+    - host: backend.kasadara.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: python-application-service
+                port:
+                  number: 80
+
+
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: python-app-ingress
+#   namespace: kasadara
+#   annotations:
+#     kubernetes.io/ingress.class: "gce"  
+# spec:
+#   rules:
+#   - http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: python-application-service
+#             port:
+#               number: 80
 
 # Ingress
 # apiVersion: networking.k8s.io/v1
