@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
+
 # from sqlalchemy.orm import sessionmaker
 
 # SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://postgres:admin12@localhost/kasadara"
