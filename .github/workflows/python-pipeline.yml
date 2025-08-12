@@ -287,8 +287,9 @@ jobs:
           kubectl apply -f ingress.yaml -n kasadara
           sleep 59
           kubectl rollout restart deployment python-application -n kasadara
-          kubectl get pods -n kasadara
+          kubectl get pods -n kasadara -o wide
           kubectl get svc -n kasadara -o wide
+          kubectl get ingress -n kasadara -o wide
       
       - name: Patch deployment to use imagePullSecret
         run: |
