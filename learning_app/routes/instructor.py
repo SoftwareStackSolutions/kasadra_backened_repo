@@ -41,6 +41,7 @@ class LoginRequestDetails(BaseModel):
     Email: EmailStr
     Password: str
 
+
 # Routes
 # Create instructors
 @router.post("/create", tags=["instructors"])
@@ -122,6 +123,7 @@ async def get_all_instructors(db: Session = Depends(get_session)):
                 "data": {}
             }
         )
+    
 # get instuctor by id
 
 @router.get("/{instructor_id}", tags=["instructors"])
