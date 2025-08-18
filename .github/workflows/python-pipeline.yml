@@ -66,10 +66,8 @@ jobs:
   #         pip install -r learning_app/requirements.txt
   #         pip install pytest pytest-cov
 
-  #     - name: Run Pytest
-  #       run: |
-  #         run: pytest --cov=learning_app --cov-report=xml learning_app/test_dir/tests/
-  #         pytest learning_app/test_dir --junitxml=pytest-report.xml
+  #     - name: Run tests with coverage
+  #       run: pytest learning_app/test_dir/tests/ --cov=learning_app --cov-report=xml --junitxml=pytest-report.xml
 
   build-and-publish-artifact:
     name: Build and Publish Artifact Package
