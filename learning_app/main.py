@@ -56,9 +56,7 @@ async def universal_exception_handler(request, exc):
 
 ## Owner= Akhilesh ML
 
-
 from database.db import init_db  # NOT from models.base
-
 
 
 @app.on_event("startup")
