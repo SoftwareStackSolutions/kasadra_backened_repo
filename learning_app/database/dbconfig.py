@@ -28,7 +28,6 @@ DB_NAME = os.getenv("POSTGRES_DB")
 SQLALCHEMY_DATABASE_URL = (
     f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
-
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL)
 #####################################################################
 
