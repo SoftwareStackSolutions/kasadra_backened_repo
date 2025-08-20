@@ -5,6 +5,7 @@
 fastapi[standard]
 uvicorn
 
+
 # Data Validation
 pydantic~=2.10.6
 
