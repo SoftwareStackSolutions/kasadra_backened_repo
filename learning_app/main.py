@@ -40,6 +40,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 @app.on_event("startup")
 async def on_startup():
     # Create the database tables.
