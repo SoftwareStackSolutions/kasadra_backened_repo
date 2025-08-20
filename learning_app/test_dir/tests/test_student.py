@@ -11,6 +11,7 @@ from data.test_data import test_data
 def apis():
     return APIS()
 
+
 def validate_response(response, expected_status, expected_message=None):
     assert response.status_code == expected_status, f"Unexpected status code: {response.status_code}, Response: {response.text}"
     if expected_message:
