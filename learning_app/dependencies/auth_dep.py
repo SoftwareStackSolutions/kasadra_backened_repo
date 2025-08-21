@@ -6,6 +6,7 @@ from learning_app.database.db import get_session
 from learning_app.models.user import User
 from sqlalchemy.future import select
 
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_session)):
