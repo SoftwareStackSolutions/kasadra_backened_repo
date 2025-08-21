@@ -4,6 +4,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, Foreign
 from sqlalchemy.orm import relationship
 from models.base import Base
 
+
 class RoleEnum(str, enum.Enum):
     student = "student"
     instructor = "instructor"
