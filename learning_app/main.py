@@ -59,7 +59,12 @@ async def universal_exception_handler(request, exc):
 
 from database.db import init_db  # NOT from models.base
 
+## health check
+@app.get("/")
+async def health_check():
+    return {"status": "ok"}
 
+## DB setup
 @app.on_event("startup")
 async def startup_event():
     await init_db()
