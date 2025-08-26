@@ -2,73 +2,16 @@
 ##  Owner Akhilesh
 ######################
 
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: python-app-ingress
-  namespace: kasadara
-  annotations:
-    kubernetes.io/ingress.class: "gce"
-spec:
-  rules:
-    - host: api.softwarestack.xyz
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: python-application-service
-                port:
-                  number: 80
-
-
-
-
-
-
-
-######################
-##  Owner Felix
-######################
-
 # apiVersion: networking.k8s.io/v1
 # kind: Ingress
 # metadata:
 #   name: python-app-ingress
 #   namespace: kasadara
-# spec:
-#   ingressClassName: nginx   
-#   rules:
-#     - host: backend.kasadara.local
-#       http:
-#         paths:
-#           - path: /
-#             pathType: Prefix
-#             backend:
-#               service:
-#                 name: python-application-service
-#                 port:
-#                   number: 8001
-
-
-
-
-
-
-
-
-
-
-
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   name: python-app-ingress
-#   namespace: kasadara
+#   annotations:
+#     kubernetes.io/ingress.class: "gce"
 # spec:
 #   rules:
-#     - host: backend.kasadara.local
+#     - host: api.softwarestack.xyz
 #       http:
 #         paths:
 #           - path: /
@@ -82,4 +25,27 @@ spec:
 
 
 
+######################
+# felix
+#####################
 
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: python-app-ingress
+  namespace: kasadara
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+    - host: softwarestack.xyz
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: python-application-service
+                port:
+                  number: 80
