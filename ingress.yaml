@@ -42,7 +42,7 @@ spec:
     - host: softwarestack.xyz
       http:
         paths:
-          - path: /
+          - path: /api
             pathType: Prefix
             backend:
               service:
