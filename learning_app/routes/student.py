@@ -12,6 +12,11 @@ from datetime import timedelta
 
 
 
+from sqlalchemy.ext.asyncio import AsyncSession as Session
+from sqlalchemy.exc import IntegrityError
+from psycopg2.errors import UniqueViolation 
+
+
 router = APIRouter()
 
 #  Pydantic Schemas 
@@ -78,9 +83,22 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
                 "data": {"id": new_student.id}
             }
         }
+######################################################
+## owner AK
+    except IntegrityError as e:
+        await db.rollback()
+        # Check if it's phone_no or email duplicate
+        if "users_phone_no_key" in str(e.orig):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "status": "error",
+                    "message": "Phone number already exists",
+                    "data": {}
+                }
+            )
 
-    except HTTPException as e:
-        raise e
+######################################################
 
     except Exception as e:
         raise HTTPException(
