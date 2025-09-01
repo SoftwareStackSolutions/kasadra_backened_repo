@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, EmailStr, field_validator, model_validato
 from sqlalchemy.orm import Session
 import re
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from utils.passwd import hash_password, verify_password
 from models.user import User, RoleEnum
 from database.db import get_session
@@ -81,6 +82,19 @@ async def create_instructor(instructor: InstructorCreate, db: Session = Depends(
 
     except HTTPException as e:
         raise e
+    
+    except IntegrityError as e:
+        await db.rollback()
+        # Check if it's phone_no duplicate
+        if "users_phone_no_key" in str(e.orig):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "status": "error",
+                    "message": "Phone number already exists",
+                    "data": {}
+                }
+            )
 
     except Exception as e:
         raise HTTPException(
@@ -165,7 +179,9 @@ async def get_instructor_by_id(instructor_id: int, db: Session = Depends(get_ses
             }
         )
 
-
+##############################
+## Instructors login
+##############################
 
 @router.post("/login", tags=["instructors"])
 async def instructor_login(request: LoginRequestDetails, db: Session = Depends(get_session)):
