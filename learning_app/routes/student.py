@@ -101,6 +101,7 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
 
 ######################################################
 
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
