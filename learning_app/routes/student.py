@@ -13,7 +13,7 @@ from datetime import timedelta
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.exc import IntegrityError
 from psycopg2.errors import UniqueViolation 
-
+import re
 
 router = APIRouter()
 
@@ -192,9 +192,11 @@ async def get_instructor_by_id(student_id: int, db: Session = Depends(get_sessio
     
 ##########################################################################################################
 
-#### Put Method
-
+##############################
+## Put Method
+##############################
 #  Pydantic Schemas 
+
 class StudentUpdate(BaseModel):   
     Name: str
     Email: EmailStr
