@@ -43,8 +43,10 @@ class LoginRequestDetails(BaseModel):
     Password: str
 
 
-# Routes
-# Create instructors
+##############################
+### Create instructors
+##############################
+
 @router.post("/create", tags=["instructors"])
 async def create_instructor(instructor: InstructorCreate, db: Session = Depends(get_session)):
     try:
@@ -106,6 +108,9 @@ async def create_instructor(instructor: InstructorCreate, db: Session = Depends(
             }
         )
 
+##############################
+## Get all instructors details
+##############################
 
 @router.get("/all", tags=["instructors"])
 async def get_all_instructors(db: Session = Depends(get_session)):
@@ -137,8 +142,10 @@ async def get_all_instructors(db: Session = Depends(get_session)):
                 "data": {}
             }
         )
-    
-# get instuctor by id
+
+##############################
+### Get instuctor by id
+##############################    
 
 @router.get("/{instructor_id}", tags=["instructors"])
 async def get_instructor_by_id(instructor_id: int, db: Session = Depends(get_session)):
