@@ -85,9 +85,10 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
         }
 ######################################################
 ## owner AK
+
     except IntegrityError as e:
         await db.rollback()
-        # Check if it's phone_no or email duplicate
+        # Check if it's phone_no duplicate
         if "users_phone_no_key" in str(e.orig):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -100,6 +101,7 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
 
 ######################################################
 
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -110,7 +112,7 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
             }
         )
 
-# get instructors
+# get students
 
 @router.get("/all", tags=["students"])
 async def get_all_students(db: Session = Depends(get_session)):
