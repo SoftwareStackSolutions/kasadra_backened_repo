@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
+from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator, constr
 from sqlalchemy.orm import Session
-import re
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from utils.passwd import hash_password, verify_password
 from models.user import User, RoleEnum
@@ -9,8 +9,6 @@ from database.db import get_session
 from common import get_user_by_email
 from utils.auth import create_access_token
 from datetime import timedelta
-
-
 
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.exc import IntegrityError
@@ -48,6 +46,9 @@ class LoginRequestDetails(BaseModel):
     Email: EmailStr
     Password: str
 
+##############################
+## Create Students 
+##############################
 
 @router.post("/create", tags=["students"])
 async def create_student(student: StudentCreate, db: Session = Depends(get_session)):
@@ -112,7 +113,9 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
             }
         )
 
-# get students
+##############################
+## Get All Students 
+##############################
 
 @router.get("/all", tags=["students"])
 async def get_all_students(db: Session = Depends(get_session)):
@@ -144,8 +147,10 @@ async def get_all_students(db: Session = Depends(get_session)):
                 "data": {}
             }
         )
-# get instuctor by id
-
+    
+##############################
+## Get Id based Students 
+##############################
 @router.get("/{student_id}", tags=["students"])
 async def get_instructor_by_id(student_id: int, db: Session = Depends(get_session)):
     try:
@@ -184,6 +189,111 @@ async def get_instructor_by_id(student_id: int, db: Session = Depends(get_sessio
                 "data": {}
             }
         )
+    
+##########################################################################################################
+
+#### Put Method
+
+#  Pydantic Schemas 
+class StudentUpdate(BaseModel):   
+    Name: str
+    Email: EmailStr
+    PhoneNo: str = Field(..., alias="Phone No")
+
+    @field_validator("PhoneNo")
+    def validate_phone(cls, v):
+        if v is None:
+            return v
+        if not v.isdigit():
+            raise ValueError("Phone number must contain only digits.")
+        if len(v) != 10:
+            raise ValueError("Phone number must be exactly 10 digits long.")
+        return v
+
+@router.put("/{student_id}", tags=["students"])
+async def update_student(
+    student_id: int,
+    update_data: StudentUpdate,
+    db: AsyncSession = Depends(get_session)
+):
+    try:
+        # Fetch student
+        stmt = select(User).where(User.id == student_id)
+        result = await db.execute(stmt)
+        student = result.scalar_one_or_none()
+
+        if not student:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "status": "error",
+                    "message": "Student not found",
+                    "data": {}
+                }
+            )
+
+        # Update fields only if provided
+        if update_data.Name:
+            student.name = update_data.Name
+        if update_data.Email:
+            student.email = update_data.Email
+        if update_data.PhoneNo:
+            student.phone_no = update_data.PhoneNo
+
+        db.add(student)
+        await db.commit()
+        await db.refresh(student)
+
+        return {
+            "detail": {
+                "status": "success",
+                "message": "Student updated successfully",
+                "data": {
+                    "id": student.id,
+                    "name": student.name,
+                    "email": student.email,
+                    "phone_no": student.phone_no,
+                }
+            }
+        }
+    
+    except IntegrityError as e:
+        await db.rollback()
+        if "users_email_key" in str(e.orig):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "status": "error",
+                    "message": "Email already exists",
+                    "data": {}
+                }
+            )
+        elif "users_phone_no_key" in str(e.orig):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "status": "error",
+                    "message": "Phone number already exists",
+                    "data": {}
+                }
+            )
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": f"Failed to update student: {str(e)}",
+                "data": {}
+            }
+        )
+
+#########################################################
+    
+##############################
+## Student login
+##############################
 
 @router.post("/login", tags=["students"])
 async def student_login(request: LoginRequestDetails, db: Session = Depends(get_session)):
