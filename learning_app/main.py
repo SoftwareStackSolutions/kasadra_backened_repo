@@ -30,7 +30,7 @@ app = FastAPI(
     openapi_version="3.0.3"
 )
 app.include_router(student.router, prefix="/api/student")
-app.include_router(instructor.router, prefix="/instructor")
+app.include_router(instructor.router, prefix="/api/instructor")
 
 app.add_middleware(
     CORSMiddleware,
