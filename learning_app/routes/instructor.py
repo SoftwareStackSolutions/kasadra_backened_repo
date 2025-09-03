@@ -47,6 +47,7 @@ class LoginRequestDetails(BaseModel):
 ### Create instructors
 ##############################
 
+
 @router.post("/create", tags=["instructors"])
 async def create_instructor(instructor: InstructorCreate, db: Session = Depends(get_session)):
     try:
