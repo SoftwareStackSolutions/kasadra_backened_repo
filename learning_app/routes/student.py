@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator, constr
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,6 +84,9 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
                 "data": {"id": new_student.id}
             }
         }
+    
+    except HTTPException:
+        raise
 ######################################################
 ## owner AK
 
@@ -194,8 +197,10 @@ async def get_instructor_by_id(student_id: int, db: Session = Depends(get_sessio
 
 ##############################
 ## Put Method
+# OWNER AKHILESH
 ##############################
 #  Pydantic Schemas 
+from dependencies.auth_dep import get_current_user
 
 class StudentUpdate(BaseModel):   
     Name: str
@@ -216,7 +221,9 @@ class StudentUpdate(BaseModel):
 async def update_student(
     student_id: int,
     update_data: StudentUpdate,
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)  # JWT protection
+    
 ):
     try:
         # Fetch student
@@ -295,6 +302,7 @@ async def update_student(
     
 ##############################
 ## Student login
+## OWNER ANISHA
 ##############################
 
 @router.post("/login", tags=["students"])
@@ -305,7 +313,7 @@ async def student_login(request: LoginRequestDetails, db: Session = Depends(get_
         if student is None or student.role != RoleEnum.student:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"status": "error", "message": "Incorrect email.", "data": {}}
+                detail={"status": "error", "message": "Enter valid  Email.", "data": {}}
             )
 
         if not verify_password(request.Password, student.password):
@@ -319,7 +327,6 @@ async def student_login(request: LoginRequestDetails, db: Session = Depends(get_
             data={"sub": student.id},
             expires_delta=timedelta(minutes=30)
         )
-
         return {
             "detail": {
                 "status": "success",
@@ -332,6 +339,7 @@ async def student_login(request: LoginRequestDetails, db: Session = Depends(get_
                 }
             }
         }
+    
 
     except HTTPException as e:
         raise e
@@ -345,3 +353,189 @@ async def student_login(request: LoginRequestDetails, db: Session = Depends(get_
                 "data": {}
             }
         )
+
+#####################################################################################################################
+## OWNER AKHILESH this code using http cookie
+#####################################################################################################################
+
+
+
+# from dependencies.auth_dep import get_current_user
+# # from .schemas import StudentUpdate  
+
+# class StudentUpdate(BaseModel):   
+#     Name: str
+#     Email: EmailStr
+#     PhoneNo: str = Field(..., alias="Phone No")
+
+#     @field_validator("PhoneNo")
+#     def validate_phone(cls, v):
+#         if v is None:
+#             return v
+#         if not v.isdigit():
+#             raise ValueError("Phone number must contain only digits.")
+#         if len(v) != 10:
+#             raise ValueError("Phone number must be exactly 10 digits long.")
+#         return v
+
+# @router.put("{student_id}", tags=["students"])
+# async def update_student(
+#     student_id: int,
+#     update_data: StudentUpdate,
+#     db: AsyncSession = Depends(get_session),
+#     current_user: User = Depends(get_current_user)  # ✅ JWT protection
+# ):
+#     try:
+#         # ✅ Only allow logged-in student to update their own profile
+#         if current_user.id != student_id:
+#             raise HTTPException(
+#                 status_code=status.HTTP_403_FORBIDDEN,
+#                 detail={
+#                     "status": "error",
+#                     "message": "You are not authorized to update this profile",
+#                     "data": {}
+#                 }
+#             )
+
+#         # Fetch student from DB
+#         stmt = select(User).where(User.id == student_id)
+#         result = await db.execute(stmt)
+#         student = result.scalar_one_or_none()
+
+#         if not student:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail={
+#                     "status": "error",
+#                     "message": "Student not found",
+#                     "data": {}
+#                 }
+#             )
+
+#         # Update only allowed fields
+#         if update_data.Name is not None:
+#             student.name = update_data.Name
+#         if update_data.Email is not None:
+#             student.email = update_data.Email
+#         if update_data.PhoneNo is not None:
+#             student.phone_no = update_data.PhoneNo
+
+#         db.add(student)
+#         await db.commit()
+#         await db.refresh(student)
+
+#         return {
+#             "detail": {
+#                 "status": "success",
+#                 "message": "Student updated successfully",
+#                 "data": {
+#                     "id": student.id,
+#                     "name": student.name,
+#                     "email": student.email,
+#                     "phone_no": student.phone_no
+#                 }
+#             }
+#         }
+
+#     except IntegrityError as e:
+#         await db.rollback()
+#         if "users_email_key" in str(e.orig):
+#             raise HTTPException(
+#                 status_code=status.HTTP_409_CONFLICT,
+#                 detail={
+#                     "status": "error",
+#                     "message": "Email already exists",
+#                     "data": {}
+#                 }
+#             )
+#         elif "users_phone_no_key" in str(e.orig):
+#             raise HTTPException(
+#                 status_code=status.HTTP_409_CONFLICT,
+#                 detail={
+#                     "status": "error",
+#                     "message": "Phone number already exists",
+#                     "data": {}
+#                 }
+#             )
+
+#     except Exception as e:
+#         await db.rollback()
+#         raise HTTPException(
+#             status_code=500,
+#             detail={
+#                 "status": "error",
+#                 "message": f"Failed to update student: {str(e)}",
+#                 "data": {}
+#             }
+#         )
+
+
+# @router.post("/login", tags=["students"])
+# async def student_login(request: LoginRequestDetails, response: Response, db: Session = Depends(get_session)):
+#     try:
+#         student = await get_user_by_email(request.Email, db)
+
+#         if student is None or student.role != RoleEnum.student:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail={"status": "error", "message": "Incorrect email.", "data": {}}
+#             )
+
+#         if not verify_password(request.Password, student.password):
+#             raise HTTPException(
+#                 status_code=status.HTTP_401_UNAUTHORIZED,
+#                 detail={"status": "error", "message": "Incorrect password.", "data": {}}
+#             )
+
+#         # Create JWT token
+#         access_token = create_access_token(
+#             data={"sub": student.id},
+#             expires_delta=timedelta(minutes=30)
+#         )
+
+#         # ✅ Store token in HTTP-only cookie
+#         response.set_cookie(
+#             key="access_token",
+#             value=access_token,
+#             httponly=True,        # JS cannot access
+#             secure=True,          # Only send via HTTPS
+#             samesite="lax",       # Prevent CSRF (use "strict" or "none" depending on frontend)
+#             max_age=1800          # 30 minutes
+#         )
+
+#         return {
+#             "detail": {
+#                 "status": "success",
+#                 "message": "Logged in successfully",
+#                 "data": {
+#                     "id": student.id,
+#                     "studentName": student.name
+#                 }
+#             }
+#         }
+
+#     except HTTPException as e:
+#         raise e
+
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail={
+#                 "status": "error",
+#                 "message": f"Failed to process login request: {str(e)}",
+#                 "data": {}
+#             }
+#         )
+
+
+
+# @router.post("/logout", tags=["students"])
+# async def logout(response: Response):
+#     response.delete_cookie("access_token")
+#     return {
+#         "status": "success",
+#         "message": "Logged out successfully"
+#     }
+
+
+

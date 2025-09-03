@@ -147,8 +147,14 @@ async def get_all_instructors(db: Session = Depends(get_session)):
 ### Get instuctor by id
 ##############################    
 
+from dependencies.auth_dep import get_current_user
+
 @router.get("/{instructor_id}", tags=["instructors"])
-async def get_instructor_by_id(instructor_id: int, db: Session = Depends(get_session)):
+async def get_instructor_by_id(
+    instructor_id: int,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)  # 👈 JWT protection here
+):
     try:
         stmt = select(User).where(User.id == instructor_id, User.role == RoleEnum.instructor)
         result = await db.execute(stmt)
@@ -176,6 +182,7 @@ async def get_instructor_by_id(instructor_id: int, db: Session = Depends(get_ses
                 }
             }
         }
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -185,6 +192,53 @@ async def get_instructor_by_id(instructor_id: int, db: Session = Depends(get_ses
                 "data": {}
             }
         )
+
+
+
+##############################
+## Owner Anisha
+### Get instuctor by id
+##############################  
+
+
+# @router.get("/{instructor_id}", tags=["instructors"])
+# async def get_instructor_by_id(instructor_id: int, db: Session = Depends(get_session)):
+#     try:
+#         stmt = select(User).where(User.id == instructor_id, User.role == RoleEnum.instructor)
+#         result = await db.execute(stmt)
+#         instructor = result.scalar_one_or_none()
+
+#         if not instructor:
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail={
+#                     "status": "error",
+#                     "message": f"Instructor with ID {instructor_id} not found",
+#                     "data": {}
+#                 }
+#             )
+
+#         return {
+#             "detail": {
+#                 "status": "success",
+#                 "message": "Instructor fetched successfully",
+#                 "data": {
+#                     "id": instructor.id,
+#                     "name": instructor.name,
+#                     "email": instructor.email,
+#                     "phone_no": instructor.phone_no
+#                 }
+#             }
+#         }
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail={
+#                 "status": "error",
+#                 "message": f"Failed to fetch instructor: {str(e)}",
+#                 "data": {}
+#             }
+#         )
 
 ##############################
 ## Instructors login
