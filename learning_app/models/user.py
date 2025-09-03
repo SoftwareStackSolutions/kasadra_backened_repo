@@ -19,7 +19,6 @@ class User(Base):
     password = Column(String, nullable=False)
     confirm_password = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), nullable=False)
-
     token = relationship("Token", back_populates="user", uselist=False)
 
 class Token(Base):
