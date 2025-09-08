@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.exc import IntegrityError
 from psycopg2.errors import UniqueViolation 
 import re
+from datetime import datetime, date
 
 router = APIRouter()
 
@@ -23,6 +24,7 @@ class StudentCreate(BaseModel):
     Email: EmailStr
     PhoneNo: str = Field(..., alias="Phone No")
     Password: str
+    created_at: date
     Confirmpassword: str = Field(..., alias="Confirm Password")
 
     @field_validator("PhoneNo")
@@ -136,7 +138,8 @@ async def get_all_students(db: Session = Depends(get_session)):
                         "id": i.id,
                         "name": i.name,
                         "email": i.email,
-                        "phone_no": i.phone_no
+                        "phone_no": i.phone_no,
+                        "created_at": i.created_at.isoformat() 
                     } for i in students
                 ]
             }
@@ -179,7 +182,8 @@ async def get_instructor_by_id(student_id: int, db: Session = Depends(get_sessio
                     "id": student.id,
                     "name": student.name,
                     "email": student.email,
-                    "phone_no": student.phone_no
+                    "phone_no": student.phone_no,
+                    "created_at": student.created_at.isoformat()
                 }
             }
         }
