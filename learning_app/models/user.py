@@ -3,7 +3,7 @@ import enum
 from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from models.base import Base
-
+from datetime import datetime 
 
 class RoleEnum(str, enum.Enum):
     student = "student"
@@ -16,6 +16,7 @@ class User(Base):
     name = Column(String, unique=False, nullable=False)
     email = Column(String, unique=True, nullable=False)
     phone_no = Column(String, unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow) 
     password = Column(String, nullable=False)
     confirm_password = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), nullable=False)
@@ -28,5 +29,5 @@ class Token(Base):
     access_token = Column(String(450), unique=True)
     refresh_token = Column(String(450), nullable=False)
     status = Column(Boolean)
-    created_date = Column(DateTime, default=datetime.datetime.utcnow)
+    created_date = Column(DateTime, default=datetime.utcnow) 
     user = relationship("User", back_populates="token")
