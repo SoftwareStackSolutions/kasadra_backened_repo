@@ -54,6 +54,7 @@ async def universal_exception_handler(request, exc):
         status_code=500,
         content={"message": "An unexpected error occurred"},
     )
+    
 
 #####################################################################
 
