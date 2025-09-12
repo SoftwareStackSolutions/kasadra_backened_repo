@@ -4,37 +4,40 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.user import User, RoleEnum
 from models.course import Course
 from database.db import get_session
-# from utils.auth import get_current_user
+from utils.auth import get_current_user
 from datetime import datetime
 from models.user import User
 from sqlalchemy.future import select
 
-
-
 router = APIRouter()
-
-from typing import Optional
-
+################################
+## Course ADD method Using JWT
+#################################
 class CourseCreate(BaseModel):
     title: str
     description: str
     duration: str
-    thumbnail: Optional[str] = None
-    instructor_id: Optional[int] = None  # Now optional for testing
+    thumbnail: str | None = None
 
 @router.post("/add", tags=["courses"])
 async def add_course(
     course: CourseCreate,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session)
 ):
-    instructor_id = course.instructor_id or 1  # Default to instructor_id=1
+    if current_user.role != RoleEnum.instructor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only instructors can add courses"
+        )
+    # ... rest of your course creation logic
 
     new_course = Course(
         title=course.title,
         description=course.description,
         duration=course.duration,
         thumbnail=course.thumbnail,
-        instructor_id=instructor_id,
+        instructor_id=current_user.id,
         created_at=datetime.utcnow()
     )
 
@@ -51,6 +54,57 @@ async def add_course(
         }
     }
 
+
+
+#################################################################################
+################################
+## Course ADD method
+#################################
+# router = APIRouter()
+
+# from typing import Optional
+
+# class CourseCreate(BaseModel):
+#     title: str
+#     description: str
+#     duration: str
+#     thumbnail: Optional[str] = None
+#     instructor_id: Optional[int] = None  # Now optional for testing
+
+# @router.post("/add", tags=["courses"])
+# async def add_course(
+#     course: CourseCreate,
+#     db: AsyncSession = Depends(get_session)
+# ):
+#     instructor_id = course.instructor_id or 1  # Default to instructor_id=1
+
+#     new_course = Course(
+#         title=course.title,
+#         description=course.description,
+#         duration=course.duration,
+#         thumbnail=course.thumbnail,
+#         instructor_id=instructor_id,
+#         created_at=datetime.utcnow()
+#     )
+
+#     db.add(new_course)
+#     await db.commit()
+#     await db.refresh(new_course)
+
+#     return {
+#         "status": "success",
+#         "message": "Course added successfully",
+#         "data": {
+#             "course_id": new_course.id,
+#             "title": new_course.title
+#         }
+#     }
+
+
+
+################################
+## Course GET method
+#################################
 
 @router.get("/courses", tags=["courses"])
 async def get_all_courses(db: AsyncSession = Depends(get_session)):
