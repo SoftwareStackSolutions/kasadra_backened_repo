@@ -33,33 +33,34 @@ def verify_access_token(token: str) -> Optional[dict]:
     except JWTError:
         return None
 
+
 # -----------------------------
 # Dependency for FastAPI
 # -----------------------------
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_session)
-) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+# async def get_current_user(
+#     token: str = Depends(oauth2_scheme),
+#     db: AsyncSession = Depends(get_session)
+# ) -> User:
+#     credentials_exception = HTTPException(
+#         status_code=status.HTTP_401_UNAUTHORIZED,
+#         detail="Could not validate credentials",
+#         headers={"WWW-Authenticate": "Bearer"},
+#     )
 
-    payload = verify_access_token(token)  # Use directly, no import needed
-    if payload is None:
-        raise credentials_exception
+#     payload = verify_access_token(token)  # Use directly, no import needed
+#     if payload is None:
+#         raise credentials_exception
 
-    email: str = payload.get("sub")
-    if email is None:
-        raise credentials_exception
+#     email: str = payload.get("sub")
+#     if email is None:
+#         raise credentials_exception
 
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalars().first()
-    if user is None:
-        raise credentials_exception
+#     result = await db.execute(select(User).where(User.email == email))
+#     user = result.scalars().first()
+#     if user is None:
+#         raise credentials_exception
 
-    return user
+#     return user
 
 
 

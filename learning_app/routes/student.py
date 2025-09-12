@@ -9,6 +9,7 @@ from database.db import get_session
 from common import get_user_by_email
 from utils.auth import create_access_token
 from datetime import timedelta
+from dependencies.auth_dep import get_current_user
 
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.exc import IntegrityError
@@ -161,8 +162,6 @@ async def get_all_students(db: Session = Depends(get_session)):
 ## Get Id based Students JWT
 ##############################
 
-
-from dependencies.auth_dep import get_current_user
 from models.user import User, RoleEnum
 from fastapi import HTTPException, status
 
@@ -261,7 +260,7 @@ async def get_all_students(
 # OWNER AKHILESH
 ##############################
 #  Pydantic Schemas 
-from dependencies.auth_dep import get_current_user
+
 
 class StudentUpdate(BaseModel):   
     Name: str
@@ -384,10 +383,15 @@ async def student_login(request: LoginRequestDetails, db: Session = Depends(get_
             )
 
         # Create JWT token
+        # access_token = create_access_token(
+        #     data={"sub": student.id},
+        #     expires_delta=timedelta(minutes=30)
+        # )
         access_token = create_access_token(
-            data={"sub": student.id},
+            student.email,  # Pass the email directly (as a string)
             expires_delta=timedelta(minutes=30)
         )
+
         return {
             "detail": {
                 "status": "success",
@@ -421,7 +425,7 @@ async def student_login(request: LoginRequestDetails, db: Session = Depends(get_
 
 
 
-# from dependencies.auth_dep import get_current_user
+
 # # from .schemas import StudentUpdate  
 
 # class StudentUpdate(BaseModel):   
