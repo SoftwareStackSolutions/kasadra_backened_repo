@@ -153,49 +153,106 @@ async def get_all_students(db: Session = Depends(get_session)):
                 "data": {}
             }
         )
-    
-##############################
-## Get Id based Students 
-##############################
-@router.get("/{student_id}", tags=["students"])
-async def get_instructor_by_id(student_id: int, db: Session = Depends(get_session)):
-    try:
-        stmt = select(User).where(User.id == student_id, User.role == RoleEnum.student)
-        result = await db.execute(stmt)
-        student = result.scalar_one_or_none()
 
-        if not student:
+
+#####################################################################################################################################
+
+##############################
+## Get Id based Students JWT
+##############################
+
+
+from dependencies.auth_dep import get_current_user
+from models.user import User, RoleEnum
+from fastapi import HTTPException, status
+
+@router.get("/all", tags=["students"])
+async def get_all_students(
+    current_user: User = Depends(get_current_user),  # Authenticated user
+    db: Session = Depends(get_session)
+):
+    try:
+        # Only instructors can access this route
+        if current_user.role != RoleEnum.instructor:
             raise HTTPException(
-                status_code=404,
-                detail={
-                    "status": "error",
-                    "message": f"Student with ID {student_id} not found",
-                    "data": {}
-                }
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"status": "error", "message": "Only instructors can view student list", "data": {}}
             )
+
+        stmt = select(User).where(User.role == RoleEnum.student)
+        result = await db.execute(stmt)
+        students = result.scalars().all()
 
         return {
             "detail": {
                 "status": "success",
-                "message": "Student fetched successfully",
-                "data": {
-                    "id": student.id,
-                    "name": student.name,
-                    "email": student.email,
-                    "phone_no": student.phone_no,
-                    "created_at": student.created_at.isoformat()
-                }
+                "message": "Students fetched successfully",
+                "data": [
+                    {
+                        "id": i.id,
+                        "name": i.name,
+                        "email": i.email,
+                        "phone_no": i.phone_no,
+                        "created_at": i.created_at.isoformat()
+                    } for i in students
+                ]
             }
         }
+
     except Exception as e:
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "status": "error",
-                "message": f"Failed to fetch instructor: {str(e)}",
+                "message": f"Failed to fetch students: {str(e)}",
                 "data": {}
             }
         )
+  
+    
+##########################################################################################################################
+##############################
+## Get Id based Students 
+##############################
+# @router.get("/{student_id}", tags=["students"])
+# async def get_instructor_by_id(student_id: int, db: Session = Depends(get_session)):
+#     try:
+#         stmt = select(User).where(User.id == student_id, User.role == RoleEnum.student)
+#         result = await db.execute(stmt)
+#         student = result.scalar_one_or_none()
+
+#         if not student:
+#             raise HTTPException(
+#                 status_code=404,
+#                 detail={
+#                     "status": "error",
+#                     "message": f"Student with ID {student_id} not found",
+#                     "data": {}
+#                 }
+#             )
+
+#         return {
+#             "detail": {
+#                 "status": "success",
+#                 "message": "Student fetched successfully",
+#                 "data": {
+#                     "id": student.id,
+#                     "name": student.name,
+#                     "email": student.email,
+#                     "phone_no": student.phone_no,
+#                     "created_at": student.created_at.isoformat()
+#                 }
+#             }
+#         }
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail={
+#                 "status": "error",
+#                 "message": f"Failed to fetch instructor: {str(e)}",
+#                 "data": {}
+#             }
+#         )
     
 ##########################################################################################################
 
