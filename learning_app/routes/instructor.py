@@ -11,6 +11,8 @@ from common import get_user_by_email
 from utils.auth import create_access_token
 from datetime import timedelta
 
+from dependencies.auth_dep import get_current_user
+
 
 router = APIRouter()
 
@@ -148,7 +150,7 @@ async def get_all_instructors(db: Session = Depends(get_session)):
 ### Get instuctor by id
 ##############################    
 
-from dependencies.auth_dep import get_current_user
+
 
 @router.get("/{instructor_id}", tags=["instructors"])
 async def get_instructor_by_id(
@@ -262,8 +264,12 @@ async def instructor_login(request: LoginRequestDetails, db: Session = Depends(g
             )
 
         # Create JWT token
+        # access_token = create_access_token(
+        #     data={"sub": instructor.id},
+        #     expires_delta=timedelta(minutes=30)
+        # )
         access_token = create_access_token(
-            data={"sub": instructor.id},
+            instructor.email,  # Pass the email directly (as a string)
             expires_delta=timedelta(minutes=30)
         )
 

@@ -4,10 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.user import User, RoleEnum
 from models.course import Course
 from database.db import get_session
-from utils.auth import get_current_user
+# from utils.auth import get_current_user
 from datetime import datetime
 from models.user import User
 from sqlalchemy.future import select
+
+from dependencies.auth_dep import get_current_user
 
 router = APIRouter()
 ################################
