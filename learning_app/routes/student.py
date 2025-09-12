@@ -165,7 +165,7 @@ async def get_all_students(db: Session = Depends(get_session)):
 from models.user import User, RoleEnum
 from fastapi import HTTPException, status
 
-@router.get("/all", tags=["students"])
+@router.get("/{student_id}", tags=["students"])
 async def get_all_students(
     current_user: User = Depends(get_current_user),  # Authenticated user
     db: Session = Depends(get_session)
