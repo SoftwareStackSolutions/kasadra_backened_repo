@@ -124,36 +124,61 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
 ##############################
 
 @router.get("/all", tags=["students"])
-async def get_all_students(db: Session = Depends(get_session)):
-    try:
-        stmt = select(User).where(User.role == RoleEnum.student)
-        result = await db.execute(stmt)
-        students = result.scalars().all()
-
-        return {
-            "detail": {
-                "status": "success",
-                "message": "Students fetched successfully",
-                "data": [ 
-                    {
-                        "id": i.id,
-                        "name": i.name,
-                        "email": i.email,
-                        "phone_no": i.phone_no,
-                        "created_at": i.created_at.isoformat() 
-                    } for i in students
-                ]
-            }
-        }
-    except Exception as e:
+async def get_all_students(
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != RoleEnum.instructor:
         raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "message": f"Failed to fetch students: {str(e)}",
-                "data": {}
-            }
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"status": "error", "message": "Only instructors can access students list", "data": {}}
         )
+
+    stmt = select(User).where(User.role == RoleEnum.student)
+    result = await db.execute(stmt)
+    students = result.scalars().all()
+
+    return {
+        "detail": {
+            "status": "success",
+            "data": [
+                {"id": s.id, "name": s.name, "email": s.email}
+                for s in students
+            ]
+        }
+    }
+
+# @router.get("/all", tags=["students"])
+# async def get_all_students(db: Session = Depends(get_session)):
+#     try:
+#         stmt = select(User).where(User.role == RoleEnum.student)
+#         result = await db.execute(stmt)
+#         students = result.scalars().all()
+
+#         return {
+#             "detail": {
+#                 "status": "success",
+#                 "message": "Students fetched successfully",
+#                 "data": [ 
+#                     {
+#                         "id": i.id,
+#                         "name": i.name,
+#                         "email": i.email,
+#                         "phone_no": i.phone_no,
+#                         "created_at": i.created_at.isoformat() 
+#                     } for i in students
+#                 ]
+#             }
+#         }
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail={
+#                 "status": "error",
+#                 "message": f"Failed to fetch students: {str(e)}",
+#                 "data": {}
+#             }
+#         )
 
 
 #####################################################################################################################################
@@ -166,48 +191,61 @@ from models.user import User, RoleEnum
 from fastapi import HTTPException, status
 
 @router.get("/{student_id}", tags=["students"])
-async def get_all_students(
-    current_user: User = Depends(get_current_user),  # Authenticated user
-    db: Session = Depends(get_session)
+async def get_student_by_id(
+    student_id: int,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
-    try:
-        # Only instructors can access this route
-        if current_user.role != RoleEnum.instructor:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={"status": "error", "message": "Only instructors can view student list", "data": {}}
-            )
-
-        stmt = select(User).where(User.role == RoleEnum.student)
-        result = await db.execute(stmt)
-        students = result.scalars().all()
-
-        return {
-            "detail": {
-                "status": "success",
-                "message": "Students fetched successfully",
-                "data": [
-                    {
-                        "id": i.id,
-                        "name": i.name,
-                        "email": i.email,
-                        "phone_no": i.phone_no,
-                        "created_at": i.created_at.isoformat()
-                    } for i in students
-                ]
-            }
-        }
-
-    except Exception as e:
+    if current_user.role != RoleEnum.instructor:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"status": "error", "message": "Only instructors can view student details", "data": {}}
+        )
+
+    stmt = select(User).where(User.id == student_id, User.role == RoleEnum.student)
+    result = await db.execute(stmt)
+    student = result.scalar_one_or_none()
+
+    if not student:
+        raise HTTPException(
+            status_code=404,
             detail={
                 "status": "error",
-                "message": f"Failed to fetch students: {str(e)}",
+                "message": f"Student with ID {student_id} not found",
                 "data": {}
             }
         )
-  
+
+    return {
+        "detail": {
+            "status": "success",
+            "message": "Student fetched successfully",
+            "data": {
+                "id": student.id,
+                "name": student.name,
+                "email": student.email,
+                "phone_no": student.phone_no,
+                "created_at": student.created_at.isoformat()
+            }
+        }
+    }
+ 
+
+
+                
+        
+ 
+      
+
+ 
+ 
+ 
+
+     
+
+ 
+
+   
     
 ##########################################################################################################################
 ##############################
@@ -236,22 +274,22 @@ async def get_all_students(
 #                 "message": "Student fetched successfully",
 #                 "data": {
 #                     "id": student.id,
-#                     "name": student.name,
-#                     "email": student.email,
-#                     "phone_no": student.phone_no,
-#                     "created_at": student.created_at.isoformat()
-#                 }
-#             }
-#         }
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500,
-#             detail={
-#                 "status": "error",
-#                 "message": f"Failed to fetch instructor: {str(e)}",
-#                 "data": {}
-#             }
-#         )
+    #                 "name": student.name,
+    #                 "email": student.email,
+    #                 "phone_no": student.phone_no,
+    #                 "created_at": student.created_at.isoformat()
+    #             }
+    #         }
+    #     }
+    # except Exception as e:
+    #     raise HTTPException(
+    #         status_code=500,
+    #         detail={
+    #             "status": "error",
+    #             "message": f"Failed to fetch instructor: {str(e)}",
+    #             "data": {}
+    #         }
+    #     )
     
 ##########################################################################################################
 
@@ -387,10 +425,15 @@ async def student_login(request: LoginRequestDetails, db: Session = Depends(get_
         #     data={"sub": student.id},
         #     expires_delta=timedelta(minutes=30)
         # )
+        # access_token = create_access_token(
+        #     student.email,  # Pass the email directly (as a string)
+        #     expires_delta=timedelta(minutes=30)
+        # )
         access_token = create_access_token(
-            student.email,  # Pass the email directly (as a string)
-            expires_delta=timedelta(minutes=30)
+        user_id=student.id,
+        expires_delta=timedelta(minutes=30)
         )
+
 
         return {
             "detail": {
