@@ -19,7 +19,7 @@ class CourseCreate(BaseModel):
     title: str
     description: str
     duration: str
-    thumbnail: str | None = None
+    thumbnail: str 
 
 @router.post("/add", tags=["courses"])
 async def add_course(
