@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.user import User, RoleEnum
 from models.course import Course
 from database.db import get_session
-# from utils.auth import get_current_user
 from datetime import datetime
 from models.user import User
 from sqlalchemy.future import select
@@ -102,15 +101,21 @@ async def add_course(
 #         }
 #     }
 
-
-
 ################################
-## Course GET method
+## Course GET method JWT
 #################################
-
 @router.get("/courses", tags=["courses"])
-async def get_all_courses(db: AsyncSession = Depends(get_session)):
-    # Join Course with User table to get instructor name
+async def get_all_courses(
+    current_user: User = Depends(get_current_user),  # ✅ Require JWT auth
+    db: AsyncSession = Depends(get_session)
+):
+    # ✅ Only allow instructors to access this API
+    if current_user.role != RoleEnum.instructor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: only instructors can view the courses"
+        )
+
     result = await db.execute(
         select(
             Course.id,
@@ -125,7 +130,6 @@ async def get_all_courses(db: AsyncSession = Depends(get_session)):
     )
     courses = result.all()
 
-    # Format data as list of dicts
     courses_list = [
         {
             "id": course.id,
@@ -133,7 +137,7 @@ async def get_all_courses(db: AsyncSession = Depends(get_session)):
             "description": course.description,
             "duration": course.duration,
             "thumbnail": course.thumbnail,
-            "created_at": course.created_at,
+            "created_at": course.created_at.isoformat(),
             "instructor_id": course.instructor_id,
             "instructor_name": course.instructor_name
         }
@@ -144,6 +148,46 @@ async def get_all_courses(db: AsyncSession = Depends(get_session)):
         "status": "success",
         "data": courses_list
     }
+################################
+## Course GET method
+#################################
+
+# @router.get("/courses", tags=["courses"])
+# async def get_all_courses(db: AsyncSession = Depends(get_session)):
+#     # Join Course with User table to get instructor name
+#     result = await db.execute(
+#         select(
+#             Course.id,
+#             Course.title,
+#             Course.description,
+#             Course.duration,
+#             Course.thumbnail,
+#             Course.created_at,
+#             Course.instructor_id,
+#             User.name.label("instructor_name")
+#         ).join(User, User.id == Course.instructor_id)
+#     )
+#     courses = result.all()
+
+#     # Format data as list of dicts
+#     courses_list = [
+#         {
+#             "id": course.id,
+#             "title": course.title,
+#             "description": course.description,
+#             "duration": course.duration,
+#             "thumbnail": course.thumbnail,
+#             "created_at": course.created_at,
+#             "instructor_id": course.instructor_id,
+#             "instructor_name": course.instructor_name
+#         }
+#         for course in courses
+#     ]
+
+#     return {
+#         "status": "success",
+#         "data": courses_list
+#     }
 
 
 @router.get("/courses/{course_id}", tags=["courses"])
