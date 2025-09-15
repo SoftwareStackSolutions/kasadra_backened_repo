@@ -35,13 +35,23 @@ app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
 app.include_router(add_course.router,prefix="/api/courses")
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+origins = [
+    "http://localhost:5173",   # React dev server
+    "http://127.0.0.1:5173",   
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8000/docs",
+    "http://www.softwarestack.xyz/api/",
+
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,          
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.on_event("startup")
 async def on_startup():
@@ -57,24 +67,6 @@ async def universal_exception_handler(request, exc):
     
 
 #####################################################################
-#########
-### owner jinisha
-origins = [
-    "http://localhost:5173",   # React dev server
-    "http://127.0.0.1:5173",   # sometimes needed
-    "http://127.0.0.1:8000",
-    "http://127.0.0.1:8000/docs",
-    "http://www.softwarestack.xyz/api/",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,          
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 ## Owner= Akhilesh ML
 

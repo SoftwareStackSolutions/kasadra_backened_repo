@@ -247,29 +247,88 @@ async def get_instructor_by_id(
 ## Instructors login
 ##############################
 
+
+# @router.post("/login", tags=["instructors"])
+# async def instructor_login(request: LoginRequestDetails, db: Session = Depends(get_session)):
+#     try:
+#         instructor = await get_user_by_email(request.Email, db)
+#         if instructor is None or instructor.role != RoleEnum.instructor:
+#             raise HTTPException(
+#                 status_code=status.HTTP_404_NOT_FOUND,
+#                 detail={"status": "error", "message": "Incorrect email.", "data": {}}
+#             )
+
+#         if not verify_password(request.Password, instructor.password):
+#             raise HTTPException(
+#                 status_code=status.HTTP_401_UNAUTHORIZED,
+#                 detail={"status": "error", "message": "Incorrect password.", "data": {}}
+#             )
+
+#         # Create JWT token
+#         access_token = create_access_token(
+#             data={"sub": instructor.id},
+#             expires_delta=timedelta(minutes=30)
+#         )
+#         # access_token = create_access_token(
+#         #     instructor.email,  # Pass the email directly (as a string)
+#         #     expires_delta=timedelta(minutes=30)
+#         # )
+
+#         return {
+#             "detail": {
+#                 "status": "success",
+#                 "message": "Logged in successfully",
+#                 "data": {
+#                     "id": instructor.id,
+#                     "instructorName": instructor.name,
+#                     "access_token": access_token,
+#                     "token_type": "bearer"
+#                 }
+#             }
+#         }
+
+#     except HTTPException as e:
+#         raise e
+
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail={
+#                 "status": "error",
+#                 "message": f"Failed to process login request: {str(e)}",
+#                 "data": {}
+#             }
+#         )
+
+
+
+# from schemas import LoginRequestDetails 
 @router.post("/login", tags=["instructors"])
-async def instructor_login(request: LoginRequestDetails, db: Session = Depends(get_session)):
+async def instructor_login(
+    request: LoginRequestDetails,
+    db: Session = Depends(get_session)
+):
     try:
+        # 1️⃣ Fetch user by email
         instructor = await get_user_by_email(request.Email, db)
+
+        # 2️⃣ Validate existence and role
         if instructor is None or instructor.role != RoleEnum.instructor:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"status": "error", "message": "Incorrect email.", "data": {}}
+                detail={"status": "error", "message": "Incorrect email or role", "data": {}}
             )
 
+        # 3️⃣ Validate password
         if not verify_password(request.Password, instructor.password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"status": "error", "message": "Incorrect password.", "data": {}}
+                detail={"status": "error", "message": "Incorrect password", "data": {}}
             )
 
-        # Create JWT token
-        # access_token = create_access_token(
-        #     data={"sub": instructor.id},
-        #     expires_delta=timedelta(minutes=30)
-        # )
+        # 4️⃣ Create JWT token (Correct usage)
         access_token = create_access_token(
-            instructor.email,  # Pass the email directly (as a string)
+            user_id=instructor.id,
             expires_delta=timedelta(minutes=30)
         )
 
