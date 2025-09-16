@@ -11,14 +11,16 @@ from sqlalchemy.future import select
 from dependencies.auth_dep import get_current_user
 
 router = APIRouter()
-################################
-## Course ADD method Using JWT
-#################################
+
 class CourseCreate(BaseModel):
     title: str
     description: str
     duration: str
     thumbnail: str 
+
+################################
+## Course ADD method Using JWT
+#################################
 
 @router.post("/add", tags=["courses"])
 async def add_course(
@@ -31,7 +33,7 @@ async def add_course(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only instructors can add courses"
         )
-    # ... rest of your course creation logic
+   
 
     new_course = Course(
         title=course.title,
@@ -102,8 +104,8 @@ async def add_course(
 #     }
 
 ################################
-## Course GET method JWT
-#################################
+## Course GET method with JWT
+################################# 
 @router.get("/courses", tags=["courses"])
 async def get_all_courses(
     current_user: User = Depends(get_current_user),  # ✅ Require JWT auth

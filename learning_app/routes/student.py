@@ -90,8 +90,6 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
     
     except HTTPException:
         raise
-######################################################
-## owner AK
 
     except IntegrityError as e:
         await db.rollback()
@@ -106,8 +104,6 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
                 }
             )
 
-######################################################
-
 
     except Exception as e:
         raise HTTPException(
@@ -120,7 +116,7 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
         )
 
 ##############################
-## Get All Students 
+## Get All Students JWT
 ##############################
 
 @router.get("/all", tags=["students"])
@@ -230,23 +226,6 @@ async def get_student_by_id(
         }
     }
  
-
-
-                
-        
- 
-      
-
- 
- 
- 
-
-     
-
- 
-
-   
-    
 ##########################################################################################################################
 ##############################
 ## Get Id based Students 
@@ -297,7 +276,6 @@ async def get_student_by_id(
 ## Put Method
 # OWNER AKHILESH
 ##############################
-#  Pydantic Schemas 
 
 
 class StudentUpdate(BaseModel):   
