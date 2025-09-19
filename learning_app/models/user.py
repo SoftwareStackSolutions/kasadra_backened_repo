@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from models.base import Base
 from datetime import datetime, date
 
+
 class RoleEnum(str, enum.Enum):
     student = "student"
     instructor = "instructor"
