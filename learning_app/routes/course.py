@@ -126,6 +126,7 @@ async def get_course_by_id(course_id: int, db: AsyncSession = Depends(get_sessio
         }
     }
 
+
 # @router.post("/lessons/{lesson_id}/contents/add", tags=["contents"])
 # async def add_content(
 #     lesson_id: int,
