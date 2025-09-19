@@ -29,20 +29,21 @@ class Lesson(Base):
     created_at = Column(Date, default=date.today)
 
     course = relationship("Course", back_populates="lessons")
-    contents = relationship("Content", back_populates="lesson")
+    concepts = relationship("Concept", back_populates="lesson", cascade="all, delete-orphan")
 
-class Content(Base):
-    __tablename__ = "contents"
+
+class Concept(Base):
+    __tablename__ = "concepts"
 
     id = Column(Integer, primary_key=True, index=True)
-    lesson_id = Column(Integer, ForeignKey("lessons.id"))
-    lesson_title = Column(String, nullable=False)
-    concept_title = Column(String, nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+    title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     file_content = Column(LargeBinary, nullable=True)
     created_at = Column(Date, default=date.today)
 
-    lesson = relationship("Lesson", back_populates="contents")
+    lesson = relationship("Lesson", back_populates="concepts")
+
 
 
 
