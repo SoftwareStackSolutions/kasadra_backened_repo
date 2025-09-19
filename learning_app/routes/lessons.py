@@ -15,7 +15,6 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
 
-
 from dependencies.auth_dep import get_current_user
 
 router = APIRouter()
