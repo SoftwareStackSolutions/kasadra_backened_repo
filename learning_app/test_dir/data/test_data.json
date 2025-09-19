@@ -21,10 +21,14 @@
       ]
     }
   },
-
-  "instructor_login": {
+  "student_login": {
     "Email": "anisha@gmail.com",
     "Password": "anisha@1"
+  },
+
+  "instructor_login": {
+    "Email": "felix@gmail.com",
+    "Password": "felix@1"
   },
 
   "create_instructor":{
