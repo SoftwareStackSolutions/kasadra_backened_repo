@@ -26,7 +26,6 @@ def test_get_all_courses(apis):
 def test_get_course_by_id(apis):
     get_all_response = apis.get('api/courses/all')
     validate_response(get_all_response, HTTPStatus.OK)
-
     courses = get_all_response.json().get("data", [])
     assert courses, "No courses found to test with"
 
