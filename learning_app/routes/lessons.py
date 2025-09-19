@@ -29,7 +29,7 @@ async def add_lesson(
     title: str = Form(...),
     description: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
-    course_id = Form(...),                                                                                                                                                                                                                                                                  
+    course_id: int = Form(...),                                                                                                                                                                                                                                                                  
     db: AsyncSession = Depends(get_session),
 ):
     

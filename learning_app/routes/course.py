@@ -7,7 +7,7 @@ from database.db import get_session
 from datetime import datetime
 from models.user import User
 from sqlalchemy.future import select
-from models.course import Course, Lesson, Content
+from models.course import Course, Lesson
 from schemas.course import CourseCreate, LessonCreate
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
@@ -22,6 +22,30 @@ class CourseCreate(BaseModel):
     description: str
     duration: str
     thumbnail: str 
+
+@router.post("/add", tags=["courses"])
+async def add_course(
+    course: CourseCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != RoleEnum.INSTRUCTOR:
+        raise HTTPException(status_code=403, detail="Only instructors can add courses")
+
+    new_course = Course(
+        title=course.title,
+        description=course.description,
+        duration=course.duration,
+        thumbnail=course.thumbnail,
+        instructor_id=current_user.id,  # 👈 always from login
+        created_at=datetime.utcnow()
+    )
+
+    db.add(new_course)
+    await db.commit()
+    await db.refresh(new_course)
+
+    return new_course  # FastAPI uses CourseResponse to serialize it
 
 ################################################################################
 ###############################
@@ -39,34 +63,34 @@ class CourseCreate(BaseModel):
     instructor_id: Optional[int] = None 
     
 
-@router.post("/add", tags=["courses"])
-async def add_course(
-    course: CourseCreate,
-    db: AsyncSession = Depends(get_session)
-):
-    instructor_id = course.instructor_id or 1  # Default to instructor_id=1
+# @router.post("/add", tags=["courses"])
+# async def add_course(
+#     course: CourseCreate,
+#     db: AsyncSession = Depends(get_session)
+# ):
+#     instructor_id = course.instructor_id or 1  # Default to instructor_id=1
 
-    new_course = Course(
-        title=course.title,
-        description=course.description,
-        duration=course.duration,
-        thumbnail=course.thumbnail,
-        instructor_id=instructor_id,
-        created_at=datetime.utcnow()
-    )
+#     new_course = Course(
+#         title=course.title,
+#         description=course.description,
+#         duration=course.duration,
+#         thumbnail=course.thumbnail,
+#         instructor_id=instructor_id,
+#         created_at=datetime.utcnow()
+#     )
 
-    db.add(new_course)
-    await db.commit()
-    await db.refresh(new_course)
+#     db.add(new_course)
+#     await db.commit()
+#     await db.refresh(new_course)
 
-    return {
-        "status": "success",
-        "message": "Course added successfully",
-        "data": {
-            "course_id": new_course.id,
-            "title": new_course.title
-        }
-    }
+#     return {
+#         "status": "success",
+#         "message": "Course added successfully",
+#         "data": {
+#             "course_id": new_course.id,
+#             "title": new_course.title
+#         }
+#     }
 
 @router.get("/all", tags=["courses"])
 async def get_all_courses(db: AsyncSession = Depends(get_session)):
