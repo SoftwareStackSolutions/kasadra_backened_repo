@@ -28,4 +28,9 @@ def validate_response(response, expected_status, expected_message=None):
 #     post_response = apis.post('student/create', payload)
 #     validate_response(post_response, HTTPStatus.OK, 'Student created successfully')
 
-
+def test_login_student(apis):
+    payload = test_data["login_student"]
+    assert payload, "Missing test data for 'login_student'"
+    post_response = apis.post('/api/student/login', payload)
+    validate_response(post_response, HTTPStatus.OK)
+    print(post_response.json())
