@@ -69,42 +69,23 @@ jobs:
   #     - name: Run tests with coverage
   #       run: pytest learning_app/test_dir/tests/ --cov=learning_app --cov-report=xml --junitxml=pytest-report.xml
 
-  build-and-publish-artifact:
-    name: Build and Publish Artifact Package
+  Build:
+    name: Build
+    # needs: Unit-Testing
     runs-on: ubuntu-latest
-    needs: checkout-source-code
+    env:
+      WORKING_DIR: ./kasadra_frontend   # <--- define here
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+        
     steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
-  
-      - name: Install zip tool
-        run: sudo apt-get update && sudo apt-get install -y zip
-  
-      - name: Zip Fast_API folder into artifact
-        run: zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore"
-  
-      # Authenticate with GCP using service account JSON key
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-  
-      # Create artifact.zip (final package)
-      - name: Zip python build
-        run: |
-          zip -r artifact.zip . -x "*.git*" "*.github*" "*.gitignore"
-          ls -lh artifact.zip
-  
-      # Upload artifact.zip to GCS bucket
-      - name: Upload artifact.zip to GCS
-        uses: google-github-actions/upload-cloud-storage@v2
-        with:
           path: ./artifact.zip
           destination: kasandra-storage/python-app/${{ github.run_id }}/artifact.zip
 
 
   create-pr-development-to-main:
-    needs: build-and-publish-artifact
+    needs: Build
     runs-on: ubuntu-latest
     outputs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
