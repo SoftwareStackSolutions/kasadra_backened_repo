@@ -69,39 +69,26 @@ jobs:
   #     - name: Run tests with coverage
   #       run: pytest learning_app/test_dir/tests/ --cov=learning_app --cov-report=xml --junitxml=pytest-report.xml
 
-  Build:
-    name: Build
-    # needs: Unit-Testing
+  build-and-publish-artifact:
+    name: Build and Publish Artifact Package
     runs-on: ubuntu-latest
-    env:
-      WORKING_DIR: ./kasadra_frontend   # <--- define here
-    defaults:
-      run:
-        working-directory: ${{ env.WORKING_DIR }}
-        
+    needs: checkout-source-code
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
   
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Install zip tool
+        run: sudo apt-get update && sudo apt-get install -y zip
+  
+      - name: Zip Fast_API folder into artifact
+        run: |
+          zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore" 
+  
+      - name: Upload Python Artifact
+        uses: actions/upload-artifact@v4
         with:
-          node-version: '18'
-  
-      - name: Cache Node modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-  
-      - name: Install dependencies
-        run: npm install
-  
-      - name: Build React App
-        run: npm run build
-
+          name: python-Artifact-code
+          path: python-package.zip
 
     #  Authenticate with GCP using service account JSON key
       - name: Authenticate to GCP
@@ -126,7 +113,7 @@ jobs:
 
 
   create-pr-development-to-main:
-    needs: Build
+    needs: build-and-publish-artifact
     runs-on: ubuntu-latest
     outputs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
