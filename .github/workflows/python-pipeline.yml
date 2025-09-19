@@ -123,7 +123,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t python-application:latest -f Dockerfile 
+          docker build -t python-application:latest -f Dockerfile .
 
       - name: Configure Docker for Artifact Registry
         run: |
