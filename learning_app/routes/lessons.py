@@ -32,6 +32,7 @@ async def add_lesson(
     course_id = Form(...),                                                                                                                                                                                                                                                                  
     db: AsyncSession = Depends(get_session),
 ):
+    
     # Check if course exists
     result = await db.execute(select(Course).where(Course.id == course_id))
     course = result.scalars().first()
