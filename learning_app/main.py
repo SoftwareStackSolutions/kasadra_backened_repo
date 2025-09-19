@@ -20,6 +20,7 @@ from database.dbconfig import engine
 from routes import student
 from routes import instructor
 from routes import course
+from routes import lessons
 
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
@@ -33,6 +34,7 @@ app = FastAPI(
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
 app.include_router(course.router, prefix="/api/courses")
+app.include_router(course.router, prefix="/api/lessons")
 
 
 

@@ -11,7 +11,7 @@ class CourseCreate(BaseModel):
 class LessonCreate(BaseModel):
     title: str
     description: str | None = None
-    course_id: int
+    course_id: Optional[int] = None
     file_content: str | None = None
     
 class ConceptCreate(BaseModel):

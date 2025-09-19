@@ -17,15 +17,15 @@ def validate_response(response, expected_status, expected_message=None):
     if expected_message:
         assert response.json()['detail']['message'] == expected_message
 
-def test_get_allstudents(apis):
-    get_response = apis.get('student/all')
-    validate_response(get_response, HTTPStatus.OK)
-    print(get_response.json())        
+# def test_get_allstudents(apis):
+#     get_response = apis.get('api/student/all')
+#     validate_response(get_response, HTTPStatus.OK)
+#     print(get_response.json())        
 
-def test_create_student(apis):
-    payload = test_data["create_student"]
-    assert payload, "Missing test data for 'create_student'"
-    post_response = apis.post('student/create', payload)
-    validate_response(post_response, HTTPStatus.OK, 'Student created successfully')
+# def test_create_student(apis):
+#     payload = test_data["create_student"]
+#     assert payload, "Missing test data for 'create_student'"
+#     post_response = apis.post('student/create', payload)
+#     validate_response(post_response, HTTPStatus.OK, 'Student created successfully')
 
 

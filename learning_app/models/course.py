@@ -23,9 +23,9 @@ class Lesson(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    description = Column(String, nullable=True)
+    description = Column(String, nullable=False)
     file_content = Column(LargeBinary, nullable=True)
-    course_id = Column(Integer, ForeignKey("courses.id"))
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     created_at = Column(Date, default=date.today)
 
     course = relationship("Course", back_populates="lessons")
