@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: python-application
-          image: ghcr.io/softwarestacksolutions/python-application:latest
+          image: us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
