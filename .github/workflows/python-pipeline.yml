@@ -69,102 +69,64 @@ jobs:
   #     - name: Run tests with coverage
   #       run: pytest learning_app/test_dir/tests/ --cov=learning_app --cov-report=xml --junitxml=pytest-report.xml
 
-  build-and-publish-artifact:
-    name: Build and Publish Artifact Package
+  Build:
+    name: Build
+    # needs: Unit-Testing
     runs-on: ubuntu-latest
-    needs: checkout-source-code
+    env:
+      WORKING_DIR: ./kasadra_frontend   # <--- define here
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+        
     steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
   
-      - name: Install zip tool
-        run: sudo apt-get update && sudo apt-get install -y zip
-  
-      - name: Zip Fast_API folder into artifact
-        run: |
-          zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore" 
-  
-      - name: Upload Python Artifact
-        uses: actions/upload-artifact@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          name: python-Artifact-code
-          path: python-package.zip
+          node-version: '18'
   
-      - name: Checkout Artifact Repo
-        uses: actions/checkout@v4
+      - name: Cache Node modules
+        uses: actions/cache@v3
         with:
-          repository: SoftwareStackSolutions/Artifact_Storage
-          ref: main
-          token: ${{ secrets.MY_GITHUB_TOKEN }}
-          path: Artifact_Storage
+          path: ~/.npm
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
   
-      - name: Check for existing latest version hash
-        id: skip-check
-        run: |
-          cd Artifact_Storage/Backend_Artifact
-          latest_file=$(ls Backend_Artifact-v*.zip 2>/dev/null | sort -V | tail -n 1)
-          if [[ -f "$latest_file" ]]; then
-            unzip -p "$latest_file" | sha256sum | cut -d' ' -f1 > ../../latest_hash.txt
-          else
-            echo "no_previous_hash" > ../../latest_hash.txt
-          fi
+      - name: Install dependencies
+        run: npm install
   
-      - name: Download Python Artifact
-        uses: actions/download-artifact@v4
+      - name: Build React App
+        run: npm run build
+
+
+    #  Authenticate with GCP using service account JSON key
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
         with:
-          name: python-Artifact-code
-          path: python-Artifact-code
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
   
-      - name: Generate current artifact hash
+       # Create artifact.zip from build folder
+      - name: Zip React build
         run: |
-          cd python-Artifact-code
-          unzip -p python-package.zip | sha256sum | cut -d' ' -f1 > ../current_hash.txt
+          cd ./
+          zip -r ../artifact.zip .
+          cd ..
+          ls -lh artifact.zip
   
-      - name: Check for changes
-        id: hash-diff
-        run: |
-          if cmp -s latest_hash.txt current_hash.txt; then
-            echo "no_change=true" >> $GITHUB_OUTPUT
-          else
-            echo "no_change=false" >> $GITHUB_OUTPUT
-          fi
-  
-      - name: Skip if no changes
-        if: steps.hash-diff.outputs.no_change == 'true'
-        run: echo "No changes in Python Artifact code — skipping commit and push."
-  
-      - name: Determine next version
-        if: steps.hash-diff.outputs.no_change == 'false'
-        id: version
-        run: |
-          cd Artifact_Storage/Backend_Artifact
-          count=$(ls Backend_Artifact-v*.zip 2>/dev/null | wc -l)
-          echo "version=v$((count + 1))" >> $GITHUB_OUTPUT
-  
-      - name: Rename and move artifact
-        if: steps.hash-diff.outputs.no_change == 'false'
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          mv python-Artifact-code/python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
-          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
-  
-      - name: Validate ZIP presence
-        if: steps.hash-diff.outputs.no_change == 'false'
-        run: ls -lh Artifact_Storage/Backend_Artifact
-  
-      - name: Commit and push ZIP to main branch
-        if: steps.hash-diff.outputs.no_change == 'false'
-        run: |
-          cd Artifact_Storage
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Backend_Artifact/Backend_Artifact-*.zip
-          git commit -m "Add Backend_Artifact ${{ steps.version.outputs.version }}"
-          git push origin main
+      # Upload artifact.zip to GCS bucket
+      - name: Upload artifact.zip to GCS
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: ./artifact.zip
+          destination: kasandra-storage/react-app/${{ github.run_id }}/artifact.zip
 
 
   create-pr-development-to-main:
-    needs: build-and-publish-artifact
+    needs: Build
     runs-on: ubuntu-latest
     outputs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
