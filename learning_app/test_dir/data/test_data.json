@@ -26,11 +26,6 @@
     "Password": "anisha@1"
   },
 
-  "instructor_login": {
-    "Email": "felix@gmail.com",
-    "Password": "Felix@1"
-  },
-
   "create_instructor":{
     "Name": "Virat",
     "Email": "virat@gmail.com",
@@ -43,6 +38,11 @@
                 "status": "success",
                 "message": "Instructor created successfully"
             }
+  },
+
+  "instructor_login": {
+    "Email": "felix@gmail.com",
+    "Password": "Felix@1"
   }
 }
 
