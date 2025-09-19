@@ -24,68 +24,43 @@ jobs:
       - id: set_output
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
-  # codeql-scan:
-  #   name: CodeQL Scanning
-  #   needs: checkout-source-code
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-
-  #     - name: Initialize CodeQL
-  #       uses: github/codeql-action/init@v3
-  #       with:
-  #         languages: python
-
-  #     - name: Autobuild
-  #       uses: github/codeql-action/autobuild@v3
-
-  #     - name: Run CodeQL Analysis
-  #       uses: github/codeql-action/analyze@v3
-  #       with:
-  #         category: "/language:python"
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-
-  # testing:
-  #   name: Run Unit Tests with Pytest
-  #   needs: checkout-source-code
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.10"
-
-  #     - name: Install Dependencies
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install -r learning_app/requirements.txt
-  #         pip install pytest pytest-cov
-
-  #     - name: Run tests with coverage
-  #       run: pytest learning_app/test_dir/tests/ --cov=learning_app --cov-report=xml --junitxml=pytest-report.xml
-
-  Build:
-    name: Build
-    # needs: Unit-Testing
+  build-and-publish-artifact:
+    name: Build and Publish Artifact Package
     runs-on: ubuntu-latest
-    env:
-      WORKING_DIR: ./kasadra_frontend   # <--- define here
-    defaults:
-      run:
-        working-directory: ${{ env.WORKING_DIR }}
-        
+    needs: checkout-source-code
     steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+  
+      - name: Install zip tool
+        run: sudo apt-get update && sudo apt-get install -y zip
+  
+      - name: Zip Fast_API folder into artifact
+        run: zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore"
+  
+      # Authenticate with GCP using service account JSON key
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+  
+      # Create artifact.zip (final package)
+      - name: Zip python build
+        run: |
+          zip -r artifact.zip . -x "*.git*" "*.github*" "*.gitignore"
+          ls -lh artifact.zip
+  
+      # Upload artifact.zip to GCS bucket
+      - name: Upload artifact.zip to GCS
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
           path: ./artifact.zip
           destination: kasandra-storage/python-app/${{ github.run_id }}/artifact.zip
 
 
+
   create-pr-development-to-main:
-    needs: Build
+    needs: build-and-publish-artifact
     runs-on: ubuntu-latest
     outputs:
       pr_url: ${{ steps.create_pr.outputs.pr_url }}
@@ -121,46 +96,46 @@ jobs:
          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
   Container-Build-and-Publish-into-Registry:
-    name: Container Build and Publish into GCR
-    needs: create-pr-development-to-main
-    runs-on: ubuntu-latest
+      name: Container Build and Publish into GCR
+      needs: create-pr-development-to-main
+      runs-on: ubuntu-latest
+    
+      steps:
+        - name: Authenticate to GCP
+          uses: google-github-actions/auth@v2
+          with:
+            credentials_json: ${{ secrets.GCP_SA_KEY }}
+    
+        - name: Install unzip
+          run: sudo apt-get update && sudo apt-get install -y unzip
+    
+        - name: Download artifact from GCS
+          run: |
+            gsutil cp gs://kasandra-storage/python-app/${{ github.run_id }}/artifact.zip ./artifact.zip
+            ls -lh artifact.zip
+    
+        - name: Unzip artifact
+          run: |
+            unzip artifact.zip -d ./app
+            ls -lh ./app
+    
+        - name: Build Docker image
+          run: |
+            docker build -t python-application:latest -f Dockerfile ./app
+    
+        - name: Configure Docker for Artifact Registry
+          run: |
+            gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+    
+        - name: Tag image for GCR
+          run: |
+            docker tag python-application:latest us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
+    
+        - name: Push image to GCR
+          run: |
+            docker push us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
+    
   
-    steps:
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-  
-      - name: Install unzip
-        run: sudo apt-get update && sudo apt-get install -y unzip
-  
-      - name: Download artifact from GCS
-        run: |
-          gsutil cp gs://kasandra-storage/python-app/${{ github.run_id }}/artifact.zip ./artifact.zip
-          ls -lh artifact.zip
-  
-      - name: Unzip artifact
-        run: |
-          unzip artifact.zip -d ./app
-          ls -lh ./app
-  
-      - name: Build Docker image
-        run: |
-          docker build -t python-application:latest -f Dockerfile ./app
-  
-      - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-  
-      - name: Tag image for GCR
-        run: |
-          docker tag python-application:latest us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
-  
-      - name: Push image to GCR
-        run: |
-          docker push us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
-
-
   Deploy-Application-to-GKE:
     name: Deploy Application to GKE
     needs: Container-Build-and-Publish-into-Registry
