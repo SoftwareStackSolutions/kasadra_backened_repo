@@ -82,3 +82,23 @@ async def get_all_lessons(db: AsyncSession = Depends(get_session)):
             for lesson in lessons
         ]
     }
+
+@router.get("/{lesson_id}", tags=["lessons"])
+async def get_lesson(
+    lesson_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    # Query lesson by ID
+    result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    lesson = result.scalars().first()
+
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    return {
+        "lesson_id": lesson.id,
+        "title": lesson.title,
+        "description": lesson.description,
+        "course_id": lesson.course_id,
+        "created_at": lesson.created_at,
+    }
