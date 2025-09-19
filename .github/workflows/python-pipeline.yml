@@ -56,6 +56,10 @@ jobs:
         with:
           path: ./artifact.zip
           destination: kasandra-storage/python-app/${{ github.run_id }}/artifact.zip
+          
+      - name: List bucket contents
+        run: |
+          gsutil ls -r gs://kasandra-storage/python-app/
 
 
 
