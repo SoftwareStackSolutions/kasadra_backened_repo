@@ -24,7 +24,6 @@ def test_get_all_courses(apis):
 
 #get course by id
 def test_get_course_by_id(apis):
-    # First get all courses
     get_all_response = apis.get('api/courses/all')
     validate_response(get_all_response, HTTPStatus.OK)
 
