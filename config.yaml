@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-config
+  namespace: kasadara
+data:
+  POSTGRES_DB: kasadara
+  POSTGRES_USER: admin
+  DB_HOST: postgres-service.kasadara.svc.cluster.local
+  DB_PORT: "5432"
