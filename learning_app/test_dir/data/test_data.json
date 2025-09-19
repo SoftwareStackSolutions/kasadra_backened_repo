@@ -1,5 +1,5 @@
 {
-  "create_student": {
+  "create_student": {  
     "Name": "Dhoni",
     "Email": "dhoni@gmail.com",
     "Phone No": "7788665121",
@@ -21,6 +21,7 @@
       ]
     }
   },
+  
   "student_login": {
     "Email": "anisha@gmail.com",
     "Password": "anisha@1"
