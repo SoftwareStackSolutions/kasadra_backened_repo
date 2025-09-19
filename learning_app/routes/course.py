@@ -22,7 +22,7 @@ class CourseCreate(BaseModel):
     description: str
     duration: str
     thumbnail: str 
-    
+
 ################################################################################
 ###############################
 # Course ADD method
@@ -90,6 +90,41 @@ async def get_all_courses(db: AsyncSession = Depends(get_session)):
     }
 
 
+@router.get("/{course_id}", tags=["courses"])
+async def get_course_by_id(course_id: int, db: AsyncSession = Depends(get_session)):
+    # Query course with instructor join
+    result = await db.execute(
+        select(
+            Course.id,
+            Course.title,
+            Course.description,
+            Course.duration,
+            Course.thumbnail,
+            Course.created_at,
+            Course.instructor_id,
+            User.name.label("instructor_name")
+        )
+        .join(User, User.id == Course.instructor_id)
+        .where(Course.id == course_id)
+    )
+    course = result.first()
+
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    return {
+        "status": "success",
+        "data": {
+            "id": course.id,
+            "title": course.title,
+            "description": course.description,
+            "duration": course.duration,
+            "thumbnail": course.thumbnail,
+            "created_at": course.created_at,
+            "instructor_id": course.instructor_id,
+            "instructor_name": course.instructor_name
+        }
+    }
 
 # @router.post("/lessons/{lesson_id}/contents/add", tags=["contents"])
 # async def add_content(
