@@ -22,9 +22,7 @@ class CourseCreate(BaseModel):
     description: str
     duration: str
     thumbnail: str 
-
-
-
+    
 ################################################################################
 ###############################
 # Course ADD method
