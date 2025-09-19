@@ -110,7 +110,7 @@ jobs:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
   
        # Create artifact.zip from build folder
-      - name: Zip React build
+      - name: Zip python build
         run: |
           cd ./
           zip -r ../artifact.zip .
@@ -122,7 +122,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: ./artifact.zip
-          destination: kasandra-storage/react-app/${{ github.run_id }}/artifact.zip
+          destination: kasandra-storage/python-app/${{ github.run_id }}/artifact.zip
 
 
   create-pr-development-to-main:
