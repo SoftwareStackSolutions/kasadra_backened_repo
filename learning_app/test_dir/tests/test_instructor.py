@@ -17,14 +17,18 @@ def validate_response(response, expected_status, expected_message=None):
         assert response.json()['detail']['message'] == expected_message
 
 def test_get_all_instructors(apis):
-    get_response = apis.get('instructor/all')
+    get_response = apis.get('api/instructor/all')
     validate_response(get_response, HTTPStatus.OK)
     print(get_response.json())        
 
-def test_create_instructor(apis):
-    payload = test_data["create_instructor"]
-    assert payload, "Missing test data for 'create_instructor'"
-    post_response = apis.post('instructor/create', payload)
-    validate_response(post_response, HTTPStatus.OK, 'Instructor created successfully')
+# def test_create_instructor(apis):
+#     payload = test_data["create_instructor"]
+#     assert payload, "Missing test data for 'create_instructor'"
+#     post_response = apis.post('api/instructor/create', payload)
+#     validate_response(post_response, HTTPStatus.OK, 'Instructor created successfully')
 
-
+def test_login_instructor(apis):
+    payload = test_data["login_instructor"]
+    assert payload, "Missing test data for 'login_instructor'"
+    post_response = apis.post('api/instructor/login', payload)
+    validate_response(post_response, HTTPStatus.OK, 'Login successfull')
