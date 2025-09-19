@@ -81,27 +81,18 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y zip
   
       - name: Zip Fast_API folder into artifact
-        run: |
-          zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore" 
+        run: zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore"
   
-      - name: Upload Python Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-Artifact-code
-          path: python-package.zip
-
-    #  Authenticate with GCP using service account JSON key
+      # Authenticate with GCP using service account JSON key
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
   
-       # Create artifact.zip from build folder
+      # Create artifact.zip (final package)
       - name: Zip python build
         run: |
-          cd ./
-          zip -r ../artifact.zip .
-          cd ..
+          zip -r artifact.zip . -x "*.git*" "*.github*" "*.gitignore"
           ls -lh artifact.zip
   
       # Upload artifact.zip to GCS bucket
