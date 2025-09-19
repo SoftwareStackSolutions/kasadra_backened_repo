@@ -35,20 +35,17 @@ jobs:
       - name: Install zip tool
         run: sudo apt-get update && sudo apt-get install -y zip
   
-      - name: Zip Fast_API folder into artifact
-        run: zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore"
-  
-      # Authenticate with GCP using service account JSON key
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-  
       # Create artifact.zip (final package)
       - name: Zip python build
         run: |
           zip -r artifact.zip . -x "*.git*" "*.github*" "*.gitignore"
           ls -lh artifact.zip
+  
+      # Authenticate with GCP
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
   
       # Upload artifact.zip to GCS bucket
       - name: Upload artifact.zip to GCS
@@ -56,8 +53,7 @@ jobs:
         with:
           path: ./artifact.zip
           destination: kasandra-storage/python-app/${{ github.run_id }}/artifact.zip
-
-
+          
 
   create-pr-development-to-main:
     needs: build-and-publish-artifact
@@ -82,10 +78,11 @@ jobs:
 
       - name: Wait for PR Merge
         run: |
+          PR_NUMBER=$(gh pr list --state open --head development --json number -q '.[0].number')
           while true; do
             STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
-              echo " PR #$PR_NUMBER has been merged!"
+              echo "PR #$PR_NUMBER has been merged!"
               break
             else
               echo "Not merged yet. Waiting for approval..."
@@ -93,55 +90,57 @@ jobs:
             fi
           done
         env:
-         GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+
 
   Container-Build-and-Publish-into-Registry:
-      name: Container Build and Publish into GCR
-      needs: create-pr-development-to-main
-      runs-on: ubuntu-latest
-    
-      steps:
-        - name: Authenticate to GCP
-          uses: google-github-actions/auth@v2
-          with:
-            credentials_json: ${{ secrets.GCP_SA_KEY }}
-    
-        - name: Install unzip
-          run: sudo apt-get update && sudo apt-get install -y unzip
-    
-        - name: Ensure gcloud is authenticated
-          run: |
-            gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
-            gcloud auth list
-            gsutil ls gs://kasandra-storage/python-app/ || true
-        
-        - name: Download artifact from GCS
-          run: |
-            gsutil cp gs://kasandra-storage/python-app/${{ github.run_id }}/artifact.zip ./artifact.zip
-            ls -lh artifact.zip
-            
-                - name: Unzip artifact
-                  run: |
-                    unzip artifact.zip -d ./app
-                    ls -lh ./app
-    
-        - name: Build Docker image
-          run: |
-            docker build -t python-application:latest -f Dockerfile ./app
-    
-        - name: Configure Docker for Artifact Registry
-          run: |
-            gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-    
-        - name: Tag image for GCR
-          run: |
-            docker tag python-application:latest us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
-    
-        - name: Push image to GCR
-          run: |
-            docker push us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
-    
+    name: Container Build and Publish into GCR
+    needs: create-pr-development-to-main
+    runs-on: ubuntu-latest
   
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+  
+      - name: Install unzip
+        run: sudo apt-get update && sudo apt-get install -y unzip
+  
+      - name: Ensure gcloud is authenticated
+        run: |
+          gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+          gcloud config set project ${{ secrets.GCP_PROJECT }}
+          gcloud auth list
+          gsutil ls gs://kasandra-storage/python-app/ || true
+  
+      - name: Download artifact from GCS
+        run: |
+          gsutil cp gs://kasandra-storage/python-app/${{ github.run_id }}/artifact.zip ./artifact.zip
+          ls -lh artifact.zip
+  
+      - name: Unzip artifact
+        run: |
+          unzip artifact.zip -d ./app
+          ls -lh ./app
+  
+      - name: Build Docker image
+        run: |
+          docker build -t python-application:latest -f Dockerfile ./app
+  
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+  
+      - name: Tag image for GCR
+        run: |
+          docker tag python-application:latest us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
+  
+      - name: Push image to GCR
+        run: |
+          docker push us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
+  
+    
   Deploy-Application-to-GKE:
     name: Deploy Application to GKE
     needs: Container-Build-and-Publish-into-Registry
