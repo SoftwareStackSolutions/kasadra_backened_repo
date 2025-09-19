@@ -21,6 +21,12 @@
       ]
     }
   },
+
+  "instructor_login": {
+    "Email": "anisha@gmail.com",
+    "Password": "anisha@1"
+  },
+
   "create_instructor":{
     "Name": "Virat",
     "Email": "virat@gmail.com",
