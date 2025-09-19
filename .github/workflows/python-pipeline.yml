@@ -109,15 +109,21 @@ jobs:
         - name: Install unzip
           run: sudo apt-get update && sudo apt-get install -y unzip
     
+        - name: Ensure gcloud is authenticated
+          run: |
+            gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+            gcloud auth list
+            gsutil ls gs://kasandra-storage/python-app/ || true
+        
         - name: Download artifact from GCS
           run: |
             gsutil cp gs://kasandra-storage/python-app/${{ github.run_id }}/artifact.zip ./artifact.zip
             ls -lh artifact.zip
-    
-        - name: Unzip artifact
-          run: |
-            unzip artifact.zip -d ./app
-            ls -lh ./app
+            
+                - name: Unzip artifact
+                  run: |
+                    unzip artifact.zip -d ./app
+                    ls -lh ./app
     
         - name: Build Docker image
           run: |
