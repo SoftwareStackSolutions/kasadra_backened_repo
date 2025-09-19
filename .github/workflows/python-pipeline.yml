@@ -123,8 +123,8 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t python-application:latest -f Dockerfile ./app
-
+          docker build -t python-application:latest ./app
+          
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
