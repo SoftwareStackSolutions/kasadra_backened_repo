@@ -14,6 +14,7 @@ from schemas.course import CourseCreate, LessonCreate
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
+from sqlalchemy.orm import selectinload
 
 from dependencies.auth_dep import get_current_user
 
@@ -81,6 +82,7 @@ async def get_all_lessons(db: AsyncSession = Depends(get_session)):
             {
                 "id": lesson.id,
                 "instructor_id": lesson.instructor_id,
+                "course_name": lesson.course.title if lesson.course else None,
                 "course_id": lesson.course_id,
                 "title": lesson.title,
                 "description": lesson.description,

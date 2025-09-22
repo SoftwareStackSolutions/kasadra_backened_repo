@@ -9,13 +9,13 @@ class Course(Base):
     __tablename__ = "courses"
 
     id = Column(Integer, primary_key=True)
+    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
     duration = Column(String, nullable=False)
     thumbnail = Column(String, nullable=True)
-    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(Date, default=date.today)
-    #instructor = relationship(User, back_populates="courses")
+    instructor = relationship("User", back_populates="courses")
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
 
 class Lesson(Base):
@@ -23,15 +23,16 @@ class Lesson(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # instructor_name = Column(String, ForeignKey("users.name"), nullable=False)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
     file_content = Column(LargeBinary, nullable=True)
     created_at = Column(Date, default=date.today)
-
+    
+    instructor = relationship("User", foreign_keys=[instructor_id])
     course = relationship("Course", back_populates="lessons")
     concepts = relationship("Concept", back_populates="lesson", cascade="all, delete-orphan")
-
 
 class Concept(Base):
     __tablename__ = "concepts"
