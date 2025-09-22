@@ -4,7 +4,7 @@ metadata:
   name: python-application-service
   namespace: kasadara
 spec:
-  type: LoadBalancer ## ClusterIP
+  type: ClusterIP
   selector:
     app: python-application
   ports:

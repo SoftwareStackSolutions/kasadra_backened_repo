@@ -7,11 +7,11 @@ from database.db import get_session
 from datetime import datetime
 from models.user import User
 from sqlalchemy.future import select
-from models.course import Course, Lesson, Content
+from models.course import Course, Lesson
 from schemas.course import CourseCreate, LessonCreate
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
-
+from typing import Optional
 
 from dependencies.auth_dep import get_current_user
 
@@ -23,15 +23,35 @@ class CourseCreate(BaseModel):
     duration: str
     thumbnail: str 
 
+# @router.post("/add", tags=["courses"])
+# async def add_course(
+#     course: CourseCreate,
+#     db: AsyncSession = Depends(get_session),
+#     current_user: User = Depends(get_current_user),
+# ):
+#     if current_user.role != RoleEnum.INSTRUCTOR:
+#         raise HTTPException(status_code=403, detail="Only instructors can add courses")
 
+#     new_course = Course(
+#         title=course.title,
+#         description=course.description,
+#         duration=course.duration,
+#         thumbnail=course.thumbnail,
+#         instructor_id=current_user.id,  
+#         created_at=datetime.utcnow()
+#     )
+
+#     db.add(new_course)
+#     await db.commit()
+#     await db.refresh(new_course)
+
+#     return new_course  # FastAPI uses CourseResponse to serialize it
 
 ################################################################################
 ###############################
 # Course ADD method
 ################################
 router = APIRouter()
-
-from typing import Optional
 
 class CourseCreate(BaseModel):
     title: str
@@ -91,6 +111,42 @@ async def get_all_courses(db: AsyncSession = Depends(get_session)):
         ]
     }
 
+
+@router.get("/{course_id}", tags=["courses"])
+async def get_course_by_id(course_id: int, db: AsyncSession = Depends(get_session)):
+    # Query course with instructor join
+    result = await db.execute(
+        select(
+            Course.id,
+            Course.title,
+            Course.description,
+            Course.duration,
+            Course.thumbnail,
+            Course.created_at,
+            Course.instructor_id,
+            User.name.label("instructor_name")
+        )
+        .join(User, User.id == Course.instructor_id)
+        .where(Course.id == course_id)
+    )
+    course = result.first()
+
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    return {
+        "status": "success",
+        "data": {
+            "id": course.id,
+            "title": course.title,
+            "description": course.description,
+            "duration": course.duration,
+            "thumbnail": course.thumbnail,
+            "created_at": course.created_at,
+            "instructor_id": course.instructor_id,
+            "instructor_name": course.instructor_name
+        }
+    }
 
 
 # @router.post("/lessons/{lesson_id}/contents/add", tags=["contents"])

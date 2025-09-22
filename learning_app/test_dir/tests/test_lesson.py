@@ -15,21 +15,21 @@ def validate_response(response, expected_status, expected_message=None):
     assert response.status_code == expected_status, f"Unexpected status code: {response.status_code}, Response: {response.text}"
     if expected_message:
         assert response.json()['detail']['message'] == expected_message
-
-#get all courses
-def test_get_all_courses(apis):
-    get_response = apis.get('api/courses/all')
+#get all lessons
+def test_get_all_lessons(apis):
+    get_response = apis.get('api/lessons/all')
     validate_response(get_response, HTTPStatus.OK)
     print(get_response.json())
 
-#get course by id
-def test_get_course_by_id(apis):
-    get_all_response = apis.get('api/courses/all')
+#get lessson by id
+def test_get_lesson_by_id(apis):
+    get_all_response = apis.get('api/lessons/all')
     validate_response(get_all_response, HTTPStatus.OK)
-    courses = get_all_response.json().get("data", [])
-    assert courses, "No courses found to test with"
 
-    course_id = 1   # take the first course
-    get_response = apis.get(f'api/courses/{course_id}')
+    lessons = get_all_response.json().get("data", [])
+    assert lessons, "No lessons found to test with"
+
+    lesson_id = 1 
+    get_response = apis.get(f'api/lessons/{lesson_id}')
     validate_response(get_response, HTTPStatus.OK)
     print(get_response.json())

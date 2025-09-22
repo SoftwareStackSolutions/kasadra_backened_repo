@@ -6,7 +6,7 @@ class CourseCreate(BaseModel):
     description: str
     duration: str
     thumbnail: Optional[str] = None
-    instructor_id: Optional[int] = None
+    # instructor_id: Optional[int] = None
 
 class LessonCreate(BaseModel):
     title: str

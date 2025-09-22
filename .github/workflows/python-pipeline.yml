@@ -24,52 +24,6 @@ jobs:
       - id: set_output
         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
-  # codeql-scan:
-  #   name: CodeQL Scanning
-  #   needs: checkout-source-code
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-
-  #     - name: Initialize CodeQL
-  #       uses: github/codeql-action/init@v3
-  #       with:
-  #         languages: python
-
-  #     - name: Autobuild
-  #       uses: github/codeql-action/autobuild@v3
-
-  #     - name: Run CodeQL Analysis
-  #       uses: github/codeql-action/analyze@v3
-  #       with:
-  #         category: "/language:python"
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-
-  # testing:
-  #   name: Run Unit Tests with Pytest
-  #   needs: checkout-source-code
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.10"
-
-  #     - name: Install Dependencies
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install -r learning_app/requirements.txt
-
-  #     - name: Run Pytest
-  #       run: |
-  #         export PYTHONPATH="$PYTHONPATH:$(pwd)/learning_app"  # Ensure tests find modules
-  #         pytest learning_app/test_dir --junitxml=pytest-report.xml
-
   build-and-publish-artifact:
     name: Build and Publish Artifact Package
     runs-on: ubuntu-latest
@@ -81,88 +35,25 @@ jobs:
       - name: Install zip tool
         run: sudo apt-get update && sudo apt-get install -y zip
   
-      - name: Zip Fast_API folder into artifact
+      # Create artifact.zip (final package)
+      - name: Zip python build
         run: |
-          zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore" 
+          zip -r artifact.zip . -x "*.git*" "*.github*" "*.gitignore"
+          ls -lh artifact.zip
   
-      - name: Upload Python Artifact
-        uses: actions/upload-artifact@v4
+      # Authenticate with GCP
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
         with:
-          name: python-Artifact-code
-          path: python-package.zip
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
   
-      - name: Checkout Artifact Repo
-        uses: actions/checkout@v4
+      # Upload artifact.zip to GCS bucket
+      - name: Upload artifact.zip to GCS
+        uses: google-github-actions/upload-cloud-storage@v2
         with:
-          repository: SoftwareStackSolutions/Artifact_Storage
-          ref: main
-          token: ${{ secrets.MY_GITHUB_TOKEN }}
-          path: Artifact_Storage
-  
-      - name: Check for existing latest version hash
-        id: skip-check
-        run: |
-          cd Artifact_Storage/Backend_Artifact
-          latest_file=$(ls Backend_Artifact-v*.zip 2>/dev/null | sort -V | tail -n 1)
-          if [[ -f "$latest_file" ]]; then
-            unzip -p "$latest_file" | sha256sum | cut -d' ' -f1 > ../../latest_hash.txt
-          else
-            echo "no_previous_hash" > ../../latest_hash.txt
-          fi
-  
-      - name: Download Python Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: python-Artifact-code
-          path: python-Artifact-code
-  
-      - name: Generate current artifact hash
-        run: |
-          cd python-Artifact-code
-          unzip -p python-package.zip | sha256sum | cut -d' ' -f1 > ../current_hash.txt
-  
-      - name: Check for changes
-        id: hash-diff
-        run: |
-          if cmp -s latest_hash.txt current_hash.txt; then
-            echo "no_change=true" >> $GITHUB_OUTPUT
-          else
-            echo "no_change=false" >> $GITHUB_OUTPUT
-          fi
-  
-      - name: Skip if no changes
-        if: steps.hash-diff.outputs.no_change == 'true'
-        run: echo "No changes in Python Artifact code — skipping commit and push."
-  
-      - name: Determine next version
-        if: steps.hash-diff.outputs.no_change == 'false'
-        id: version
-        run: |
-          cd Artifact_Storage/Backend_Artifact
-          count=$(ls Backend_Artifact-v*.zip 2>/dev/null | wc -l)
-          echo "version=v$((count + 1))" >> $GITHUB_OUTPUT
-  
-      - name: Rename and move artifact
-        if: steps.hash-diff.outputs.no_change == 'false'
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          mv python-Artifact-code/python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
-          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
-  
-      - name: Validate ZIP presence
-        if: steps.hash-diff.outputs.no_change == 'false'
-        run: ls -lh Artifact_Storage/Backend_Artifact
-  
-      - name: Commit and push ZIP to main branch
-        if: steps.hash-diff.outputs.no_change == 'false'
-        run: |
-          cd Artifact_Storage
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Backend_Artifact/Backend_Artifact-*.zip
-          git commit -m "Add Backend_Artifact ${{ steps.version.outputs.version }}"
-          git push origin main
-
+          path: ./artifact.zip
+          destination: kasandra-storage/python-app/${{ github.run_id }}/artifact.zip
+          
 
   create-pr-development-to-main:
     needs: build-and-publish-artifact
@@ -187,10 +78,11 @@ jobs:
 
       - name: Wait for PR Merge
         run: |
+          PR_NUMBER=$(gh pr list --state open --head development --json number -q '.[0].number')
           while true; do
             STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
             if [ "$STATE" = "MERGED" ]; then
-              echo " PR #$PR_NUMBER has been merged!"
+              echo "PR #$PR_NUMBER has been merged!"
               break
             else
               echo "Not merged yet. Waiting for approval..."
@@ -198,55 +90,57 @@ jobs:
             fi
           done
         env:
-         GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+
 
   Container-Build-and-Publish-into-Registry:
-    name: Container Build and Publish into Registry
+    name: Container Build and Publish into GCR
     needs: create-pr-development-to-main
     runs-on: ubuntu-latest
-
+  
     steps:
-
-      - name: Checkout main repository (kasadra_backened_repo)
-        uses: actions/checkout@v3
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
         with:
-          ref: main
-
-      - name: Checkout artifact repository
-        uses: actions/checkout@v3
-        with:
-          repository: SoftwareStackSolutions/Artifact_Storage
-          token: ${{ secrets.MY_GITHUB_TOKEN }}
-          path: Artifact_Storage
-
-      
-      - name: Prepare artifact for Docker build
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+  
+      - name: Install unzip
+        run: sudo apt-get update && sudo apt-get install -y unzip
+  
+      - name: Ensure gcloud is authenticated
         run: |
-          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
-          
-   
-      - name: Log in to GitHub Container Registry (GHCR)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.MY_GITHUB_TOKEN }}
-
-      
+          gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+          gcloud config set project ${{ secrets.GCP_PROJECT }}
+          gcloud auth list
+          gsutil ls gs://kasandra-storage/python-app/ || true
+  
+      - name: Download artifact from GCS
+        run: |
+          gsutil cp gs://kasandra-storage/python-app/${{ github.run_id }}/artifact.zip ./artifact.zip
+          ls -lh artifact.zip
+  
+      - name: Unzip artifact
+        run: |
+          unzip artifact.zip -d ./app
+          ls -lh ./app
+  
       - name: Build Docker image
         run: |
-          docker build -t python-application:latest -f Dockerfile . 
-            
-      - name: Tag image for GHCR
+          docker build -t python-application:latest -f Dockerfile ./app
+  
+      - name: Configure Docker for Artifact Registry
         run: |
-          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker tag python-application:latest ghcr.io/${REPO_OWNER_LC}/python-application:latest
-      
-      - name: Push image to GHCR
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+  
+      - name: Tag image for GCR
         run: |
-          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker push ghcr.io/${REPO_OWNER_LC}/python-application:latest      
-
+          docker tag python-application:latest us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
+  
+      - name: Push image to GCR
+        run: |
+          docker push us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
+  
+    
   Deploy-Application-to-GKE:
     name: Deploy Application to GKE
     needs: Container-Build-and-Publish-into-Registry
@@ -256,7 +150,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: main
-
   
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
@@ -270,18 +163,9 @@ jobs:
           location: ${{ secrets.GKE_ZONE }}
           project_id: ${{ secrets.GCP_PROJECT }}
   
-      - name: Create GHCR imagePullSecret in GKE
-        run: |
-          kubectl delete secret ghcr-secret --ignore-not-found --namespace=kasadara
-          kubectl create secret docker-registry ghcr-secret \
-            --docker-server=ghcr.io \
-            --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
-            --docker-email=no@email.com \
-            --namespace=kasadara
-
       - name: Deploy to GKE
         run: |
+          kubectl apply -f config.yaml -n kasadara
           kubectl apply -f deployment.yaml -n kasadara
           kubectl apply -f service.yaml -n kasadara
           kubectl apply -f ingress.yaml -n kasadara
@@ -290,10 +174,3 @@ jobs:
           kubectl get pods -n kasadara -o wide
           kubectl get svc -n kasadara -o wide
           kubectl get ingress -n kasadara -o wide
-      
-      - name: Patch deployment to use imagePullSecret
-        run: |
-          kubectl patch deployment python-application \
-            -n kasadara \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
-

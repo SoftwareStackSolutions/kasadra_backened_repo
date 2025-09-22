@@ -1,5 +1,5 @@
 {
-  "create_student": {
+  "create_student": {  
     "Name": "Dhoni",
     "Email": "dhoni@gmail.com",
     "Phone No": "7788665121",
@@ -21,8 +21,8 @@
       ]
     }
   },
-
-  "instructor_login": {
+  
+  "student_login": {
     "Email": "anisha@gmail.com",
     "Password": "anisha@1"
   },
@@ -39,6 +39,11 @@
                 "status": "success",
                 "message": "Instructor created successfully"
             }
+  },
+
+  "instructor_login": {
+    "Email": "felix@gmail.com",
+    "Password": "Felix@1"
   }
 }
 
