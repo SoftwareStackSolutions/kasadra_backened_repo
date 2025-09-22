@@ -12,6 +12,7 @@ from schemas.course import CourseCreate, LessonCreate
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
+from sqlalchemy.orm import joinedload
 
 from dependencies.auth_dep import get_current_user
 
@@ -59,21 +60,54 @@ class CourseCreate(BaseModel):
     duration: str
     thumbnail: Optional[str] = None
     instructor_id: Optional[int] = None 
-    
+    # instructor_name: Optional[string] = None    
+
+# @router.post("/add", tags=["courses"])
+# async def add_course(
+#     course: CourseCreate,
+#     db: AsyncSession = Depends(get_session)
+# ):
+#     instructor_id = course.instructor_id or 1  # Default to instructor_id=1
+
+#     new_course = Course(
+#         instructor_id=instructor_id,
+#         instructor_name= course.instructor_name,
+#         title=course.title,
+#         description=course.description,
+#         duration=course.duration,
+#         thumbnail=course.thumbnail,
+#         created_at=datetime.utcnow()
+#     )
+
+#     db.add(new_course)
+#     await db.commit()
+#     await db.refresh(new_course)
+
+#     return {
+#         "status": "success",
+#         "message": "Course added successfully",
+#         "data": {
+#             "course_id": new_course.id,
+#             "title": new_course.title,
+#             "instructor_id": new_course.instructor_id,
+#             "course_name": new_course.title
+#         }
+#     }
 
 @router.post("/add", tags=["courses"])
 async def add_course(
     course: CourseCreate,
     db: AsyncSession = Depends(get_session)
 ):
-    instructor_id = course.instructor_id or 1  # Default to instructor_id=1
+    # Default instructor_id to 1 if not provided
+    instructor_id = course.instructor_id or 1
 
     new_course = Course(
+        instructor_id=instructor_id,
         title=course.title,
         description=course.description,
         duration=course.duration,
         thumbnail=course.thumbnail,
-        instructor_id=instructor_id,
         created_at=datetime.utcnow()
     )
 
@@ -81,18 +115,30 @@ async def add_course(
     await db.commit()
     await db.refresh(new_course)
 
+    # Fetch the instructor relationship to get the name
+    await db.refresh(new_course, attribute_names=["instructor"])
+
     return {
         "status": "success",
         "message": "Course added successfully",
         "data": {
             "course_id": new_course.id,
-            "title": new_course.title
+            "title": new_course.title,
+            "instructor_id": new_course.instructor_id,
+            "instructor_name": new_course.instructor.name if new_course.instructor else None,
+            "course_name": new_course.title
         }
     }
 
+
+
+from sqlalchemy.orm import joinedload
+
 @router.get("/all", tags=["courses"])
 async def get_all_courses(db: AsyncSession = Depends(get_session)):
-    result = await db.execute(select(Course))
+    result = await db.execute(
+        select(Course).options(joinedload(Course.instructor))
+    )
     courses = result.scalars().all()
 
     return {
@@ -100,16 +146,18 @@ async def get_all_courses(db: AsyncSession = Depends(get_session)):
         "data": [
             {
                 "id": course.id,
+                "instructor_id": course.instructor_id,
+                "instructor_name": course.instructor.name if course.instructor else None,
                 "title": course.title,
                 "description": course.description,
                 "duration": course.duration,
                 "thumbnail": course.thumbnail,
-                "instructor_id": course.instructor_id,
                 "created_at": course.created_at,
             }
             for course in courses
         ]
     }
+
 
 
 @router.get("/{course_id}", tags=["courses"])
@@ -137,14 +185,15 @@ async def get_course_by_id(course_id: int, db: AsyncSession = Depends(get_sessio
     return {
         "status": "success",
         "data": {
-            "id": course.id,
-            "title": course.title,
-            "description": course.description,
-            "duration": course.duration,
-            "thumbnail": course.thumbnail,
-            "created_at": course.created_at,
-            "instructor_id": course.instructor_id,
-            "instructor_name": course.instructor_name
+                "id": course.id,
+                "instructor_id": course.instructor_id,
+                "instructor_name": course.instructor_name,
+                "title": course.title,
+                "description": course.description,
+                "duration": course.duration,
+                "thumbnail": course.thumbnail,
+                "created_at": course.created_at,
+           
         }
     }
 
