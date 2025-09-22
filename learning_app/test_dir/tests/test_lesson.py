@@ -29,7 +29,7 @@ def test_get_lesson_by_id(apis):
     lessons = get_all_response.json().get("data", [])
     assert lessons, "No lessons found to test with"
 
-    lesson_id = 1 
+    lesson_id = 3
     get_response = apis.get(f'api/lessons/{lesson_id}')
     validate_response(get_response, HTTPStatus.OK)
     print(get_response.json())
