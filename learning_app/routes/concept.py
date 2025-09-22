@@ -25,6 +25,7 @@ async def add_concept(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
+
     # Handle file
     file_content = None
     if file:
