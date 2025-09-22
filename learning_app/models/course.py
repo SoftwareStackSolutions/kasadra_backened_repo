@@ -3,6 +3,8 @@ from sqlalchemy.orm import relationship
 from .base import Base
 from datetime import date
 from models.user import User
+# from typing import Optional
+# from pydantic import BaseModel
 
 
 class Course(Base):
@@ -44,7 +46,8 @@ class Content(Base):
 
     lesson = relationship("Lesson", back_populates="contents")
 
-
+# class LessonCreate(BaseModel):
+    # description: Optional[str] = None
 
 
 
