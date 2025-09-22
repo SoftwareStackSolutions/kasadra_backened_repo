@@ -14,6 +14,7 @@ from schemas.course import CourseCreate, LessonCreate
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
+from sqlalchemy.orm import selectinload
 
 from dependencies.auth_dep import get_current_user
 
@@ -26,10 +27,11 @@ class LessonCreate(BaseModel):
 
 @router.post("/add", tags=["lessons"])
 async def add_lesson(
+    instructor_id: int = Form(...),
+    course_id: int = Form(...),
     title: str = Form(...),
     description: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
-    course_id: int = Form(...),                                                                                                                                                                                                                                                                  
+    file: Optional[UploadFile] = File(None),                                                                                                                                                                                                                                                                 
     db: AsyncSession = Depends(get_session),
 ):
     
@@ -49,10 +51,12 @@ async def add_lesson(
 
     # Create lesson
     new_lesson = Lesson(
+        instructor_id = instructor_id,
+        course_id=course.id,
         title=title,
         description=description,
         file_content=file_content,
-        course_id=course.id,
+        
         created_at=datetime.utcnow(),
     )
 
@@ -63,9 +67,10 @@ async def add_lesson(
     return {
         "status": "success",
         "message": "Lesson added successfully",
-        "data": {"lesson_id": new_lesson.id, "title": new_lesson.title},
+        "data": {"instructor_id": instructor_id, "course_id": course.id, "lesson_id": new_lesson.id, "title": new_lesson.title},
     }
 
+# Get all lessons
 @router.get("/all", tags=["lessons"])
 async def get_all_lessons(db: AsyncSession = Depends(get_session)):
     result = await db.execute(select(Lesson))
@@ -76,14 +81,18 @@ async def get_all_lessons(db: AsyncSession = Depends(get_session)):
         "data": [
             {
                 "id": lesson.id,
+                "instructor_id": lesson.instructor_id,
+                "course_name": lesson.course.title if lesson.course else None,
+                "course_id": lesson.course_id,
                 "title": lesson.title,
                 "description": lesson.description,
-                "course_id": lesson.course_id,
+                "created_at": lesson.created_at
             }
             for lesson in lessons
         ]
     }
 
+# Get lesson by ID
 @router.get("/{lesson_id}", tags=["lessons"])
 async def get_lesson(
     lesson_id: int,
@@ -97,9 +106,35 @@ async def get_lesson(
         raise HTTPException(status_code=404, detail="Lesson not found")
 
     return {
-        "lesson_id": lesson.id,
+        "id": lesson.id,
+        "instructor_id": lesson.instructor_id,
+        "course_id": lesson.course_id,
         "title": lesson.title,
         "description": lesson.description,
-        "course_id": lesson.course_id,
         "created_at": lesson.created_at,
     }
+
+@router.get("/course/{course_id}", tags=["lessons"])
+async def get_lessons_by_course(
+    course_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    # Fetch lessons for the course
+    result = await db.execute(
+        select(Lesson).where(Lesson.course_id == course_id).order_by(Lesson.created_at.desc())
+    )
+    lessons = result.scalars().all()
+
+    if not lessons:
+        raise HTTPException(status_code=404, detail="No lessons found for this course")
+
+    return [
+        {
+            "id": lesson.id,
+            "instructor_id": lesson.instructor_id,
+            "title": lesson.title,
+            "description": lesson.description,
+            "created_at": lesson.created_at,
+        }
+        for lesson in lessons
+    ]

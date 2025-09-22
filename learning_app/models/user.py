@@ -21,6 +21,7 @@ class User(Base):
     confirm_password = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), nullable=False)
     token = relationship("Token", back_populates="user", uselist=False)
+    courses = relationship("Course", back_populates="instructor")
 
 class Token(Base):
     __tablename__ = "tokens"

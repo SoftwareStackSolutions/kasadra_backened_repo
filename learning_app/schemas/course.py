@@ -19,3 +19,4 @@ class ConceptCreate(BaseModel):
     lesson_title: str
     concept_title: str
     description: Optional[str] = None
+    file_content: Optional[str] = None
