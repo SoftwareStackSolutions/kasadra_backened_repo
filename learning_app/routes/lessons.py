@@ -67,13 +67,15 @@ async def add_lesson(
     return {
         "status": "success",
         "message": "Lesson added successfully",
-        "data": {"instructor_id": instructor_id, "course_id": course.id, "lesson_id": new_lesson.id, "title": new_lesson.title},
+        "data": {"lesson_id": new_lesson.id, "instructor_id": instructor_id, "course_id": course.id, "title": new_lesson.title},
     }
 
 # Get all lessons
 @router.get("/all", tags=["lessons"])
 async def get_all_lessons(db: AsyncSession = Depends(get_session)):
-    result = await db.execute(select(Lesson))
+    result = await db.execute(
+        select(Lesson).options(selectinload(Lesson.course))  # 👈 eagerly load course
+    )
     lessons = result.scalars().all()
 
     return {
