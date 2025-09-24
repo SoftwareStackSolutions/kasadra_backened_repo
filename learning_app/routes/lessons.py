@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.user import User, RoleEnum
 from models.course import Lesson
 from models.course import Course
+from models.course import Concept
 from routes import course
 from database.db import get_session
 from datetime import datetime
@@ -116,27 +117,67 @@ async def get_lesson(
         "created_at": lesson.created_at,
     }
 
+# @router.get("/course/{course_id}", tags=["lessons"])
+# async def get_lessons_by_course(
+#     course_id: int,
+#     db: AsyncSession = Depends(get_session),
+# ):
+#     # Fetch lessons for the course
+#     result = await db.execute(
+#         select(Lesson).where(Lesson.course_id == course_id).order_by(Lesson.created_at.desc())
+#     )
+#     lessons = result.scalars().all()
+
+#     if not lessons:
+#         raise HTTPException(status_code=404, detail="No lessons found for this course")
+
+#     return [
+#         {
+#             "id": lesson.id,
+#             "instructor_id": lesson.instructor_id,
+#             "title": lesson.title,
+#             "description": lesson.description,
+#             "created_at": lesson.created_at,
+#         }
+#         for lesson in lessons
+#     ]
+
 @router.get("/course/{course_id}", tags=["lessons"])
 async def get_lessons_by_course(
     course_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    # Fetch lessons for the course
     result = await db.execute(
-        select(Lesson).where(Lesson.course_id == course_id).order_by(Lesson.created_at.desc())
+        select(Lesson)
+        .options(selectinload(Lesson.concepts))
+        .options(selectinload(Lesson.course))
+        .where(Lesson.course_id == course_id)
+        .order_by(Lesson.created_at.desc())
     )
     lessons = result.scalars().all()
 
     if not lessons:
         raise HTTPException(status_code=404, detail="No lessons found for this course")
 
-    return [
-        {
+    response = []
+    for lesson in lessons:
+        response.append({
             "id": lesson.id,
-            "instructor_id": lesson.instructor_id,
-            "title": lesson.title,
-            "description": lesson.description,
-            "created_at": lesson.created_at,
-        }
-        for lesson in lessons
-    ]
+            "lesson": lesson.title,
+            "courseName": lesson.course.title if lesson.course else None,
+            "sessionDate": lesson.created_at.strftime("%Y-%m-%d"),
+            # releaseTime won't work with Date, so just return None or add DateTime in model
+            "releaseTime": None,  
+            "status": "Active",  # or add a status field in Lesson model
+            "concepts": [
+                {
+                    "id": concept.id,
+                    "title": concept.title,
+                    "quiz": getattr(concept, "quiz", False),  # default False
+                    "lab": getattr(concept, "lab", False),    # default False
+                }
+                for concept in lesson.concepts
+            ],
+        })
+
+    return response
