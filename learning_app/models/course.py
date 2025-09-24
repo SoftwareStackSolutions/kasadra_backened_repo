@@ -92,13 +92,3 @@ class Option(Base):
 
 
 
-# class Token(Base):
-#     __tablename__ = "tokens"
-#     __table_args__ = {'extend_existing': True}
-
-#     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-#     access_token = Column(String(450), unique=True)
-#     refresh_token = Column(String(450), nullable=False)
-#     status = Column(Boolean)
-#     created_at = Column(Date, default=date.today)
-#     user = relationship(User, back_populates="token")
