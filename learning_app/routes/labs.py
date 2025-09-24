@@ -23,6 +23,18 @@ async def add_lab(
     file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_session),
 ):
+    # Check if course exists
+    result = await db.execute(select(Course).where(Course.id == course_id))
+    course = result.scalars().first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Check if lesson exists
+    result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    lesson = result.scalars().first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
     # Check if concept exists
     result = await db.execute(select(Concept).where(Concept.id == concept_id))
     concept = result.scalars().first()
@@ -33,7 +45,7 @@ async def add_lab(
 
     new_lab = Lab(
         course_id=concept.course_id,
-        lesson_id=concept.lesson_id,
+        lesson_id=lesson_id,
         concept_id=concept_id,
         title=title,
         description=description,

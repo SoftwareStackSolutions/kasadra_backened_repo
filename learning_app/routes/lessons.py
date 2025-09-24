@@ -184,7 +184,7 @@ async def get_lesson(
 #     return response
 
 
-@router.get("/course/{course_id}", tags=["lessons"])
+@router.get("{course_id}", tags=["lessons"])
 async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
     result = await db.execute(
         select(Lesson)
