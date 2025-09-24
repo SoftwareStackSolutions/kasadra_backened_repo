@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, DATETIME, ForeignKey, Boolean, LargeBinary
+from sqlalchemy import Text, Column, Integer, String, Date, DATETIME, ForeignKey, Boolean, LargeBinary
 from sqlalchemy.orm import relationship
 from .base import Base
 from datetime import date
@@ -45,10 +45,49 @@ class Concept(Base):
     description = Column(String, nullable=True)
     file_content = Column(LargeBinary, nullable=True)
     created_at = Column(Date, default=date.today)
+
     lesson = relationship("Lesson", back_populates="concepts")
+    quizzes = relationship("Quiz", back_populates="concept", cascade="all, delete-orphan")
+
+    
 
 
+class Quiz(Base):
+    __tablename__ = "quizzes"
 
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+    concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
+
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    quiz_link = Column(String, nullable=True)   # new field
+    created_at = Column(Date, default=date.today)
+
+    concept = relationship("Concept", back_populates="quizzes")
+    questions = relationship("Question", back_populates="quiz", cascade="all, delete-orphan")
+
+class Question(Base):
+    __tablename__ = "questions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
+    text = Column(Text, nullable=False)
+
+    quiz = relationship("Quiz", back_populates="questions")
+    options = relationship("Option", back_populates="question", cascade="all, delete-orphan")
+
+
+class Option(Base):
+    __tablename__ = "options"
+
+    id = Column(Integer, primary_key=True, index=True)
+    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
+    text = Column(Text, nullable=False)
+    is_correct = Column(Boolean, default=False)
+
+    question = relationship("Question", back_populates="options")
 
 
 
