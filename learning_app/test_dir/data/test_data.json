@@ -1,30 +1,16 @@
 {
   "create_student": {  
-    "Name": "Dhoni",
-    "Email": "dhoni@gmail.com",
-    "Phone No": "7788665121",
+    "Name": "Doni",
+    "Email": "doni@gmail.com",
+    "Phone No": "7788665100",
     "Password": "dhoni@1",
+    "created_at": "2025-09-23",
     "Confirm Password": "dhoni@1"
   },
   
-  "get_all_students_response": {
-    "detail": {
-      "status": "success",
-      "message": "Students fetched successfully",
-      "data": [
-        {
-          "id": 1,
-          "name": "Nila",
-          "email": "nila@gmail.com",
-          "phone_no": "7788665544"
-        }
-      ]
-    }
-  },
-  
   "student_login": {
-    "Email": "anisha@gmail.com",
-    "Password": "anisha@1"
+    "Email": "doni@gmail.com",
+    "Password": "dhoni@1"
   },
 
   "create_instructor":{
@@ -34,16 +20,17 @@
     "Password": "virat@1",
     "Confirm Password": "virat@1"
   },
+
   "get_all_instructors_response":{
     "detail": {
                 "status": "success",
-                "message": "Instructor created successfully"
+                "message": "Instructors fetched successfully"
             }
   },
 
   "instructor_login": {
-    "Email": "felix@gmail.com",
-    "Password": "Felix@1"
+    "Email": "virat@gmail.com",
+    "Password": "virat@1"
   }
 }
 

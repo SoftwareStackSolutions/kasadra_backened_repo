@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
 from sqlalchemy.orm import selectinload
+from fastapi.responses import JSONResponse
 
 from dependencies.auth_dep import get_current_user
 
@@ -142,42 +143,80 @@ async def get_lesson(
 #         for lesson in lessons
 #     ]
 
+# @router.get("/course/{course_id}", tags=["lessons"])
+# async def get_lessons_by_course(
+#     course_id: int,
+#     db: AsyncSession = Depends(get_session),
+# ):
+#     result = await db.execute(
+#         select(Lesson)
+#         .options(selectinload(Lesson.concepts))
+#         .options(selectinload(Lesson.course))
+#         .where(Lesson.course_id == course_id)
+#         .order_by(Lesson.created_at.desc())
+#     )
+#     lessons = result.scalars().all()
+
+#     if not lessons:
+#         raise HTTPException(status_code=404, detail="No lessons found for this course")
+
+#     response = []
+#     for lesson in lessons:
+#         response.append({
+#             "id": lesson.id,
+#             "lesson": lesson.title,
+#             "courseName": lesson.course.title if lesson.course else None,
+#             "sessionDate": lesson.created_at.strftime("%Y-%m-%d"),
+#             # releaseTime won't work with Date, so just return None or add DateTime in model
+#             "releaseTime": None,  
+#             "status": "Active",  # or add a status field in Lesson model
+#             "concepts": [
+#                 {
+#                     "id": concept.id,
+#                     "title": concept.title,
+#                     "quiz": getattr(concept, "quiz", False),  # default False
+#                     "lab": getattr(concept, "lab", False),    # default False
+#                 }
+#                 for concept in lesson.concepts
+#             ],
+#         })
+
+#     return response
+
+
 @router.get("/course/{course_id}", tags=["lessons"])
-async def get_lessons_by_course(
-    course_id: int,
-    db: AsyncSession = Depends(get_session),
-):
+async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
     result = await db.execute(
         select(Lesson)
-        .options(selectinload(Lesson.concepts))
-        .options(selectinload(Lesson.course))
+        .options(selectinload(Lesson.concepts), selectinload(Lesson.course))
         .where(Lesson.course_id == course_id)
         .order_by(Lesson.created_at.desc())
     )
     lessons = result.scalars().all()
 
     if not lessons:
-        raise HTTPException(status_code=404, detail="No lessons found for this course")
+        # ✅ Return empty response with custom message
+        return {"lessons": [], "message": "No lessons added yet"}
 
-    response = []
-    for lesson in lessons:
-        response.append({
+    lessons_response = [
+        {
             "id": lesson.id,
             "lesson": lesson.title,
             "courseName": lesson.course.title if lesson.course else None,
             "sessionDate": lesson.created_at.strftime("%Y-%m-%d"),
-            # releaseTime won't work with Date, so just return None or add DateTime in model
-            "releaseTime": None,  
-            "status": "Active",  # or add a status field in Lesson model
+            "releaseTime": None,
+            "status": "Active",
             "concepts": [
                 {
                     "id": concept.id,
                     "title": concept.title,
-                    "quiz": getattr(concept, "quiz", False),  # default False
-                    "lab": getattr(concept, "lab", False),    # default False
+                    "quiz": getattr(concept, "quiz", False),
+                    "lab": getattr(concept, "lab", False),
                 }
                 for concept in lesson.concepts
             ],
-        })
+        }
+        for lesson in lessons
+    ]
 
-    return response
+    return {"lessons": lessons_response}
