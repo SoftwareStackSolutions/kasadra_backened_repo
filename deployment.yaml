@@ -46,4 +46,4 @@ spec:
                   name: db-secret
                   key: POSTGRES_PASSWORD
       imagePullSecrets:
-        - name: ghcr-secret
+        - name: gcp-artifact-registry
