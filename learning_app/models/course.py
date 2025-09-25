@@ -48,6 +48,7 @@ class Concept(Base):
 
     lesson = relationship("Lesson", back_populates="concepts")
     quizzes = relationship("Quiz", back_populates="concept", cascade="all, delete-orphan")
+    labs = relationship("Lab", back_populates="concept", cascade="all, delete-orphan")
 
     
 
@@ -66,29 +67,23 @@ class Quiz(Base):
     created_at = Column(Date, default=date.today)
 
     concept = relationship("Concept", back_populates="quizzes")
-    questions = relationship("Question", back_populates="quiz", cascade="all, delete-orphan")
+    
 
-class Question(Base):
-    __tablename__ = "questions"
-
-    id = Column(Integer, primary_key=True, index=True)
-    quiz_id = Column(Integer, ForeignKey("quizzes.id"), nullable=False)
-    text = Column(Text, nullable=False)
-
-    quiz = relationship("Quiz", back_populates="questions")
-    options = relationship("Option", back_populates="question", cascade="all, delete-orphan")
-
-
-class Option(Base):
-    __tablename__ = "options"
+class Lab(Base):
+    __tablename__ = "labs"
 
     id = Column(Integer, primary_key=True, index=True)
-    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
-    text = Column(Text, nullable=False)
-    is_correct = Column(Boolean, default=False)
-
-    question = relationship("Question", back_populates="options")
-
-
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+    concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    file_content = Column(LargeBinary, nullable=True)
+    lab_link = Column(String, nullable=True)
+    created_at = Column(Date, default=date.today)
+    
+    concept = relationship("Concept", back_populates="labs")
+    lesson = relationship("Lesson")   
+    course = relationship("Course")
 
 
