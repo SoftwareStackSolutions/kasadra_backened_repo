@@ -1,4 +1,4 @@
-from sqlalchemy import Text, Column, Integer, String, Date, DATETIME, ForeignKey, Boolean, LargeBinary
+from sqlalchemy import Text, Column, Integer, String, Date, DATETIME, ForeignKey, Boolean, LargeBinary, Time
 from sqlalchemy.orm import relationship
 from .base import Base
 from datetime import date
@@ -92,3 +92,18 @@ class Lab(Base):
     course = relationship("Course")
 
 
+class ScheduleClass(Base):
+    __tablename__ = "schedule_classes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+
+    session_date = Column(Date, nullable=False)
+    session_time = Column(Time, nullable=False)
+    created_at = Column(Date, default=date.today)
+
+    instructor = relationship("User")
+    course = relationship("Course")
+    lesson = relationship("Lesson")

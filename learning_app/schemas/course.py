@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import date, time
+
 
 class CourseCreate(BaseModel):
     title: str
@@ -20,3 +22,24 @@ class ConceptCreate(BaseModel):
     concept_title: str
     description: Optional[str] = None
     file_content: Optional[str] = None
+
+############################################
+## ScheduleCreate
+############################################
+class ScheduleCreate(BaseModel):
+    course_id: int
+    lesson_id: int
+    instructor_id: int
+    session_date: date
+    session_time: time
+
+class ScheduleResponse(BaseModel):
+    id: int
+    course_id: int
+    lesson_id: int
+    instructor_id: int
+    session_date: date
+    session_time: time
+
+    class Config:
+        orm_mode = True
