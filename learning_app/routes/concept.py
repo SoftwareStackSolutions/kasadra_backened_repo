@@ -50,7 +50,7 @@ async def add_concept(
     return {
         "status": "success",
         "message": "Concept added successfully",
-        "data": {"instructor_id": instructor_id, "course_id": course_id, "lesson_id": lesson.id, "concept_id": new_concept.id, "title": new_concept.title},
+        "data": {"concept_id": new_concept.id, "instructor_id": instructor_id, "course_id": course_id, "lesson_id": lesson.id, "title": new_concept.title},
     }
 
 #get all concepts

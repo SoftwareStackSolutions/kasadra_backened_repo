@@ -6,7 +6,7 @@ from datetime import datetime
 
 from database.db import get_session
 from models.course import Concept
-from models.course import Quiz, Question, Option  # new models
+from models.course import Quiz, Course, Lesson
 
 router = APIRouter()
 
