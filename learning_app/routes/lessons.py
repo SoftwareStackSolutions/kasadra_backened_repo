@@ -16,6 +16,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
 from sqlalchemy.orm import selectinload
+from fastapi.responses import JSONResponse
+
 
 from dependencies.auth_dep import get_current_user
 
@@ -142,6 +144,87 @@ async def get_lesson(
 #         for lesson in lessons
 #     ]
 
+#################################################################
+# @router.get("/course/{course_id}", tags=["lessons"])
+# async def get_lessons_by_course(
+#     course_id: int,
+#     db: AsyncSession = Depends(get_session),
+# ):
+#     result = await db.execute(
+#         select(Lesson)
+#         .options(selectinload(Lesson.concepts))
+#         .options(selectinload(Lesson.course))
+#         .where(Lesson.course_id == course_id)
+#         .order_by(Lesson.created_at.desc())
+#     )
+#     lessons = result.scalars().all()
+
+#     if not lessons:
+#         raise HTTPException(status_code=404, detail="No lessons found for this course")
+
+#     response = []
+#     for lesson in lessons:
+#         response.append({
+#             "id": lesson.id,
+#             "lesson": lesson.title,
+#             "courseName": lesson.course.title if lesson.course else None,
+#             "sessionDate": lesson.created_at.strftime("%Y-%m-%d"),
+#             # releaseTime won't work with Date, so just return None or add DateTime in model
+#             "releaseTime": None,  
+#             "status": "Active",  # or add a status field in Lesson model
+#             "concepts": [
+#                 {
+#                     "id": concept.id,
+#                     "title": concept.title,
+#                     "quiz": getattr(concept, "quiz", False),  # default False
+#                     "lab": getattr(concept, "lab", False),    # default False
+#                 }
+#                 for concept in lesson.concepts
+#             ],
+#         })
+
+#     return response
+
+##########################################################
+# @router.get("/course/{course_id}", tags=["lessons"])
+# async def get_lessons_by_course(
+#     course_id: int,
+#     db: AsyncSession = Depends(get_session),
+# ):
+#     result = await db.execute(
+#         select(Lesson)
+#         .options(selectinload(Lesson.concepts))
+#         .options(selectinload(Lesson.course))
+#         .where(Lesson.course_id == course_id)
+#         .order_by(Lesson.created_at.desc())
+#     )
+#     lessons = result.scalars().all()
+
+#     # ✅ Return empty list instead of raising 404
+#     response = []
+#     for lesson in lessons:
+#         response.append({
+#             "id": lesson.id,
+#             "lesson": lesson.title,
+#             "courseName": lesson.course.title if lesson.course else None,
+#             "sessionDate": lesson.created_at.strftime("%Y-%m-%d"),
+#             "releaseTime": None,
+#             "status": "Active",
+#             "concepts": [
+#                 {
+#                     "id": concept.id,
+#                     "title": concept.title,
+#                     "quiz": getattr(concept, "quiz", False),
+#                     "lab": getattr(concept, "lab", False),
+#                 }
+#                 for concept in lesson.concepts
+#             ],
+#         })
+
+#     return response  # returns [] if no lessons
+##########################################################
+
+
 @router.get("/course/{course_id}", tags=["lessons"])
 async def get_lessons_by_course(
     course_id: int,
@@ -156,9 +239,7 @@ async def get_lessons_by_course(
     )
     lessons = result.scalars().all()
 
-    if not lessons:
-        raise HTTPException(status_code=404, detail="No lessons found for this course")
-
+    # ✅ Prepare response
     response = []
     for lesson in lessons:
         response.append({
@@ -166,18 +247,24 @@ async def get_lessons_by_course(
             "lesson": lesson.title,
             "courseName": lesson.course.title if lesson.course else None,
             "sessionDate": lesson.created_at.strftime("%Y-%m-%d"),
-            # releaseTime won't work with Date, so just return None or add DateTime in model
-            "releaseTime": None,  
-            "status": "Active",  # or add a status field in Lesson model
+            "releaseTime": None,
+            "status": "Active",
             "concepts": [
                 {
                     "id": concept.id,
                     "title": concept.title,
-                    "quiz": getattr(concept, "quiz", False),  # default False
-                    "lab": getattr(concept, "lab", False),    # default False
+                    "quiz": getattr(concept, "quiz", False),
+                    "lab": getattr(concept, "lab", False),
                 }
                 for concept in lesson.concepts
             ],
         })
 
-    return response
+    if not response:
+        # Return empty list with message
+        return JSONResponse(
+            status_code=200,
+            content={"lessons": [], "message": "No lessons added yet"}
+        )
+
+    return {"lessons": response}
