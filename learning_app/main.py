@@ -41,12 +41,14 @@ app.include_router(concept.router, prefix="/api/concepts")
 
 
 origins = [
-    "http://localhost:5173",   # React dev server
-    "http://127.0.0.1:5173",   
+   "http://localhost:5173",   # React dev server
+    "http://127.0.0.1:5173",  
     "http://127.0.0.1:8000",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174"
     "http://127.0.0.1:8000/docs",
     "http://www.softwarestack.xyz/api/",
-
+ 
 ]
 
 app.add_middleware(
