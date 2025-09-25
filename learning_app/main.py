@@ -22,6 +22,8 @@ from routes import instructor
 from routes import course
 from routes import lessons
 from routes import concept
+from routes import quiz
+from routes import labs
 
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
@@ -37,6 +39,9 @@ app.include_router(instructor.router, prefix="/api/instructor")
 app.include_router(course.router, prefix="/api/courses")
 app.include_router(lessons.router, prefix="/api/lessons")
 app.include_router(concept.router, prefix="/api/concepts")
+app.include_router(quiz.router, prefix="/api/quizzes")
+app.include_router(labs.router, prefix="/api/labs")
+
 
 
 
@@ -48,7 +53,9 @@ origins = [
     "http://127.0.0.1:5174"
     "http://127.0.0.1:8000/docs",
     "http://www.softwarestack.xyz/api/",
- 
+
+    "http://www.softwarestack.xyz",
+
 ]
 
 app.add_middleware(
