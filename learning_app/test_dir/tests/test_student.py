@@ -20,15 +20,15 @@ def validate_response(response, expected_status, expected_message=None):
         assert response.json()['detail']['message'] == expected_message
 
 
-# @pytest.mark.dependency(name="create_student")
-# def test_create_student(apis):
+@pytest.mark.dependency(name="create_student")
+def test_create_student(apis):
     
     
-#     payload = test_data["create_student"].copy()
-#     payload["created_at"] = datetime.utcnow().date().isoformat()  # <-- only YYYY-MM-DD
-#     assert payload, "Missing test data for 'create_student'"
-#     post_response = apis.post('student/create', payload)
-#     validate_response(post_response, HTTPStatus.OK, 'Student created successfully')
+    payload = test_data["create_student"].copy()
+    payload["created_at"] = datetime.utcnow().date().isoformat()  # <-- only YYYY-MM-DD
+    assert payload, "Missing test data for 'create_student'"
+    post_response = apis.post('student/create', payload)
+    validate_response(post_response, HTTPStatus.OK, 'Student created successfully')
 
 #login student
 @pytest.mark.dependency(name="create_student")
