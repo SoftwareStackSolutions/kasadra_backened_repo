@@ -10,6 +10,8 @@ from common import get_user_by_email
 from utils.auth import create_access_token
 from datetime import timedelta
 from dependencies.auth_dep import get_current_user
+from utils.passwd import hash_password, verify_password
+from passlib.context import CryptContext    
 
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.exc import IntegrityError
@@ -24,9 +26,10 @@ class StudentCreate(BaseModel):
     Name: str
     Email: EmailStr
     PhoneNo: str = Field(..., alias="Phone No")
-    Password: str
+    Password: constr(min_length=8, max_length=128)
     created_at: date
     Confirmpassword: str = Field(..., alias="Confirm Password")
+
 
     @field_validator("PhoneNo")
     @classmethod
@@ -72,7 +75,6 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
             email=student.Email,
             phone_no=student.PhoneNo,
             password=hash_password(student.Password),
-            confirm_password=hash_password(student.Confirmpassword),
             role=RoleEnum.student
         )
 

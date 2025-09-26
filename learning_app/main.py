@@ -24,6 +24,7 @@ from routes import lessons
 from routes import concept
 from routes import quiz
 from routes import labs
+from routes import scheduleclass
 
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
@@ -41,7 +42,7 @@ app.include_router(lessons.router, prefix="/api/lessons")
 app.include_router(concept.router, prefix="/api/concepts")
 app.include_router(quiz.router, prefix="/api/quizzes")
 app.include_router(labs.router, prefix="/api/labs")
-
+app.include_router(scheduleclass.router, prefix="/api/scheduleclass")
 
 
 origins = [

@@ -16,13 +16,13 @@ def validate_response(response, expected_status, expected_message=None):
     if expected_message:
         assert response.json()['detail']['message'] == expected_message
 
-#create instructor
-# @pytest.mark.dependency("create_instructor")
-# def test_create_instructor(apis):
-#     payload = test_data["create_instructor"]
-#     assert payload, "Missing test data for 'create_instructor'"
-#     post_response = apis.post('instructor/create', payload)
-#     validate_response(post_response, HTTPStatus.OK, 'Instructor created successfully')
+# create instructor
+@pytest.mark.dependency("create_instructor")
+def test_create_instructor(apis):
+    payload = test_data["create_instructor"]
+    assert payload, "Missing test data for 'create_instructor'"
+    post_response = apis.post('instructor/create', payload)
+    validate_response(post_response, HTTPStatus.OK, 'Instructor created successfully')
 
 #login instructor
 @pytest.mark.dependency("create_instructor")
