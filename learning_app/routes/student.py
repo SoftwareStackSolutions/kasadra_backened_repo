@@ -26,7 +26,7 @@ class StudentCreate(BaseModel):
     Name: str
     Email: EmailStr
     PhoneNo: str = Field(..., alias="Phone No")
-    Password: constr(min_length=8, max_length=128)
+    Password: constr(min_length=8, max_length=72)  # <-- enforce bcrypt limit
     created_at: date
     Confirmpassword: str = Field(..., alias="Confirm Password")
 
