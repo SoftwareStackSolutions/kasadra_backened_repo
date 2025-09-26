@@ -18,7 +18,6 @@ class User(Base):
     phone_no = Column(String, unique=True, nullable=False)
     created_at = Column(Date, default=date.today)  
     password = Column(String, nullable=False)
-    confirm_password = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), nullable=False)
     token = relationship("Token", back_populates="user", uselist=False)
     courses = relationship("Course", back_populates="instructor")
