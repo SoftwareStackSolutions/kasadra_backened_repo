@@ -1,3 +1,3 @@
-BASE_URL = "http://34.31.81.25:8000/api"
+BASE_URL = "http://34.46.104.178:8000/api"
 
 
