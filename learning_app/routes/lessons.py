@@ -18,7 +18,6 @@ from typing import Optional
 from sqlalchemy.orm import selectinload
 from fastapi.responses import JSONResponse
 
-
 from dependencies.auth_dep import get_current_user
 
 router = APIRouter()
@@ -144,7 +143,6 @@ async def get_lesson(
 #         for lesson in lessons
 #     ]
 
-#################################################################
 # @router.get("/course/{course_id}", tags=["lessons"])
 # async def get_lessons_by_course(
 #     course_id: int,
@@ -185,64 +183,23 @@ async def get_lesson(
 
 #     return response
 
-##########################################################
-# @router.get("/course/{course_id}", tags=["lessons"])
-# async def get_lessons_by_course(
-#     course_id: int,
-#     db: AsyncSession = Depends(get_session),
-# ):
-#     result = await db.execute(
-#         select(Lesson)
-#         .options(selectinload(Lesson.concepts))
-#         .options(selectinload(Lesson.course))
-#         .where(Lesson.course_id == course_id)
-#         .order_by(Lesson.created_at.desc())
-#     )
-#     lessons = result.scalars().all()
 
-#     # ✅ Return empty list instead of raising 404
-#     response = []
-#     for lesson in lessons:
-#         response.append({
-#             "id": lesson.id,
-#             "lesson": lesson.title,
-#             "courseName": lesson.course.title if lesson.course else None,
-#             "sessionDate": lesson.created_at.strftime("%Y-%m-%d"),
-#             "releaseTime": None,
-#             "status": "Active",
-#             "concepts": [
-#                 {
-#                     "id": concept.id,
-#                     "title": concept.title,
-#                     "quiz": getattr(concept, "quiz", False),
-#                     "lab": getattr(concept, "lab", False),
-#                 }
-#                 for concept in lesson.concepts
-#             ],
-#         })
-
-#     return response  # returns [] if no lessons
-##########################################################
-
-
-@router.get("/course/{course_id}", tags=["lessons"])
-async def get_lessons_by_course(
-    course_id: int,
-    db: AsyncSession = Depends(get_session),
-):
+@router.get("{course_id}", tags=["lessons"])
+async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
     result = await db.execute(
         select(Lesson)
-        .options(selectinload(Lesson.concepts))
-        .options(selectinload(Lesson.course))
+        .options(selectinload(Lesson.concepts), selectinload(Lesson.course))
         .where(Lesson.course_id == course_id)
         .order_by(Lesson.created_at.desc())
     )
     lessons = result.scalars().all()
 
-    # ✅ Prepare response
-    response = []
-    for lesson in lessons:
-        response.append({
+    if not lessons:
+        # ✅ Return empty response with custom message
+        return {"lessons": [], "message": "No lessons added yet"}
+
+    lessons_response = [
+        {
             "id": lesson.id,
             "lesson": lesson.title,
             "courseName": lesson.course.title if lesson.course else None,
@@ -258,13 +215,8 @@ async def get_lessons_by_course(
                 }
                 for concept in lesson.concepts
             ],
-        })
+        }
+        for lesson in lessons
+    ]
 
-    if not response:
-        # Return empty list with message
-        return JSONResponse(
-            status_code=200,
-            content={"lessons": [], "message": "No lessons added yet"}
-        )
-
-    return {"lessons": response}
+    return {"lessons": lessons_response}
