@@ -1,21 +1,16 @@
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+MAX_BCRYPT_PASSWORD_BYTES = 72
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # Truncate password to 72 bytes for bcrypt
+    password_bytes = password.encode("utf-8")[:MAX_BCRYPT_PASSWORD_BYTES]
+    truncated_password = password_bytes.decode("utf-8", "ignore")
+    return pwd_context.hash(truncated_password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-# from passlib.context import CryptContext 
-
-# pwd_context = CryptContext(schemes=["bcrypt_sha256"], deprecated="auto")
-
-# def hash_password(password: str) -> str:
-#     """Hash the given password securely."""
-#     return pwd_context.hash(password)
-
-# def verify_password(plain_password: str, hashed_password: str) -> bool:
-#     """Verify that a plain password matches the stored hash."""
-#     return pwd_context.verify(plain_password, hashed_password)
+    # Truncate input for verification too
+    password_bytes = plain_password.encode("utf-8")[:MAX_BCRYPT_PASSWORD_BYTES]
+    truncated_password = password_bytes.decode("utf-8", "ignore")
+    return pwd_context.verify(truncated_password, hashed_password)
