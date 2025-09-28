@@ -53,6 +53,7 @@ origins = [
     "http://127.0.0.1:8000/docs",
     "http://www.softwarestack.xyz/api/",
     "http://www.softwarestack.xyz",
+    "http://www.softwarestack.xyz/api/docs"
 
 ]
 
