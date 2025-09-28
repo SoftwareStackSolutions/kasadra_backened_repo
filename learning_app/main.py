@@ -34,9 +34,9 @@ app = FastAPI(
     description="agent backend",
     version="1.0.0",
     openapi_version="3.0.3",
-    docs_url="/api/docs",            # Swagger UI available at /api/docs
-    redoc_url="/api/redoc",          # ReDoc available at /api/redoc
-    openapi_url="/api/openapi.json"  # OpenAPI schema available at /api/openapi.json
+    docs_url="/api/docs",           # Swagger UI
+    redoc_url="/api/redoc",         # ReDoc
+    openapi_url="/api/openapi.json" # OpenAPI schema
 )
 
 app.include_router(student.router, prefix="/api/student")

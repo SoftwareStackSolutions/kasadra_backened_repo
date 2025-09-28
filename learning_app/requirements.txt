@@ -1,44 +1,29 @@
-
-##owner = Akhilesh ML
-
 # Core Framework & Server
-fastapi[standard]
-uvicorn
-
+fastapi[standard]==0.111.1
+uvicorn[standard]==0.23.2
 
 # Data Validation
-pydantic~=2.10.6
+pydantic==2.10.6
 
 # Database
-sqlalchemy
-asyncpg                 # Async PostgreSQL driver
-databases               # Optional: async DB toolkit
-psycopg2-binary         # Optional: sync PostgreSQL driver (remove if only using asyncpg)
+sqlalchemy==2.0.23
+asyncpg==1.0.0
 
 # Security & Authentication
-passlib[bcrypt]
-bcrypt
-python-jose
-pyjwt
-email-validator
+passlib[bcrypt]==1.7.5
+bcrypt==4.0.1
+python-jose[cryptography]==3.3.0
+pyjwt==2.8.0
+email-validator==2.3.0
 
 # Timezone Support
-pytz
+pytz==2025.7
 
 # Optional Utilities
-python-multipart        # For file uploads
-python-dotenv           # For .env config loading
+python-multipart==0.0.6
+python-dotenv==1.0.0
 
-#testing 
-pytest
-requests
-pytest-html 
-
-
-python-jose[cryptography]
-
-
-passlib >= 1.7
-
-bcrypt >= 3.2
-################################################################################
+# Testing
+pytest==8.2.0
+requests==2.31.0
+pytest-html==4.3.1
