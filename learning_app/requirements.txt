@@ -15,6 +15,12 @@ asyncpg                 # Async PostgreSQL driver
 databases               # Optional: async DB toolkit
 psycopg2-binary         # Optional: sync PostgreSQL driver (remove if only using asyncpg)
 
+# Security & Authentication
+passlib[bcrypt]
+bcrypt
+python-jose
+pyjwt
+email-validator
 
 # Timezone Support
 pytz
@@ -32,9 +38,7 @@ pytest-html
 python-jose[cryptography]
 
 
-passlib[bcrypt]==1.7.5
-bcrypt==4.0.1
-python-jose[cryptography]==3.3.0
-pyjwt==2.8.0
-email-validator==2.3.0
+passlib >= 1.7
+
+bcrypt >= 3.2
 ################################################################################
