@@ -1,3 +1,14 @@
+##########################
+from passlib.hash import bcrypt
+ 
+def hash_password(password: str) -> str:
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError("Password cannot exceed 72 characters")
+    return bcrypt.hash(password)
+
+##############################
+
+
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
