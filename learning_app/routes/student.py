@@ -19,6 +19,7 @@ from psycopg2.errors import UniqueViolation
 import re
 from datetime import datetime, date
 
+
 router = APIRouter()
 
 MAX_BCRYPT_PASSWORD_BYTES = 72
