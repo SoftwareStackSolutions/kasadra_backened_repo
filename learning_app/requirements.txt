@@ -7,7 +7,7 @@ pydantic==2.10.6
 
 # Database
 sqlalchemy==2.0.23
-asyncpg==1.0.0
+asyncpg==0.30.0          # fixed version, 1.0.0 does not exist
 
 # Security & Authentication
 passlib[bcrypt]==1.7.5
