@@ -5,11 +5,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 MAX_BCRYPT_PASSWORD_BYTES = 72
 
 def truncate_password(password: str) -> str:
-    password_bytes = password.encode("utf-8")
-    if len(password_bytes) <= MAX_BCRYPT_PASSWORD_BYTES:
-        return password
-    truncated_bytes = password_bytes[:MAX_BCRYPT_PASSWORD_BYTES]
-    return truncated_bytes.decode("utf-8", errors="ignore")
+    # Encode to bytes, truncate, then decode safely
+    password_bytes = password.encode("utf-8")[:MAX_BCRYPT_PASSWORD_BYTES]
+    return password_bytes.decode("utf-8", errors="ignore")
 
 def hash_password(password: str) -> str:
     safe_password = truncate_password(password)
