@@ -105,7 +105,7 @@ class ScheduleClass(Base):
 
 
 class Batch(Base):
-    __tablename__ = "batches"
+    __tablename__ = "assign_batches"
 
     id = Column(Integer, primary_key=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)

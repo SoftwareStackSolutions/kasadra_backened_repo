@@ -28,6 +28,37 @@ router = APIRouter()
 
 @router.post("/add", tags=["batches"])
 async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session)):
+    # ✅ Validate course exists
+    course = await db.get(Course, batch.course_id)
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Course with id {batch.course_id} not found"
+        )
+
+    # ✅ Validate instructor exists
+    instructor = await db.get(User, batch.instructor_id)
+    if not instructor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Instructor with id {batch.instructor_id} not found"
+        )
+
+    # ✅ Check if user has instructor role
+    if instructor.role != RoleEnum.instructor:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User {batch.instructor_id} is not an instructor"
+        )
+
+    # ✅ Check if course belongs to instructor
+    if course.instructor_id != batch.instructor_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Instructor {batch.instructor_id} is not the creator of course {batch.course_id}"
+        )
+
+    # ✅ Create new batch
     new_batch = Batch(
         course_id=batch.course_id,
         batch_name=batch.batch_name,
@@ -57,7 +88,8 @@ async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session))
     }
 
 
-@router.get("/all", tags=["batches"])
+
+@router.get("/all", tags=["assign_batches"])
 async def get_all_batches(db: AsyncSession = Depends(get_session)):
     result = await db.execute(select(Batch).options(joinedload(Batch.course), joinedload(Batch.instructor)))
     batches = result.scalars().all()
