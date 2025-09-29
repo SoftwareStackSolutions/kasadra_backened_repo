@@ -33,8 +33,12 @@ app = FastAPI(
     title="Learning_App",
     description="agent backend",
     version="1.0.0",
-    openapi_version="3.0.3"
+    openapi_version="3.0.3",
+    docs_url="/api/docs",           # Swagger UI
+    redoc_url="/api/redoc",         # ReDoc
+    openapi_url="/api/openapi.json" # OpenAPI schema
 )
+
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
 app.include_router(course.router, prefix="/api/courses")
@@ -52,9 +56,9 @@ origins = [
     "http://localhost:5174",
     "http://127.0.0.1:5174",
     "http://127.0.0.1:8000/docs",
-    "http://www.softwarestack.xyz/api/"
-
-    "http://www.softwarestack.xyz"
+   "http://www.softwarestack.xyz/api/",
+    "http://www.softwarestack.xyz",
+    "http://www.softwarestack.xyz/api/docs"
 
 ]
 
