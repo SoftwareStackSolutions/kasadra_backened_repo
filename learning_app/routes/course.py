@@ -60,40 +60,7 @@ class CourseCreate(BaseModel):
     duration: str
     thumbnail: Optional[str] = None
     instructor_id: Optional[int] = None 
-    # instructor_name: Optional[string] = None    
-
-# @router.post("/add", tags=["courses"])
-# async def add_course(
-#     course: CourseCreate,
-#     db: AsyncSession = Depends(get_session)
-# ):
-#     instructor_id = course.instructor_id or 1  # Default to instructor_id=1
-
-#     new_course = Course(
-#         instructor_id=instructor_id,
-#         instructor_name= course.instructor_name,
-#         title=course.title,
-#         description=course.description,
-#         duration=course.duration,
-#         thumbnail=course.thumbnail,
-#         created_at=datetime.utcnow()
-#     )
-
-#     db.add(new_course)
-#     await db.commit()
-#     await db.refresh(new_course)
-
-#     return {
-#         "status": "success",
-#         "message": "Course added successfully",
-#         "data": {
-#             "course_id": new_course.id,
-#             "title": new_course.title,
-#             "instructor_id": new_course.instructor_id,
-#             "course_name": new_course.title
-#         }
-#     }
-
+    
 @router.post("/add", tags=["courses"])
 async def add_course(
     course: CourseCreate,
