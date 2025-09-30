@@ -102,3 +102,19 @@ class ScheduleClass(Base):
     instructor = relationship("User")
     course = relationship("Course")
     lesson = relationship("Lesson")
+
+
+class Batch(Base):
+    __tablename__ = "assign_batches"
+
+    id = Column(Integer, primary_key=True)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    batch_name = Column(String, nullable=False)
+    num_students = Column(Integer, nullable=False)
+    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    timing = Column(String, nullable=True)  # Can be "10:00-12:00" or separate start/end
+    start_date = Column(Date, nullable=False)
+    created_at = Column(Date, default=date.today)
+
+    course = relationship("Course")
+    instructor = relationship("User")

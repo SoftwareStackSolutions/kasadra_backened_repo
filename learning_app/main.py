@@ -25,6 +25,7 @@ from routes import concept
 from routes import quiz
 from routes import labs
 from routes import scheduleclass
+from routes import batch
 
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
@@ -47,6 +48,8 @@ app.include_router(concept.router, prefix="/api/concepts")
 app.include_router(quiz.router, prefix="/api/quizzes")
 app.include_router(labs.router, prefix="/api/labs")
 app.include_router(scheduleclass.router, prefix="/api/scheduleclass")
+app.include_router(batch.router, prefix="/api/batches")
+
 
 
 
