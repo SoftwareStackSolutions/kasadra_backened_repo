@@ -1,6 +1,4 @@
-######################
-# Felix
-#####################
+
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -22,28 +20,4 @@ spec:
                 port:
                   number: 80
 
-
-######################
-##  Owner Akhilesh
-######################
-
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   name: python-app-ingress
-#   namespace: kasadara
-#   annotations:
-#     kubernetes.io/ingress.class: "gce"
-# spec:
-#   rules:
-#     - host: api.softwarestack.xyz
-#       http:
-#         paths:
-#           - path: /
-#             pathType: Prefix
-#             backend:
-#               service:
-#                 name: python-application-service
-#                 port:
-#                   number: 80
 
