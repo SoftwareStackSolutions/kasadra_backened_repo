@@ -56,3 +56,4 @@ class BatchCreate(BaseModel):
     instructor_id: int
     timing: Optional[str] = None
     start_date: date
+    end_date: date

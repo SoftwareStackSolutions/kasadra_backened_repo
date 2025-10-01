@@ -66,6 +66,7 @@ async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session))
         instructor_id=batch.instructor_id,
         timing=batch.timing,
         start_date=batch.start_date,
+        end_date=batch.end_date,    
         created_at=datetime.utcnow()
     )
 
@@ -84,9 +85,55 @@ async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session))
             "instructor_id": new_batch.instructor_id,
             "timing": new_batch.timing,
             "start_date": new_batch.start_date,
+            "end_date": new_batch.end_date
         }
     }
 
+@router.get("/by-course/{course_id}", tags=["batches"])
+async def get_batches_by_course(
+    course_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    # ✅ Validate course exists
+    course = await db.get(Course, course_id)
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Course with id {course_id} not found"
+        )
+
+    # ✅ Query all batches for the given course_id
+    result = await db.execute(
+        select(Batch)
+        .where(Batch.course_id == course_id)
+        .options(joinedload(Batch.instructor), joinedload(Batch.course))
+    )
+    batches = result.scalars().all()
+
+    if not batches:
+        return {
+            "status": "success",
+            "message": f"No batches found for course {course_id}",
+            "data": []
+        }
+
+    return {
+        "status": "success",
+        "data": [
+            {
+                "batch_id": batch.id,
+                "batch_name": batch.batch_name,
+                "num_students": batch.num_students,
+                "course_id": batch.course_id,
+                "course_name": batch.course.title if batch.course else None,
+                "instructor_id": batch.instructor_id,
+                "instructor_name": batch.instructor.name if batch.instructor else None,
+                "timing": batch.timing,
+                "start_date": batch.start_date,
+            }
+            for batch in batches
+        ]
+    }
 
 
 @router.get("/all", tags=["assign_batches"])

@@ -51,8 +51,6 @@ class Concept(Base):
     labs = relationship("Lab", back_populates="concept", cascade="all, delete-orphan")
 
     
-
-
 class Quiz(Base):
     __tablename__ = "quizzes"
 
@@ -114,6 +112,7 @@ class Batch(Base):
     instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     timing = Column(String, nullable=True)  # Can be "10:00-12:00" or separate start/end
     start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False) 
     created_at = Column(Date, default=date.today)
 
     course = relationship("Course")
