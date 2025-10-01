@@ -13,7 +13,7 @@ class Course(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
     duration = Column(String, nullable=False)
-    thumbnail = Column(String, nullable=True)
+    thumbnail = Column(LargeBinary, nullable=True)
     created_at = Column(Date, default=date.today)
     instructor = relationship("User", back_populates="courses")
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
@@ -51,8 +51,6 @@ class Concept(Base):
     labs = relationship("Lab", back_populates="concept", cascade="all, delete-orphan")
 
     
-
-
 class Quiz(Base):
     __tablename__ = "quizzes"
 
