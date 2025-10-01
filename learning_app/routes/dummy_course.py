@@ -9,6 +9,7 @@ class DummyCourse(BaseModel):
     name: str
     description: str
 
+
 # Dummy course catalog (5 courses)
 COURSE_CATALOG = [
     {"id": 1, "name": "Python", "description": "Learn Python fundamentals"},
