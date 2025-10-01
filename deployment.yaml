@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: python-application
-          image: us-central1-docker.pkg.dev/red-global-467504/kasadra/python-application:latest
+          image: ghcr.io/softwarestacksolutions/python-application:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -46,4 +46,4 @@ spec:
                   name: db-secret
                   key: POSTGRES_PASSWORD
       imagePullSecrets:
-        - name: gcp-artifact-registry
+        - name: ghcr-secret
