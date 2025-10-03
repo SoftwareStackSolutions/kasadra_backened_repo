@@ -13,7 +13,7 @@ class Course(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
     duration = Column(String, nullable=False)
-    thumbnail = Column(LargeBinary, nullable=True)
+    thumbnail = Column(String, nullable=True)
     created_at = Column(Date, default=date.today)
     instructor = relationship("User", back_populates="courses")
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
@@ -112,6 +112,7 @@ class Batch(Base):
     instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     timing = Column(String, nullable=True)  # Can be "10:00-12:00" or separate start/end
     start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False) 
     created_at = Column(Date, default=date.today)
 
     course = relationship("Course")
