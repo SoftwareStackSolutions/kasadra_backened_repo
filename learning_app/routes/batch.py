@@ -55,7 +55,7 @@ async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session))
     if course.instructor_id != batch.instructor_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Instructor {batch.instructor_id} is not the creator of course {batch.course_id}"
+            detail="You don't have access to create this batch."
         )
 
     # ✅ Create new batch
