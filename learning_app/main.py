@@ -6,7 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Optional
 from database.db import Base
-
+from fastapi.staticfiles import StaticFiles
 
 root_dir = os.path.dirname(__file__)
 sys.path.append(root_dir)
@@ -41,7 +41,7 @@ app = FastAPI(
     redoc_url="/api/redoc",         # ReDoc
     openapi_url="/api/openapi.json" # OpenAPI schema
 )
-
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
 app.include_router(course.router, prefix="/api/courses")
