@@ -6,7 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Optional
 from database.db import Base
-
+from fastapi.staticfiles import StaticFiles
 
 root_dir = os.path.dirname(__file__)
 sys.path.append(root_dir)
@@ -25,6 +25,9 @@ from routes import concept
 from routes import quiz
 from routes import labs
 from routes import scheduleclass
+from routes import batch
+from routes import dummy_course
+from routes import dummy_student
 
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
@@ -33,8 +36,12 @@ app = FastAPI(
     title="Learning_App",
     description="agent backend",
     version="1.0.0",
-    openapi_version="3.0.3"
+    openapi_version="3.0.3",
+    docs_url="/api/docs",           # Swagger UI
+    redoc_url="/api/redoc",         # ReDoc
+    openapi_url="/api/openapi.json" # OpenAPI schema
 )
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
 app.include_router(course.router, prefix="/api/courses")
@@ -43,6 +50,11 @@ app.include_router(concept.router, prefix="/api/concepts")
 app.include_router(quiz.router, prefix="/api/quizzes")
 app.include_router(labs.router, prefix="/api/labs")
 app.include_router(scheduleclass.router, prefix="/api/scheduleclass")
+app.include_router(batch.router, prefix="/api/batches")
+app.include_router(dummy_course.router, prefix="/api/dummy_courses")
+app.include_router(dummy_student.router, prefix="/api/dummy_students")
+
+
 
 
 
@@ -55,6 +67,7 @@ origins = [
     "http://127.0.0.1:8000/docs",
     "http://www.softwarestack.xyz/api/",
     "http://www.softwarestack.xyz",
+    "http://www.softwarestack.xyz/api/docs"
 
 ]
 

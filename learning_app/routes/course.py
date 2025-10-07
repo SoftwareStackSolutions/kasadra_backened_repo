@@ -13,123 +13,73 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
 from sqlalchemy.orm import joinedload
+from fastapi.staticfiles import StaticFiles
+import os
+from fastapi.responses import JSONResponse
 
 from dependencies.auth_dep import get_current_user
 
 router = APIRouter()
 
-class CourseCreate(BaseModel):
+# ✅ Pydantic schema (for documentation / response)
+class CourseResponse(BaseModel):
+    course_id: int
     title: str
-    description: str
-    duration: str
-    thumbnail: str 
+    instructor_id: int
+    instructor_name: Optional[str]
+    course_name: str
 
-# @router.post("/add", tags=["courses"])
-# async def add_course(
-#     course: CourseCreate,
-#     db: AsyncSession = Depends(get_session),
-#     current_user: User = Depends(get_current_user),
-# ):
-#     if current_user.role != RoleEnum.INSTRUCTOR:
-#         raise HTTPException(status_code=403, detail="Only instructors can add courses")
-
-#     new_course = Course(
-#         title=course.title,
-#         description=course.description,
-#         duration=course.duration,
-#         thumbnail=course.thumbnail,
-#         instructor_id=current_user.id,  
-#         created_at=datetime.utcnow()
-#     )
-
-#     db.add(new_course)
-#     await db.commit()
-#     await db.refresh(new_course)
-
-#     return new_course  # FastAPI uses CourseResponse to serialize it
-
-################################################################################
-###############################
-# Course ADD method
-################################
-router = APIRouter()
-
-class CourseCreate(BaseModel):
-    title: str
-    description: str
-    duration: str
-    thumbnail: Optional[str] = None
-    instructor_id: Optional[int] = None 
-    # instructor_name: Optional[string] = None    
-
-# @router.post("/add", tags=["courses"])
-# async def add_course(
-#     course: CourseCreate,
-#     db: AsyncSession = Depends(get_session)
-# ):
-#     instructor_id = course.instructor_id or 1  # Default to instructor_id=1
-
-#     new_course = Course(
-#         instructor_id=instructor_id,
-#         instructor_name= course.instructor_name,
-#         title=course.title,
-#         description=course.description,
-#         duration=course.duration,
-#         thumbnail=course.thumbnail,
-#         created_at=datetime.utcnow()
-#     )
-
-#     db.add(new_course)
-#     await db.commit()
-#     await db.refresh(new_course)
-
-#     return {
-#         "status": "success",
-#         "message": "Course added successfully",
-#         "data": {
-#             "course_id": new_course.id,
-#             "title": new_course.title,
-#             "instructor_id": new_course.instructor_id,
-#             "course_name": new_course.title
-#         }
-#     }
-
-@router.post("/add", tags=["courses"])
+@router.post("/add", tags=["courses"], response_model=CourseResponse)
 async def add_course(
-    course: CourseCreate,
-    db: AsyncSession = Depends(get_session)
+    title: str = Form(...),
+    description: str = Form(...),
+    duration: str = Form(...),
+    instructor_id: Optional[int] = Form(None),
+    thumbnail: Optional[UploadFile] = File(None),
+    db: AsyncSession = Depends(get_session),
 ):
-    # Default instructor_id to 1 if not provided
-    instructor_id = course.instructor_id or 1
+    instructor_id = instructor_id or 1
+
+    # ✅ Check if instructor exists
+    result = await db.execute(select(User).where(User.id == instructor_id))
+    instructor = result.scalar_one_or_none()
+    if not instructor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"You are not an instructor"
+        )
+
+    # Save image to "uploads/" folder
+    thumbnail_path = None
+    if thumbnail:
+        upload_dir = "uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        thumbnail_path = os.path.join(upload_dir, thumbnail.filename)
+
+        with open(thumbnail_path, "wb") as buffer:
+            buffer.write(await thumbnail.read())
 
     new_course = Course(
         instructor_id=instructor_id,
-        title=course.title,
-        description=course.description,
-        duration=course.duration,
-        thumbnail=course.thumbnail,
+        title=title,
+        description=description,
+        duration=duration,
+        thumbnail=thumbnail_path,
         created_at=datetime.utcnow()
     )
 
     db.add(new_course)
     await db.commit()
-    await db.refresh(new_course)
-
-    # Fetch the instructor relationship to get the name
     await db.refresh(new_course, attribute_names=["instructor"])
 
     return {
-        "status": "success",
-        "message": "Course added successfully",
-        "data": {
-            "course_id": new_course.id,
-            "title": new_course.title,
-            "instructor_id": new_course.instructor_id,
-            "instructor_name": new_course.instructor.name if new_course.instructor else None,
-            "course_name": new_course.title
-        }
+        "course_id": new_course.id,
+        "title": new_course.title,
+        "instructor_id": new_course.instructor_id,
+        "instructor_name": instructor.name,  # ✅ safe since instructor exists
+        "course_name": new_course.title,
+        "thumbnail_url": f"/uploads/{thumbnail.filename}" if thumbnail else None
     }
-
 
 
 from sqlalchemy.orm import joinedload

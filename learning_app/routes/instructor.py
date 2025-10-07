@@ -69,7 +69,6 @@ async def create_instructor(instructor: InstructorCreate, db: Session = Depends(
             email=instructor.Email,
             phone_no=instructor.PhoneNo,
             password=hash_password(instructor.Password),
-            confirm_password=hash_password(instructor.Confirmpassword),
             role=RoleEnum.instructor
         )
 

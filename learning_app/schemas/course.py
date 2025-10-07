@@ -43,3 +43,17 @@ class ScheduleResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+#####################
+## Batch create
+#####################
+
+class BatchCreate(BaseModel):
+    course_id: int
+    batch_name: str
+    num_students: int
+    instructor_id: int
+    timing: Optional[str] = None
+    start_date: date
+    end_date: date

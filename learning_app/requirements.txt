@@ -1,10 +1,8 @@
-
-##owner = Akhilesh ML
+## owner = Akhilesh ML
 
 # Core Framework & Server
 fastapi[standard]
 uvicorn
-
 
 # Data Validation
 pydantic~=2.10.6
@@ -13,12 +11,12 @@ pydantic~=2.10.6
 sqlalchemy
 asyncpg                 # Async PostgreSQL driver
 databases               # Optional: async DB toolkit
-psycopg2-binary         # Optional: sync PostgreSQL driver (remove if only using asyncpg)
+psycopg2-binary         # Optional: sync PostgreSQL driver
 
 # Security & Authentication
-passlib[bcrypt]
-bcrypt
-python-jose
+passlib==1.7.4          # Pin exact version compatible with bcrypt
+bcrypt==4.0.1           # Pin exact version compatible with passlib
+python-jose[cryptography]
 pyjwt
 email-validator
 
@@ -29,12 +27,7 @@ pytz
 python-multipart        # For file uploads
 python-dotenv           # For .env config loading
 
-#testing 
+# Testing
 pytest
 requests
-pytest-html 
-
-
-python-jose[cryptography]
-
-################################################################################
+pytest-html

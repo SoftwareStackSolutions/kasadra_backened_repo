@@ -10,6 +10,8 @@ from common import get_user_by_email
 from utils.auth import create_access_token
 from datetime import timedelta
 from dependencies.auth_dep import get_current_user
+from utils.passwd import hash_password, verify_password
+from passlib.context import CryptContext    
 
 from sqlalchemy.ext.asyncio import AsyncSession as Session
 from sqlalchemy.exc import IntegrityError
@@ -17,9 +19,14 @@ from psycopg2.errors import UniqueViolation
 import re
 from datetime import datetime, date
 
+
 router = APIRouter()
 
-#  Pydantic Schemas 
+MAX_BCRYPT_PASSWORD_BYTES = 72
+
+# --------------------------
+# Pydantic schema
+# --------------------------
 class StudentCreate(BaseModel):
     Name: str
     Email: EmailStr
@@ -36,14 +43,21 @@ class StudentCreate(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def check_password_match(self):
+    def check_passwords(self):
+        # Check password match
         if self.Password != self.Confirmpassword:
             raise ValueError("Passwords do not match")
+
+        # Truncate to bcrypt max bytes
+        password_bytes = self.Password.encode("utf-8")
+        if len(password_bytes) > MAX_BCRYPT_PASSWORD_BYTES:
+            truncated = password_bytes[:MAX_BCRYPT_PASSWORD_BYTES].decode("utf-8", errors="ignore")
+            object.__setattr__(self, "Password", truncated)
+
         return self
 
-    model_config = {
-        "populate_by_name": True
-    }
+    model_config = {"populate_by_name": True}
+
 
 class LoginRequestDetails(BaseModel):
     Email: EmailStr
@@ -56,23 +70,23 @@ class LoginRequestDetails(BaseModel):
 @router.post("/create", tags=["students"])
 async def create_student(student: StudentCreate, db: Session = Depends(get_session)):
     try:
+        # Check if email exists
         student_exists = await get_user_by_email(student.Email, db)
         if student_exists:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "status": "error",
-                    "message": "Email already registered",
-                    "data": {}
-                }
+                detail={"status": "error", "message": "Email already registered", "data": {}}
             )
 
+        # Hash password safely
+        hashed_password = hash_password(student.Password)
+
+        # Create new student
         new_student = User(
             name=student.Name,
             email=student.Email,
             phone_no=student.PhoneNo,
-            password=hash_password(student.Password),
-            confirm_password=hash_password(student.Confirmpassword),
+            password=hashed_password,
             role=RoleEnum.student
         )
 
@@ -87,34 +101,25 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
                 "data": {"id": new_student.id}
             }
         }
-    
-    except HTTPException:
-        raise
 
     except IntegrityError as e:
         await db.rollback()
-        # Check if it's phone_no duplicate
         if "users_phone_no_key" in str(e.orig):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "status": "error",
-                    "message": "Phone number already exists",
-                    "data": {}
-                }
+                detail={"status": "error", "message": "Phone number already exists", "data": {}}
             )
+        raise
 
+    except HTTPException:
+        raise
 
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail={
-                "status": "error",
-                "message": f"Failed to create student: {str(e)}",
-                "data": {}
-            }
+            detail={"status": "error", "message": f"Failed to create student: {str(e)}", "data": {}}
         )
-
+    
 ##############################
 ## Get All Students JWT
 ##############################
