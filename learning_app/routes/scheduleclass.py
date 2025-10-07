@@ -6,6 +6,7 @@ from models.course import Course, Lesson
 from models.user import User
 from database.db import get_session
 from schemas.course import ScheduleCreate, ScheduleResponse
+from sqlalchemy.orm import selectinload
 
 router = APIRouter()
 
@@ -45,7 +46,11 @@ async def add_schedule(
 # ✅ Get all schedules for a course
 @router.get("/schedule/{course_id}", tags=["schedule"])
 async def get_schedules(course_id: int, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(select(ScheduleClass).where(ScheduleClass.course_id == course_id))
+    result = await db.execute(
+        select(ScheduleClass)
+        .options(selectinload(ScheduleClass.lesson))  # preload lesson
+        .where(ScheduleClass.course_id == course_id)
+    )
     schedules = result.scalars().all()
 
     if not schedules:
@@ -57,7 +62,7 @@ async def get_schedules(course_id: int, db: AsyncSession = Depends(get_session))
                 "id": s.id,
                 "course_id": s.course_id,
                 "lesson_id": s.lesson_id,
-                "lesson_title": s.lesson.lesson_title if s.lesson else None,
+                "lesson_title": s.lesson.title if s.lesson else None,
                 "instructor_id": s.instructor_id,
                 "session_date": s.session_date.strftime("%Y-%m-%d"),
                 "session_time": str(s.session_time),

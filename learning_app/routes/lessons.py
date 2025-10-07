@@ -33,32 +33,45 @@ async def add_lesson(
     course_id: int = Form(...),
     title: str = Form(...),
     description: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),                                                                                                                                                                                                                                                                 
+    file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_session),
 ):
-    
-    # Check if course exists
+    # 1) Verify instructor exists and is an instructor
+    result = await db.execute(select(User).where(User.id == instructor_id))
+    instructor = result.scalar_one_or_none()
+    if not instructor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instructor not found")
+
+    if instructor.role != RoleEnum.instructor:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not an instructor")
+
+    # 2) Verify course exists
     result = await db.execute(select(Course).where(Course.id == course_id))
-    course = result.scalars().first()
+    course = result.scalar_one_or_none()
     if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
+    # 3) Ensure the course was created by the provided instructor
+    if course.instructor_id != instructor_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This course was not created by the provided instructor"
+        )
 
-    # Handle file
+    # 4) Handle uploaded file (PDF only)
     file_content = None
     if file:
         if file.content_type != "application/pdf":
-            raise HTTPException(status_code=400, detail="Only PDF files allowed")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files allowed")
         file_content = await file.read()
 
-    # Create lesson
+    # 5) Create lesson
     new_lesson = Lesson(
-        instructor_id = instructor_id,
+        instructor_id=instructor_id,
         course_id=course.id,
         title=title,
         description=description,
         file_content=file_content,
-        
         created_at=datetime.utcnow(),
     )
 
@@ -69,14 +82,19 @@ async def add_lesson(
     return {
         "status": "success",
         "message": "Lesson added successfully",
-        "data": {"lesson_id": new_lesson.id, "instructor_id": instructor_id, "course_id": course.id, "title": new_lesson.title},
+        "data": {
+            "lesson_id": new_lesson.id,
+            "instructor_id": instructor_id,
+            "course_id": course.id,
+            "title": new_lesson.title,
+        },
     }
 
 # Get all lessons
 @router.get("/all", tags=["lessons"])
 async def get_all_lessons(db: AsyncSession = Depends(get_session)):
     result = await db.execute(
-        select(Lesson).options(selectinload(Lesson.course))  # 👈 eagerly load course
+        select(Lesson).options(selectinload(Lesson.course))  
     )
     lessons = result.scalars().all()
 
