@@ -136,9 +136,13 @@ async def get_batches_by_course(
     }
 
 
-@router.get("/all", tags=["assign_batches"])
-async def get_all_batches(db: AsyncSession = Depends(get_session)):
-    result = await db.execute(select(Batch).options(joinedload(Batch.course), joinedload(Batch.instructor)))
+@router.get("/all/{course_id}", tags=["assign_batches"])
+async def get_all_batches(course_id: int, db: AsyncSession = Depends(get_session)):
+    result = await db.execute(
+        select(Batch)
+        .options(joinedload(Batch.course), joinedload(Batch.instructor))
+        .where(Batch.course_id == course_id)   # ✅ filter by course_id
+    )
     batches = result.scalars().all()
 
     return {
@@ -156,3 +160,4 @@ async def get_all_batches(db: AsyncSession = Depends(get_session)):
             for batch in batches
         ]
     }
+
