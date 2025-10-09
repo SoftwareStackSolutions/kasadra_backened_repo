@@ -90,6 +90,7 @@ async def add_lesson(
         },
     }
 
+
 @router.get("/all", tags=["lessons"])
 async def get_all_lessons(db: AsyncSession = Depends(get_session)):
     from models.course import ScheduleClass  # import inside to avoid circular dependency
