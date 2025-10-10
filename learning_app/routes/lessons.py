@@ -90,28 +90,42 @@ async def add_lesson(
         },
     }
 
-# Get all lessons
+
 @router.get("/all", tags=["lessons"])
 async def get_all_lessons(db: AsyncSession = Depends(get_session)):
+    from models.course import ScheduleClass  # import inside to avoid circular dependency
+
     result = await db.execute(
-        select(Lesson).options(selectinload(Lesson.course))  
+        select(Lesson)
+        .options(selectinload(Lesson.course))
     )
     lessons = result.scalars().all()
 
+    data = []
+    for lesson in lessons:
+        # Fetch the schedule for each lesson (if any)
+        schedule_result = await db.execute(
+            select(ScheduleClass)
+            .where(ScheduleClass.lesson_id == lesson.id)
+        )
+        schedule = schedule_result.scalar_one_or_none()
+
+        data.append({
+            "id": lesson.id,
+            "instructor_id": lesson.instructor_id,
+            "course_name": lesson.course.title if lesson.course else None,
+            "course_id": lesson.course_id,
+            "title": lesson.title,
+            "description": lesson.description,
+            "created_at": lesson.created_at,
+            "session_date": schedule.session_date.strftime("%Y-%m-%d %H:%M") if schedule and schedule.session_date else None,
+            "release_time": schedule.release_time if schedule and hasattr(schedule, "release_time") else "Not set",
+            "status": "Scheduled" if schedule else "Not Scheduled"
+        })
+
     return {
         "status": "success",
-        "data": [
-            {
-                "id": lesson.id,
-                "instructor_id": lesson.instructor_id,
-                "course_name": lesson.course.title if lesson.course else None,
-                "course_id": lesson.course_id,
-                "title": lesson.title,
-                "description": lesson.description,
-                "created_at": lesson.created_at
-            }
-            for lesson in lessons
-        ]
+        "data": data
     }
 
 # Get lesson by ID
@@ -176,3 +190,4 @@ async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_s
     ]
 
     return {"lessons": lessons_response}
+

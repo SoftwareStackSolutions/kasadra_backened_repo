@@ -188,19 +188,17 @@ async def get_all_students(
 ## Get Id based Students JWT
 ##############################
 
-from models.user import User, RoleEnum
-from fastapi import HTTPException, status
-
 @router.get("/{student_id}", tags=["students"])
 async def get_student_by_id(
     student_id: int,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != RoleEnum.instructor:
+    # Allow if instructor OR student is accessing their own profile
+    if current_user.role != RoleEnum.instructor and current_user.id != student_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"status": "error", "message": "Only instructors can view student details", "data": {}}
+            detail={"status": "error", "message": "Only instructors or the student themselves can view this profile", "data": {}}
         )
 
     stmt = select(User).where(User.id == student_id, User.role == RoleEnum.student)
@@ -230,7 +228,7 @@ async def get_student_by_id(
             }
         }
     }
- 
+
 ##########################################################################################################################
 ##############################
 ## Get Id based Students 
