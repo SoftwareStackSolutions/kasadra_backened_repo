@@ -35,6 +35,7 @@ class StudentCreate(BaseModel):
     created_at: date
     Confirmpassword: str = Field(..., alias="Confirm Password")
 
+
     @field_validator("PhoneNo")
     @classmethod
     def validate_phone(cls, value):
