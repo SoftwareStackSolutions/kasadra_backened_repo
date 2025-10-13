@@ -1,10 +1,14 @@
-from sqlalchemy import Text, Column, Integer, String, Date, DATETIME, ForeignKey, Boolean, LargeBinary, Time
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, LargeBinary
 from sqlalchemy.orm import relationship
-from .base import Base
 from datetime import date
+
 from models.user import User
 # from typing import Optional
 # from pydantic import BaseModel
+
+
+from sqlalchemy import Time
+from .base import Base
 
 
 class Course(Base):
@@ -15,10 +19,12 @@ class Course(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
     duration = Column(String, nullable=False)
-    thumbnail = Column(String, nullable=False)
+    thumbnail_url = Column(String, nullable=True)    # store file as binary
     created_at = Column(Date, default=date.today)
+
     instructor = relationship("User", back_populates="courses")
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
+
 
 class Lesson(Base):
     __tablename__ = "lessons"
@@ -29,7 +35,7 @@ class Lesson(Base):
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
-    file_content = Column(LargeBinary, nullable=True)
+    file_url = Column(String, nullable=True)  # s
     created_at = Column(Date, default=date.today)
     
     instructor = relationship("User", foreign_keys=[instructor_id])
@@ -45,7 +51,7 @@ class Concept(Base):
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    file_content = Column(LargeBinary, nullable=True)
+    file_url = Column(String, nullable=True)  # s
     created_at = Column(Date, default=date.today)
 
     lesson = relationship("Lesson", back_populates="concepts")
@@ -67,7 +73,7 @@ class Quiz(Base):
     concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
 
     title = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
+    description = Column(String, nullable=True)
     quiz_link = Column(String, nullable=True)   # new field
     created_at = Column(Date, default=date.today)
 
@@ -82,8 +88,8 @@ class Lab(Base):
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
     concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
     title = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
-    file_content = Column(LargeBinary, nullable=True)
+    description = Column(String, nullable=True)
+    file_url = Column(String, nullable=True)  
     lab_link = Column(String, nullable=True)
     created_at = Column(Date, default=date.today)
     
