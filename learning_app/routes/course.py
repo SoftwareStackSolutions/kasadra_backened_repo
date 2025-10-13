@@ -8,7 +8,9 @@ from database.db import get_session
 from datetime import datetime
 from typing import Optional
 from dependencies.auth_dep import get_current_user
-from utils.s3 import upload_file_to_s3  # new S3 utility
+from utils.s3 import upload_file_to_s3 
+from sqlalchemy.orm import joinedload
+
 
 router = APIRouter()
 
@@ -91,7 +93,7 @@ async def get_all_courses(db: AsyncSession = Depends(get_session)):
                 "title": course.title,
                 "description": course.description,
                 "duration": course.duration,
-                "thumbnail": course.thumbnail,
+                "thumbnail": course.thumbnail_url,
                 "created_at": course.created_at,
             }
             for course in courses
