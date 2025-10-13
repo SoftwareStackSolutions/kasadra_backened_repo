@@ -1,92 +1,77 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from models.user import User, RoleEnum
 from models.course import Course
 from database.db import get_session
 from datetime import datetime
-from models.user import User
-from sqlalchemy.future import select
-from models.course import Course, Lesson
-from schemas.course import CourseCreate, LessonCreate
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi import Form
 from typing import Optional
-from sqlalchemy.orm import joinedload
-from fastapi.staticfiles import StaticFiles
-import os
-from fastapi.responses import JSONResponse
-from sqlalchemy.orm import joinedload
 from dependencies.auth_dep import get_current_user
+from utils.s3 import upload_file_to_s3  # new S3 utility
 
 router = APIRouter()
 
-# Pydantic schema 
+
 class CourseResponse(BaseModel):
     course_id: int
     title: str
     instructor_id: int
     instructor_name: Optional[str]
     course_name: str
+    thumbnail_url: Optional[str]  # return S3 URL instead of Base64
 
-# create course
+    class Config:
+        orm_mode = True
+
+
 @router.post("/add", tags=["courses"], response_model=CourseResponse)
 async def add_course(
     title: str = Form(...),
     description: str = Form(...),
     duration: str = Form(...),
-    instructor_id: int = Form(...),   
+    instructor_id: int = Form(...),
     thumbnail: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_session),
 ):
-    # Check if instructor exists
+    # Validate instructor
     result = await db.execute(select(User).where(User.id == instructor_id))
     instructor = result.scalar_one_or_none()
-
     if not instructor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-
-    # Check role explicitly
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     if instructor.role != RoleEnum.instructor:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not an instructor"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not an instructor")
 
-    # Save image if uploaded
-    thumbnail_path = None
+    # Upload thumbnail to S3
+    thumbnail_url = None
     if thumbnail:
-        upload_dir = "uploads"
-        os.makedirs(upload_dir, exist_ok=True)
-        thumbnail_path = os.path.join(upload_dir, thumbnail.filename)
+        filename = f"courses/{datetime.utcnow().timestamp()}_{thumbnail.filename}"
+        thumbnail_url = await upload_file_to_s3(thumbnail, filename)
 
-        with open(thumbnail_path, "wb") as buffer:
-            buffer.write(await thumbnail.read())
-
+    # Create new course
     new_course = Course(
         instructor_id=instructor_id,
         title=title,
         description=description,
         duration=duration,
-        thumbnail=thumbnail_path,
-        created_at=datetime.utcnow()
+        thumbnail_url=thumbnail_url,  # store URL instead of binary
+        created_at=datetime.utcnow(),
     )
 
     db.add(new_course)
     await db.commit()
     await db.refresh(new_course, attribute_names=["instructor"])
 
+    # Return course info with S3 URL
     return {
         "course_id": new_course.id,
         "title": new_course.title,
         "instructor_id": instructor.id,
         "instructor_name": instructor.name,
         "course_name": new_course.title,
-        "thumbnail_url": f"/uploads/{thumbnail.filename}" if thumbnail else None
+        "thumbnail_url": thumbnail_url,
     }
+
 
 # Get all courses
 @router.get("/all", tags=["courses"])
