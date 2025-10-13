@@ -281,32 +281,28 @@ async def get_student_by_id(
 # OWNER AKHILESH
 ##############################
 
-
-class StudentUpdate(BaseModel):   
+class StudentUpdate(BaseModel):
     Name: str
-    Email: EmailStr
     PhoneNo: str = Field(..., alias="Phone No")
 
     @field_validator("PhoneNo")
     def validate_phone(cls, v):
-        if v is None:
-            return v
         if not v.isdigit():
             raise ValueError("Phone number must contain only digits.")
         if len(v) != 10:
             raise ValueError("Phone number must be exactly 10 digits long.")
         return v
 
+
 @router.put("/{student_id}", tags=["students"])
 async def update_student(
     student_id: int,
     update_data: StudentUpdate,
     db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user)  # JWT protection
-    
+    current_user: User = Depends(get_current_user)
 ):
     try:
-        # Fetch student
+        # Fetch the student record
         stmt = select(User).where(User.id == student_id)
         result = await db.execute(stmt)
         student = result.scalar_one_or_none()
@@ -321,13 +317,9 @@ async def update_student(
                 }
             )
 
-        # Update fields only if provided
-        if update_data.Name:
-            student.name = update_data.Name
-        if update_data.Email:
-            student.email = update_data.Email
-        if update_data.PhoneNo:
-            student.phone_no = update_data.PhoneNo
+        # Update only Name and Phone Number
+        student.name = update_data.Name
+        student.phone_no = update_data.PhoneNo
 
         db.add(student)
         await db.commit()
@@ -336,7 +328,7 @@ async def update_student(
         return {
             "detail": {
                 "status": "success",
-                "message": "Student updated successfully",
+                "message": "Student name and phone number updated successfully",
                 "data": {
                     "id": student.id,
                     "name": student.name,
@@ -345,19 +337,10 @@ async def update_student(
                 }
             }
         }
-    
+
     except IntegrityError as e:
         await db.rollback()
-        if "users_email_key" in str(e.orig):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "status": "error",
-                    "message": "Email already exists",
-                    "data": {}
-                }
-            )
-        elif "users_phone_no_key" in str(e.orig):
+        if "users_phone_no_key" in str(e.orig):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
