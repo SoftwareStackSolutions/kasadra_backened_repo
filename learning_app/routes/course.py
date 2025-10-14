@@ -110,7 +110,7 @@ async def get_course_by_id(course_id: int, db: AsyncSession = Depends(get_sessio
             Course.title,
             Course.description,
             Course.duration,
-            Course.thumbnail,
+            Course.thumbnail_url,
             Course.created_at,
             Course.instructor_id,
             User.name.label("instructor_name")
@@ -132,7 +132,7 @@ async def get_course_by_id(course_id: int, db: AsyncSession = Depends(get_sessio
                 "title": course.title,
                 "description": course.description,
                 "duration": course.duration,
-                "thumbnail": course.thumbnail,
+                "thumbnail": course.thumbnail_url,
                 "created_at": course.created_at,
            
         }
