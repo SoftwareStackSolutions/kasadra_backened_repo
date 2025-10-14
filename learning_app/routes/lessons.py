@@ -1,31 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from models.user import User, RoleEnum
-from models.course import Lesson
-from models.course import Course
-from models.course import Concept
-from routes import course
+from models.course import Lesson, Course
 from database.db import get_session
 from datetime import datetime
-from models.user import User
-from sqlalchemy.future import select
-from models.course import Course, Lesson
-from schemas.course import CourseCreate, LessonCreate
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi import Form
 from typing import Optional
-from sqlalchemy.orm import selectinload
-from fastapi.responses import JSONResponse
-
 from dependencies.auth_dep import get_current_user
+from utils.s3 import upload_file_to_s3  # Make sure this utility is implemented
 
 router = APIRouter()
-class LessonCreate(BaseModel):
-    title: str
-    description: str = None
-    file: UploadFile = None
-    course_id: Optional[int] = None  # Assuming course_id is optional
 
 @router.post("/add", tags=["lessons"])
 async def add_lesson(
@@ -36,7 +20,7 @@ async def add_lesson(
     file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_session),
 ):
-    # 1) Verify instructor exists and is an instructor
+    # Verify instructor
     result = await db.execute(select(User).where(User.id == instructor_id))
     instructor = result.scalar_one_or_none()
     if not instructor:
@@ -45,33 +29,34 @@ async def add_lesson(
     if instructor.role != RoleEnum.instructor:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not an instructor")
 
-    # 2) Verify course exists
+    #  Verify course
     result = await db.execute(select(Course).where(Course.id == course_id))
     course = result.scalar_one_or_none()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
-    # 3) Ensure the course was created by the provided instructor
+    # Ensure the course was created by the instructor
     if course.instructor_id != instructor_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This course was not created by the provided instructor"
         )
 
-    # 4) Handle uploaded file (PDF only)
-    file_content = None
+    # Upload file to S3 if provided
+    file_url = None
     if file:
         if file.content_type != "application/pdf":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files allowed")
-        file_content = await file.read()
+        filename = f"lessons/{course_id}/{datetime.utcnow().timestamp()}_{file.filename}"
+        file_url = await upload_file_to_s3(file, filename)
 
-    # 5) Create lesson
+    # Create lesson
     new_lesson = Lesson(
         instructor_id=instructor_id,
         course_id=course.id,
         title=title,
         description=description,
-        file_content=file_content,
+        file_url=file_url,  # store S3 URL
         created_at=datetime.utcnow(),
     )
 
@@ -87,8 +72,10 @@ async def add_lesson(
             "instructor_id": instructor_id,
             "course_id": course.id,
             "title": new_lesson.title,
+            "file_url": file_url,  # return S3 URL
         },
     }
+
 
 
 @router.get("/all", tags=["lessons"])

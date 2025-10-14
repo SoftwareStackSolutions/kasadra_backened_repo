@@ -3,12 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import Optional
 from datetime import datetime
-from schemas.course import ConceptCreate
 
 from database.db import get_session
 from models.course import Lesson, Concept
+from utils.s3 import upload_file_to_s3  # Make sure this exists and works
 
 router = APIRouter()
+
 
 # Create Concept
 @router.post("/add", tags=["concepts"])
@@ -21,25 +22,26 @@ async def add_concept(
     file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_session),
 ):
-    # Check if lesson exists
+    # 1️⃣ Check if lesson exists
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
-    lesson = result.scalars().first()
+    lesson = result.scalar_one_or_none()
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-
-    # Handle file
-    file_content = None
+    # 2️⃣ Upload file to S3 if provided
+    file_url = None
     if file:
-        file_content = await file.read()
+        filename = f"concepts/{course_id}/{lesson_id}/{datetime.utcnow().timestamp()}_{file.filename}"
+        file_url = await upload_file_to_s3(file, filename)
 
+    # 3️⃣ Create Concept entry
     new_concept = Concept(
-        instructor_id = instructor_id,
-        course_id = course_id,
+        instructor_id=instructor_id,
+        course_id=course_id,
         lesson_id=lesson.id,
         title=title,
         description=description,
-        file_content=file_content,
+        file_url=file_url,       # store S3 URL
         created_at=datetime.utcnow(),
     )
 
@@ -50,8 +52,16 @@ async def add_concept(
     return {
         "status": "success",
         "message": "Concept added successfully",
-        "data": {"concept_id": new_concept.id, "instructor_id": instructor_id, "course_id": course_id, "lesson_id": lesson.id, "title": new_concept.title},
+        "data": {
+            "concept_id": new_concept.id,
+            "instructor_id": instructor_id,
+            "course_id": course_id,
+            "lesson_id": lesson.id,
+            "title": new_concept.title,
+            "file_url": file_url,  # return S3 URL
+        },
     }
+
 
 #get all concepts
 @router.get("/all", tags=["concepts"])
