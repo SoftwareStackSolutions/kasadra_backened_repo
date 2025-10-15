@@ -108,3 +108,4 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     await init_db()
+
