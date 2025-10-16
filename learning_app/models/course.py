@@ -24,6 +24,8 @@ class Course(Base):
 
     instructor = relationship("User", back_populates="courses")
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
+    cart_entries = relationship("Cart", back_populates="course", cascade="all, delete-orphan")
+
 
 
 class Lesson(Base):
