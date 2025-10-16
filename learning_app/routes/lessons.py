@@ -9,6 +9,7 @@ from typing import Optional
 from dependencies.auth_dep import get_current_user
 from utils.s3 import upload_file_to_s3  # Make sure this utility is implemented
 from pydantic import BaseModel
+from typing import Optional, Union
 
 class LessonUpdate(BaseModel):
     title: Optional[str]
@@ -230,36 +231,35 @@ async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_s
 
 # Update lesson
 
-from typing import Optional, Union
-
 @router.put("/lesson/{lesson_id}", tags=["lessons"])
 async def update_lesson(
     lesson_id: int,
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    file: Optional[Union[UploadFile, str]] = File(None),
+    file: Optional[UploadFile] = File(None),  # Only accept UploadFile
     db: AsyncSession = Depends(get_session),
 ):
+    # Fetch lesson
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     lesson = result.scalar_one_or_none()
-
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # ✅ Update only valid title
+    # Update title if provided
     if title is not None and title.strip() not in ["", "string"]:
         lesson.title = title.strip()
 
-    # ✅ Update only valid description
+    # Update description if provided
     if description is not None and description.strip() not in ["", "string"]:
         lesson.description = description.strip()
 
-    # ✅ Handle file logic correctly
-    if isinstance(file, UploadFile) and file.filename not in [None, "", "string"]:
+    # Update file only if a new file is uploaded
+    if file is not None and file.filename:  # Only update when a real file is provided
         filename = f"lessons/{lesson.course_id}/{datetime.utcnow().timestamp()}_{file.filename}"
         lesson.file_url = await upload_file_to_s3(file, filename)
-    # If file is None or empty string → keep old file_url
+    # else: file is None → keep existing file_url
 
+    # Commit and refresh
     await db.commit()
     await db.refresh(lesson)
 
