@@ -47,22 +47,30 @@ async def view_cart(
     student_id: int,
     db: AsyncSession = Depends(get_session)
 ):
+    # Fetch all courses in the student's cart
     result = await db.execute(
-        select(Course.id, Course.title, Course.description, Course.thumbnail_url)
+        select(Course.id, Course.title, Course.duration)
         .join(Cart, Course.id == Cart.course_id)
         .where(Cart.student_id == student_id)
     )
+    courses = result.all()  # list of Row objects
 
-    courses = result.all()
+    if not courses:  # If no courses in cart
+        return {"status": "success", "message": "Your cart is empty"}
+
+    # Convert Row objects to dict
+    data = [dict(c._mapping) for c in courses]
+
     return {
         "status": "success",
-        "data": [dict(c) for c in courses]
+        "data": data
     }
 
 
 ############################################
-# ❌ Remove Course from Cart
+# Remove Course from Cart
 ############################################
+
 @router.delete("/remove/{student_id}/{course_id}", tags=["cart"])
 async def remove_from_cart(
     student_id: int,
@@ -73,33 +81,46 @@ async def remove_from_cart(
         select(Cart).where(Cart.student_id == student_id, Cart.course_id == course_id)
     )
     item = result.scalar_one_or_none()
+    
     if not item:
-        raise HTTPException(status_code=404, detail="Course not found in cart")
+        return {"status": "error", "error": "Course not found in cart"}
 
     await db.delete(item)
     await db.commit()
     return {"status": "success", "message": "Course removed from cart"}
 
 
-############################################
-# 💳 Buy Course (move from cart to “purchased”)
-############################################
-@router.post("/buy/{student_id}/{course_id}", tags=["cart"])
-async def buy_course(
+###############################################################################
+# recommended courses
+#############################################################################
+
+
+from sqlalchemy import not_
+from models.purchased_courses import PurchasedCourse
+
+@router.get("/recommended/{student_id}", tags=["recommended courses"])
+async def recommended_courses(
     student_id: int,
-    course_id: int,
     db: AsyncSession = Depends(get_session)
 ):
-    # Step 1: Remove from cart
+    # Step 1: Get all purchased course IDs for this student
     result = await db.execute(
-        select(Cart).where(Cart.student_id == student_id, Cart.course_id == course_id)
+        select(PurchasedCourse.course_id).where(PurchasedCourse.student_id == student_id)
     )
-    item = result.scalar_one_or_none()
-    if not item:
-        raise HTTPException(status_code=404, detail="Course not found in cart")
+    purchased_course_ids = [row[0] for row in result.all()]
 
-    await db.delete(item)
-    await db.commit()
+    # Step 2: Select all courses NOT in purchased_course_ids
+    query = select(Course.id, Course.title, Course.duration, Course.thumbnail_url)
+    if purchased_course_ids:
+        query = query.where(not_(Course.id.in_(purchased_course_ids)))
 
-    # Step 2: Later, add to Purchased table if needed
-    return {"status": "success", "message": "Course purchased successfully"}
+    result = await db.execute(query)
+    courses = result.all()
+
+    # Step 3: Convert to dict
+    data = [dict(c._mapping) for c in courses]
+
+    if not data:
+        return {"status": "success", "data": [], "message": "No recommended courses available"}
+
+    return {"status": "success", "data": data}
