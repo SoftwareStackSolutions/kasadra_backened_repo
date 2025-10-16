@@ -21,6 +21,8 @@ class User(Base):
     role = Column(Enum(RoleEnum), nullable=False)
     token = relationship("Token", back_populates="user", uselist=False)
     courses = relationship("Course", back_populates="instructor")
+    cart_items = relationship("Cart", back_populates="student", cascade="all, delete-orphan")
+
 
 class Token(Base):
     __tablename__ = "tokens"
