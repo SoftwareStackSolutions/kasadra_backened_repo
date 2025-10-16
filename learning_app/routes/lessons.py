@@ -8,6 +8,11 @@ from datetime import datetime
 from typing import Optional
 from dependencies.auth_dep import get_current_user
 from utils.s3 import upload_file_to_s3  # Make sure this utility is implemented
+from pydantic import BaseModel
+
+class LessonUpdate(BaseModel):
+    title: Optional[str]
+    description: Optional[str]
 
 router = APIRouter()
 
@@ -185,9 +190,6 @@ async def get_all_lessons(db: AsyncSession = Depends(get_session)):
     }
 
 
-
-
-
 @router.get("/all{course_id}", tags=["lessons"])
 async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
     result = await db.execute(
@@ -226,3 +228,62 @@ async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_s
 
     return {"lessons": lessons_response}
 
+# Update lesson
+
+from typing import Optional, Union
+
+@router.put("/lesson/{lesson_id}", tags=["lessons"])
+async def update_lesson(
+    lesson_id: int,
+    title: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    file: Optional[Union[UploadFile, str]] = File(None),
+    db: AsyncSession = Depends(get_session),
+):
+    result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    lesson = result.scalar_one_or_none()
+
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    # ✅ Update only valid title
+    if title is not None and title.strip() not in ["", "string"]:
+        lesson.title = title.strip()
+
+    # ✅ Update only valid description
+    if description is not None and description.strip() not in ["", "string"]:
+        lesson.description = description.strip()
+
+    # ✅ Handle file logic correctly
+    if isinstance(file, UploadFile) and file.filename not in [None, "", "string"]:
+        filename = f"lessons/{lesson.course_id}/{datetime.utcnow().timestamp()}_{file.filename}"
+        lesson.file_url = await upload_file_to_s3(file, filename)
+    # If file is None or empty string → keep old file_url
+
+    await db.commit()
+    await db.refresh(lesson)
+
+    return {
+        "status": "success",
+        "message": "Lesson updated successfully",
+        "data": {
+            "lesson_id": lesson.id,
+            "title": lesson.title,
+            "description": lesson.description,
+            "file_url": lesson.file_url,
+        },
+    }
+
+
+# Delete lesson
+@router.delete("/delete/{lesson_id}", tags=["lessons"])
+async def delete_lesson(lesson_id: int, db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    lesson = result.scalar_one_or_none()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    await db.delete(lesson)
+    await db.commit()
+
+    return {"status": "success", "message": "Lesson deleted successfully"}
