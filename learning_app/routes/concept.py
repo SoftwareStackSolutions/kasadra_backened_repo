@@ -103,3 +103,68 @@ async def get_concept(concept_id: int, db: AsyncSession = Depends(get_session)):
         "description": concept.description,
         "created_at": concept.created_at,
     }
+
+@router.put("/update/{concept_id}", tags=["concepts"])
+async def update_concept(
+    concept_id: int,
+    title: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),  # Only accept UploadFile or None
+    db: AsyncSession = Depends(get_session),
+):
+    # 1️⃣ Fetch the concept
+    result = await db.execute(select(Concept).where(Concept.id == concept_id))
+    concept = result.scalar_one_or_none()
+    if not concept:
+        raise HTTPException(status_code=404, detail="Concept not found")
+
+    # 2️⃣ Update fields if provided
+    if title and title.strip() not in ["", "string"]:
+        concept.title = title.strip()
+    if description and description.strip() not in ["", "string"]:
+        concept.description = description.strip()
+
+    # 3️⃣ Update file only if a new file is uploaded
+    if file and file.filename:
+        filename = f"concepts/{concept.course_id}/{concept.lesson_id}/{datetime.utcnow().timestamp()}_{file.filename}"
+        concept.file_url = await upload_file_to_s3(file, filename)
+    # If file is None → keep old file_url
+
+    # 4️⃣ Commit and refresh
+    await db.commit()
+    await db.refresh(concept)
+
+    return {
+        "status": "success",
+        "message": "Concept updated successfully",
+        "data": {
+            "concept_id": concept.id,
+            "title": concept.title,
+            "description": concept.description,
+            "file_url": concept.file_url,
+            "course_id": concept.course_id,
+            "lesson_id": concept.lesson_id,
+            "instructor_id": concept.instructor_id,
+        },
+    }
+
+@router.delete("/delete/{concept_id}", tags=["concepts"])
+async def delete_concept(
+    concept_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    # 1️⃣ Fetch the concept
+    result = await db.execute(select(Concept).where(Concept.id == concept_id))
+    concept = result.scalar_one_or_none()
+    if not concept:
+        raise HTTPException(status_code=404, detail="Concept not found")
+
+    # 2️⃣ Delete the concept
+    await db.delete(concept)
+    await db.commit()
+
+    # 3️⃣ Return minimal success response
+    return {
+        "status": "success",
+        "message": f"Concept with ID {concept_id} deleted successfully"
+    }
