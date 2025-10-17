@@ -17,6 +17,8 @@ class Course(Base):
 
     instructor = relationship("User", back_populates="courses")
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
+    cart_entries = relationship("Cart", back_populates="course", cascade="all, delete-orphan")
+
 
 
 class Lesson(Base):
@@ -62,7 +64,8 @@ class Quiz(Base):
 
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    quiz_link = Column(String, nullable=True)   # new field
+    quiz_link = Column(String, nullable=True) 
+    file_url = Column(String(500), nullable=True)  # new field
     created_at = Column(Date, default=date.today)
 
     concept = relationship("Concept", back_populates="quizzes")
