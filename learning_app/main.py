@@ -29,7 +29,7 @@ from routes import batch
 from routes import dummy_course
 from routes import dummy_student
 from routes import cart
-from routes import buy_course
+from routes import purchased_course
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
 
@@ -56,7 +56,7 @@ app.include_router(batch.router, prefix="/api/batches")
 app.include_router(dummy_course.router, prefix="/api/dummy_courses")
 app.include_router(dummy_student.router, prefix="/api/dummy_students")
 app.include_router(cart.router,prefix="/api/cart")
-app.include_router(buy_course.router,prefix="/api/buy")
+app.include_router(purchased_course.router,prefix="/api/buy")
 
 
 
@@ -64,7 +64,7 @@ app.include_router(buy_course.router,prefix="/api/buy")
 origins = [
     "http://localhost:5173",   # React dev server
     "http://127.0.0.1:5173",   
-    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8000", 
     "http://127.0.0.1:8000/docs",
     "http://www.softwarestack.xyz/api/",
     "http://www.softwarestack.xyz",
