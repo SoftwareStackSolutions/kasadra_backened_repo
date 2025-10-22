@@ -42,6 +42,7 @@ app = FastAPI(
     redoc_url="/api/redoc",         # ReDoc
     openapi_url="/api/openapi.json" # OpenAPI schema
 )
+
 # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
