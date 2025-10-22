@@ -40,16 +40,40 @@ async def buy_course(
     return {"status": "success", "message": "Course purchased successfully"}
 
 
+# @router.get("/purchased/{student_id}", tags=["purchased"])
+# async def view_purchased_courses(
+#     student_id: int,
+#     db: AsyncSession = Depends(get_session)
+# ):
+#     result = await db.execute(
+#         select(Course.id, Course.title, Course.duration)
+#         .join(PurchasedCourse, Course.id == PurchasedCourse.course_id)
+#         .where(PurchasedCourse.student_id == student_id)
+#     )
+#     courses = result.all()
+#     data = [dict(c._mapping) for c in courses]
+
+#     if not data:
+#         return {"status": "success", "data": [], "message": "No purchased courses yet"}
+
+#     return {"status": "success", "data": data}
+
 @router.get("/purchased/{student_id}", tags=["purchased"])
 async def view_purchased_courses(
     student_id: int,
     db: AsyncSession = Depends(get_session)
 ):
     result = await db.execute(
-        select(Course.id, Course.title, Course.duration)
+        select(
+            Course.id,
+            Course.title,
+            Course.duration,
+            Course.thumbnail_url   # 👈 Added here
+        )
         .join(PurchasedCourse, Course.id == PurchasedCourse.course_id)
         .where(PurchasedCourse.student_id == student_id)
     )
+
     courses = result.all()
     data = [dict(c._mapping) for c in courses]
 
@@ -57,4 +81,3 @@ async def view_purchased_courses(
         return {"status": "success", "data": [], "message": "No purchased courses yet"}
 
     return {"status": "success", "data": data}
-
