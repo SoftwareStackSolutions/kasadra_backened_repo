@@ -10,7 +10,8 @@ from typing import Optional
 from dependencies.auth_dep import get_current_user
 from utils.s3 import upload_file_to_s3 
 from sqlalchemy.orm import joinedload
-
+from sqlalchemy import func
+from models.purchased_courses import PurchasedCourse
 
 router = APIRouter()
 
@@ -78,11 +79,22 @@ async def add_course(
 # Get all courses
 @router.get("/all", tags=["courses"])
 async def get_all_courses(db: AsyncSession = Depends(get_session)):
+    # Step 1: Get all courses with instructor data
     result = await db.execute(
         select(Course).options(joinedload(Course.instructor))
     )
     courses = result.scalars().all()
 
+    # Step 2: Get enrollment count for each course
+    enroll_result = await db.execute(
+        select(
+            PurchasedCourse.course_id,
+            func.count(PurchasedCourse.id).label("enrollments")
+        ).group_by(PurchasedCourse.course_id)
+    )
+    enrollments_data = {row.course_id: row.enrollments for row in enroll_result.all()}
+
+    # Step 3: Combine both datasets
     return {
         "status": "success",
         "data": [
@@ -95,6 +107,7 @@ async def get_all_courses(db: AsyncSession = Depends(get_session)):
                 "duration": course.duration,
                 "thumbnail": course.thumbnail_url,
                 "created_at": course.created_at,
+                "total_enrollments": enrollments_data.get(course.id, 0)  # ✅ Added here
             }
             for course in courses
         ]
