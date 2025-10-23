@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.user import User, RoleEnum
-from models.course import Course, Lesson, Concept, Quiz, Lab
+from models.course import Course, Lesson, Concept, Quiz, Lab, ScheduleClass 
 from database.db import get_session
 from datetime import datetime
 from typing import Optional
@@ -181,7 +181,7 @@ async def get_all_lessons(db: AsyncSession = Depends(get_session)):
             "description": lesson.description,
             "created_at": lesson.created_at,
             "session_date": schedule.session_date.strftime("%Y-%m-%d %H:%M") if schedule and schedule.session_date else None,
-            "release_time": schedule.release_time if schedule and hasattr(schedule, "release_time") else "Not set",
+            "release_time": schedule.session_time if schedule and hasattr(schedule, "release_time") else "Not set",
             "status": "Scheduled" if schedule else "Not Scheduled"
         })
 
@@ -191,13 +191,16 @@ async def get_all_lessons(db: AsyncSession = Depends(get_session)):
     }
 
 
-@router.get("/all{course_id}", tags=["lessons"])
+@router.get("/all/{course_id}", tags=["lessons"])
 async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
+    # Fetch lessons with their course and concepts
     result = await db.execute(
         select(Lesson)
-        .options(selectinload(Lesson.concepts).selectinload(Concept.quizzes),
-                 selectinload(Lesson.concepts).selectinload(Concept.labs),
-                 selectinload(Lesson.course))
+        .options(
+            selectinload(Lesson.concepts).selectinload(Concept.quizzes),
+            selectinload(Lesson.concepts).selectinload(Concept.labs),
+            selectinload(Lesson.course)
+        )
         .where(Lesson.course_id == course_id)
         .order_by(Lesson.created_at.desc())
     )
@@ -206,13 +209,28 @@ async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_s
     if not lessons:
         return {"lessons": [], "message": "No lessons added yet"}
 
+    # Fetch all schedules for this course
+    schedule_result = await db.execute(
+        select(ScheduleClass).where(ScheduleClass.course_id == course_id)
+    )
+    schedules = schedule_result.scalars().all()
+
+    # Map lesson_id → schedule info
+    schedule_map = {
+        s.lesson_id: {
+            "session_date": s.session_date.strftime("%Y-%m-%d") if s.session_date else None,
+            "session_time": s.session_time.strftime("%H:%M") if s.session_time else None,
+        }
+        for s in schedules
+    }
+
     lessons_response = [
         {
             "id": lesson.id,
             "lesson": lesson.title,
             "courseName": lesson.course.title if lesson.course else None,
-            "sessionDate": lesson.created_at.strftime("%Y-%m-%d"),
-            "releaseTime": None,
+            "sessionDate": schedule_map.get(lesson.id, {}).get("session_date"),
+            "releaseTime": schedule_map.get(lesson.id, {}).get("session_time"),
             "status": "Active",
             "concepts": [
                 {
@@ -228,7 +246,6 @@ async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_s
     ]
 
     return {"lessons": lessons_response}
-
 # Update lesson
 
 @router.put("/lesson/{lesson_id}", tags=["lessons"])
