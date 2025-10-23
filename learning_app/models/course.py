@@ -76,7 +76,8 @@ class Quiz(Base):
 
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    quiz_link = Column(String, nullable=True)   # new field
+    quiz_link = Column(String, nullable=True) 
+    file_url = Column(String(500), nullable=True)  # new field
     created_at = Column(Date, default=date.today)
 
     concept = relationship("Concept", back_populates="quizzes")

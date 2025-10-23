@@ -94,3 +94,63 @@ async def get_labs_by_concept(concept_id: int, db: AsyncSession = Depends(get_se
             for lab in labs
         ],
     }
+
+@router.put("/update/{lab_id}", tags=["labs"])
+async def update_lab(
+    lab_id: int,
+    title: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    lab_link: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    db: AsyncSession = Depends(get_session),
+):
+    # Fetch Lab
+    result = await db.execute(select(Lab).where(Lab.id == lab_id))
+    lab = result.scalar_one_or_none()
+    if not lab:
+        raise HTTPException(status_code=404, detail="Lab not found")
+
+    # Update fields if provided
+    if title and title.strip() not in ["", "string"]:
+        lab.title = title.strip()
+    if description and description.strip() not in ["", "string"]:
+        lab.description = description.strip()
+    if lab_link and lab_link.strip() not in ["", "string"]:
+        lab.lab_link = lab_link.strip()
+
+    # Update file if new file is uploaded
+    if file and file.filename:
+        filename = f"labs/{lab.course_id}/{lab.lesson_id}/{lab.concept_id}/{datetime.utcnow().timestamp()}_{file.filename}"
+        lab.file_url = await upload_file_to_s3(file, filename)
+
+    # Commit changes
+    await db.commit()
+    await db.refresh(lab)
+
+    return {
+        "status": "success",
+        "message": "Lab updated successfully",
+        "data": {
+            "lab_id": lab.id,
+            "title": lab.title,
+            "description": lab.description,
+            "file_url": lab.file_url,
+            "lab_link": lab.lab_link,
+        },
+    }
+
+
+@router.delete("/delete/{lab_id}", tags=["labs"])
+async def delete_lab(lab_id: int, db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(Lab).where(Lab.id == lab_id))
+    lab = result.scalar_one_or_none()
+    if not lab:
+        raise HTTPException(status_code=404, detail="Lab not found")
+
+    await db.delete(lab)
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Lab with ID {lab_id} deleted successfully"
+    }

@@ -29,7 +29,7 @@ from routes import batch
 from routes import dummy_course
 from routes import dummy_student
 from routes import cart
-from routes import buy_course
+from routes import purchased_course
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
 
@@ -42,6 +42,7 @@ app = FastAPI(
     redoc_url="/api/redoc",         # ReDoc
     openapi_url="/api/openapi.json" # OpenAPI schema
 )
+
 # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
@@ -55,17 +56,15 @@ app.include_router(batch.router, prefix="/api/batches")
 app.include_router(dummy_course.router, prefix="/api/dummy_courses")
 app.include_router(dummy_student.router, prefix="/api/dummy_students")
 app.include_router(cart.router,prefix="/api/cart")
-app.include_router(buy_course.router,prefix="/api/buy")
+app.include_router(purchased_course.router,prefix="/api/buy")
 
 
 
 
 origins = [
-   "http://localhost:5173",   # React dev server
-    "http://127.0.0.1:5173",  
-    "http://127.0.0.1:8000",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
+    "http://localhost:5173",   # React dev server
+    "http://127.0.0.1:5173",   
+    "http://127.0.0.1:8000", 
     "http://127.0.0.1:8000/docs",
     "http://www.softwarestack.xyz/api/",
     "http://www.softwarestack.xyz",
