@@ -58,26 +58,65 @@ async def buy_course(
 
 #     return {"status": "success", "data": data}
 
-@router.get("/purchased/{student_id}", tags=["purchased"])
-async def view_purchased_courses(
-    student_id: int,
-    db: AsyncSession = Depends(get_session)
-):
+
+from sqlalchemy import select, func, not_
+from sqlalchemy.orm import joinedload
+from models.course import Course
+from models.purchased_courses import PurchasedCourse
+# from database import get_session
+from fastapi import Depends, APIRouter
+from sqlalchemy.ext.asyncio import AsyncSession
+
+@router.get("/all/{student_id}", tags=["recommended-ak"])
+async def get_courses(student_id: int, db: AsyncSession = Depends(get_session)):
+    # Step 1: Get all purchased course IDs for this student
     result = await db.execute(
-        select(
-            Course.id,
-            Course.title,
-            Course.duration,
-            Course.thumbnail_url   # 👈 Added here
-        )
-        .join(PurchasedCourse, Course.id == PurchasedCourse.course_id)
-        .where(PurchasedCourse.student_id == student_id)
+        select(PurchasedCourse.course_id).where(PurchasedCourse.student_id == student_id)
     )
+    purchased_course_ids = [row[0] for row in result.all()]
 
-    courses = result.all()
-    data = [dict(c._mapping) for c in courses]
+    # Step 2: Prepare base query (with instructor info)
+    query = select(Course).options(joinedload(Course.instructor))
 
-    if not data:
-        return {"status": "success", "data": [], "message": "No purchased courses yet"}
+    # Step 3: If user has purchased courses → show only recommended (not purchased)
+    if purchased_course_ids:
+        query = query.where(not_(Course.id.in_(purchased_course_ids)))
 
-    return {"status": "success", "data": data}
+    # Step 4: Fetch all selected courses
+    result = await db.execute(query)
+    courses = result.scalars().all()
+
+    # Step 5: Get enrollment count for each course
+    enroll_result = await db.execute(
+        select(
+            PurchasedCourse.course_id,
+            func.count(PurchasedCourse.id).label("enrollments")
+        ).group_by(PurchasedCourse.course_id)
+    )
+    enrollments_data = {row.course_id: row.enrollments for row in enroll_result.all()}
+
+    # Step 6: Build response
+    data = [
+        {
+            "id": course.id,
+            "instructor_id": course.instructor_id,
+            "instructor_name": course.instructor.name if course.instructor else None,
+            "title": course.title,
+            "description": course.description,
+            "duration": course.duration,
+            "thumbnail": course.thumbnail_url,
+            "created_at": course.created_at,
+            "total_enrollments": enrollments_data.get(course.id, 0)
+        }
+        for course in courses
+    ]
+
+    # Step 7: Return appropriate message
+    if not purchased_course_ids:
+        message = "Showing all available courses (new user)"
+    elif not data:
+        message = "No recommended courses available"
+    else:
+        message = "Showing recommended courses"
+
+    return {"status": "success", "data": data, "message": message}
