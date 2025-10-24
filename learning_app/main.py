@@ -105,6 +105,7 @@ from database.db import init_db  # NOT from models.base
 async def health_check():
     return {"status": "ok"}
 
+
 ## DB setup
 @app.on_event("startup")
 async def startup_event():
