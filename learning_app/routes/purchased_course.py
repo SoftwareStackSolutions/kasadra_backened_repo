@@ -120,3 +120,71 @@ async def get_courses(student_id: int, db: AsyncSession = Depends(get_session)):
         message = "Showing recommended courses"
 
     return {"status": "success", "data": data, "message": message}
+
+@router.get("/courses/{student_id}", tags=["recommand"])
+async def get_all_courses_for_student(student_id: int, db: AsyncSession = Depends(get_session)):
+    # Step 1: Fetch all purchased course IDs for this student
+    result = await db.execute(
+        select(PurchasedCourse.course_id).where(PurchasedCourse.student_id == student_id)
+    )
+    purchased_course_ids = [row[0] for row in result.all()]
+
+    # Step 2: Prepare base query with instructor info
+    base_query = select(Course).options(joinedload(Course.instructor))
+
+    # Step 3: Get purchased courses (if any)
+    purchased_courses = []
+    if purchased_course_ids:
+        purchased_query = base_query.where(Course.id.in_(purchased_course_ids))
+        purchased_result = await db.execute(purchased_query)
+        purchased_courses = purchased_result.scalars().all()
+
+    # Step 4: Get recommended (not purchased) courses
+    recommended_query = base_query
+    if purchased_course_ids:
+        recommended_query = recommended_query.where(not_(Course.id.in_(purchased_course_ids)))
+
+    recommended_result = await db.execute(recommended_query)
+    recommended_courses = recommended_result.scalars().all()
+
+    # Step 5: Get enrollment counts for all courses
+    enroll_result = await db.execute(
+        select(
+            PurchasedCourse.course_id,
+            func.count(PurchasedCourse.id).label("enrollments")
+        ).group_by(PurchasedCourse.course_id)
+    )
+    enrollments_data = {row.course_id: row.enrollments for row in enroll_result.all()}
+
+    # Step 6: Format data
+    def serialize_course(course):
+        return {
+            "id": course.id,
+            "title": course.title,
+            "description": course.description,
+            "duration": course.duration,
+            "thumbnail": course.thumbnail_url,
+            "instructor_id": course.instructor_id,
+            "instructor_name": course.instructor.name if course.instructor else None,
+            "created_at": course.created_at,
+            "total_enrollments": enrollments_data.get(course.id, 0)
+        }
+
+    purchased_data = [serialize_course(c) for c in purchased_courses]
+    recommended_data = [serialize_course(c) for c in recommended_courses]
+
+    # Step 7: Message logic
+    if not purchased_course_ids:
+        message = "Showing all available courses (new user)"
+    elif not recommended_data:
+        message = "All courses purchased"
+    else:
+        message = "Showing purchased and recommended courses"
+
+    # Step 8: Return response
+    return {
+        "status": "success",
+        "message": message,
+        "purchased_courses": purchased_data,
+        "recommended_courses": recommended_data
+    }

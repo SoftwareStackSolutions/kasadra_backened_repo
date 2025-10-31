@@ -39,7 +39,7 @@ async def add_to_cart(
 
 
 ############################################
-# 👀 View Cart
+# View Cart
 ############################################
 
 @router.get("/view/{student_id}", tags=["cart"])
