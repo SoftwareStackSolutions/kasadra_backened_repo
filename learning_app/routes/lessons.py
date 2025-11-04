@@ -7,7 +7,7 @@ from database.db import get_session
 from datetime import datetime
 from typing import Optional
 from dependencies.auth_dep import get_current_user
-from utils.s3 import upload_file_to_s3  # Make sure this utility is implemented
+from utils.gcp import upload_file_to_gcs  # Make sure this utility is implemented
 from pydantic import BaseModel
 from typing import Optional, Union
 
@@ -54,7 +54,7 @@ async def add_lesson(
         if file.content_type != "application/pdf":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files allowed")
         filename = f"lessons/{course_id}/{datetime.utcnow().timestamp()}_{file.filename}"
-        file_url = await upload_file_to_s3(file, filename)
+        file_url = await upload_file_to_gcs(file, filename)
 
     # Create lesson
     new_lesson = Lesson(
