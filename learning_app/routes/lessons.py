@@ -35,24 +35,24 @@ async def add_lesson(
     if instructor.role != RoleEnum.instructor:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not an instructor")
 
-    #  Verify course
+    # Verify course
     result = await db.execute(select(Course).where(Course.id == course_id))
     course = result.scalar_one_or_none()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
-    # Ensure the course was created by the instructor
     if course.instructor_id != instructor_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This course was not created by the provided instructor"
         )
 
-    # Upload file to S3 if provided
+    # ✅ Optional file upload
     file_url = None
-    if file:
+    if file and file.filename:
         if file.content_type != "application/pdf":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files allowed")
+
         filename = f"lessons/{course_id}/{datetime.utcnow().timestamp()}_{file.filename}"
         file_url = await upload_file_to_gcs(file, filename)
 
@@ -62,7 +62,7 @@ async def add_lesson(
         course_id=course.id,
         title=title,
         description=description,
-        file_url=file_url,  # store S3 URL
+        file_url=file_url,  # ✅ can be None
         created_at=datetime.utcnow(),
     )
 
@@ -78,9 +78,11 @@ async def add_lesson(
             "instructor_id": instructor_id,
             "course_id": course.id,
             "title": new_lesson.title,
-            "file_url": file_url,  # return S3 URL
+            "description": new_lesson.description,
+            "file_url": new_lesson.file_url,  # may be None
         },
     }
+
 from sqlalchemy.orm import selectinload
 
 @router.get("{lesson_id}", tags=["lessons"])
@@ -273,7 +275,7 @@ async def update_lesson(
     # Update file only if a new file is uploaded
     if file is not None and file.filename:  # Only update when a real file is provided
         filename = f"lessons/{lesson.course_id}/{datetime.utcnow().timestamp()}_{file.filename}"
-        lesson.file_url = await upload_file_to_s3(file, filename)
+        lesson.file_url = await upload_file_to_gcs(file, filename)
     # else: file is None → keep existing file_url
 
     # Commit and refresh
