@@ -25,6 +25,7 @@ class Course(Base):
     instructor = relationship("User", back_populates="courses")
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
     cart_entries = relationship("Cart", back_populates="course", cascade="all, delete-orphan")
+    calendar_entries = relationship("CourseCalendar", back_populates="course", cascade="all, delete")
 
 
 
@@ -133,3 +134,17 @@ class Batch(Base):
 
     course = relationship("Course")
     instructor = relationship("User")
+
+class CourseCalendar(Base):
+    __tablename__ = "course_calendar"
+
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    lesson_no = Column(Integer, nullable=False)
+    lesson_title = Column(String(255), nullable=False)
+    day = Column(String(50), nullable=False)
+    date = Column(Date, nullable=False)
+    time = Column(Time, nullable=False)
+
+    # Relationship (optional)
+    course = relationship("Course", back_populates="calendar_entries")

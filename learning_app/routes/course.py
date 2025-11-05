@@ -8,7 +8,7 @@ from database.db import get_session
 from datetime import datetime
 from typing import Optional
 from dependencies.auth_dep import get_current_user
-from utils.s3 import upload_file_to_s3 
+from utils.gcp import upload_file_to_gcs
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from models.purchased_courses import PurchasedCourse
@@ -49,7 +49,7 @@ async def add_course(
     thumbnail_url = None
     if thumbnail:
         filename = f"courses/{datetime.utcnow().timestamp()}_{thumbnail.filename}"
-        thumbnail_url = await upload_file_to_s3(thumbnail, filename)
+        thumbnail_url = await upload_file_to_gcs(thumbnail, filename)
 
     # Create new course
     new_course = Course(
