@@ -63,15 +63,13 @@ app.include_router(purchased_course.router,prefix="/api/buy")
 origins = [
     "http://localhost:5173",   # React dev server
     "http://127.0.0.1:5173",   
-<<<<<<< HEAD
     "http://127.0.0.1:8000",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
-=======
     "http://127.0.0.1:8000", 
->>>>>>> 221fc5232331ffb8c90402c1c4931b378cfda2a5
     "http://127.0.0.1:8000/docs",
-   "http://www.softwarestack.xyz/api/",
+    "http://127.0.0.1:8000/api/docs",
+    "http://www.softwarestack.xyz/api/",
     "http://www.softwarestack.xyz",
     "http://www.softwarestack.xyz/api/docs"
 
