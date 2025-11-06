@@ -7,7 +7,7 @@ from datetime import datetime
 from database.db import get_session
 from models.course import Concept
 from models.course import Quiz, Course, Lesson, Concept
-from utils.s3 import upload_file_to_s3
+from utils.gcp import upload_file_to_gcs
 
 router = APIRouter()
 

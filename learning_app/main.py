@@ -26,8 +26,6 @@ from routes import quiz
 from routes import labs
 from routes import scheduleclass
 from routes import batch
-from routes import dummy_course
-from routes import dummy_student
 from routes import cart
 from routes import purchased_course
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -53,8 +51,6 @@ app.include_router(quiz.router, prefix="/api/quizzes")
 app.include_router(labs.router, prefix="/api/labs")
 app.include_router(scheduleclass.router, prefix="/api/scheduleclass")
 app.include_router(batch.router, prefix="/api/batches")
-app.include_router(dummy_course.router, prefix="/api/dummy_courses")
-app.include_router(dummy_student.router, prefix="/api/dummy_students")
 app.include_router(cart.router,prefix="/api/cart")
 app.include_router(purchased_course.router,prefix="/api/buy")
 
@@ -107,6 +103,7 @@ from database.db import init_db  # NOT from models.base
 @app.get("/api")
 async def health_check():
     return {"status": "ok"}
+
 
 ## DB setup
 @app.on_event("startup")

@@ -39,7 +39,7 @@ async def add_to_cart(
 
 
 ############################################
-# 👀 View Cart
+# View Cart
 ############################################
 
 @router.get("/view/{student_id}", tags=["cart"])
@@ -98,6 +98,39 @@ async def remove_from_cart(
 from sqlalchemy import not_
 from models.purchased_courses import PurchasedCourse
 
+# @router.get("/recommended/{student_id}", tags=["recommended courses"])
+# async def recommended_courses(
+#     student_id: int,
+#     db: AsyncSession = Depends(get_session)
+# ):
+#     # Step 1: Get all purchased course IDs for this student
+#     result = await db.execute(
+#         select(PurchasedCourse.course_id).where(PurchasedCourse.student_id == student_id)
+#     )
+#     purchased_course_ids = [row[0] for row in result.all()]
+
+#     # Step 2: Select all courses NOT in purchased_course_ids
+#     query = select(Course.id, Course.title, Course.duration, Course.thumbnail_url)
+#     if purchased_course_ids:
+#         query = query.where(not_(Course.id.in_(purchased_course_ids)))
+
+#     result = await db.execute(query)
+#     courses = result.all()
+
+#     # Step 3: Convert to dict
+#     data = [dict(c._mapping) for c in courses]
+
+#     if not data:
+#         return {"status": "success", "data": [], "message": "No recommended courses available"}
+
+#     return {"status": "success", "data": data}
+
+###############################################################################
+# Owner Akhilesh
+# recommended courses & Get all course
+###############################################################################
+
+
 @router.get("/recommended/{student_id}", tags=["recommended courses"])
 async def recommended_courses(
     student_id: int,
@@ -109,18 +142,27 @@ async def recommended_courses(
     )
     purchased_course_ids = [row[0] for row in result.all()]
 
-    # Step 2: Select all courses NOT in purchased_course_ids
-    query = select(Course.id, Course.title, Course.duration, Course.thumbnail_url)
-    if purchased_course_ids:
-        query = query.where(not_(Course.id.in_(purchased_course_ids)))
+    # Step 2: If no purchased courses → show all courses
+    if not purchased_course_ids:
+        result = await db.execute(select(Course.id, Course.title, Course.duration, Course.thumbnail_url))
+        courses = result.all()
+        data = [dict(c._mapping) for c in courses]
+        return {
+            "status": "success",
+            "data": data,
+            "message": "Showing all available courses (new user)"
+        }
+
+    # Step 3: Otherwise, show recommended (not purchased) courses
+    query = select(Course.id, Course.title, Course.duration, Course.thumbnail_url).where(
+        not_(Course.id.in_(purchased_course_ids))
+    )
 
     result = await db.execute(query)
     courses = result.all()
-
-    # Step 3: Convert to dict
     data = [dict(c._mapping) for c in courses]
 
     if not data:
         return {"status": "success", "data": [], "message": "No recommended courses available"}
 
-    return {"status": "success", "data": data}
+    return {"status": "success", "data": data, "message": "Recommended courses for you"}
