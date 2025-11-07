@@ -89,23 +89,6 @@ class Lab(Base):
     course = relationship("Course")
 
 
-class ScheduleClass(Base):
-    __tablename__ = "schedule_classes"
-
-    id = Column(Integer, primary_key=True, index=True)
-    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
-    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
-
-    session_date = Column(Date, nullable=False)
-    session_time = Column(Time, nullable=False)
-    created_at = Column(Date, default=date.today)
-
-    instructor = relationship("User")
-    course = relationship("Course")
-    lesson = relationship("Lesson")
-
-
 class Batch(Base):
     __tablename__ = "batches"
 
@@ -131,7 +114,6 @@ class CourseCalendar(Base):
     course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
     batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
-    lesson_no = Column(Integer, nullable=False)
     lesson_title = Column(String(255), nullable=False)
     day = Column(String(50), nullable=False)
     start_date = Column(Date, nullable=False)
