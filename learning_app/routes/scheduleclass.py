@@ -13,6 +13,7 @@ class CourseCalendarCreate(BaseModel):
     course_id: int
     batch_id: int
     lesson_id: int
+    select_date : date
     day: str
     start_date: date
     end_date: date
@@ -66,7 +67,8 @@ async def add_course_calendar(
         course_id=calendar_data.course_id,
         batch_id=calendar_data.batch_id,
         lesson_id=calendar_data.lesson_id,
-        lesson_title=lesson.lesson_title,  # pulled automatically from DB
+        lesson_title=lesson.lesson_title,  
+        select_date=calendar_data.select_date,
         day=calendar_data.day,
         start_date=calendar_data.start_date,
         end_date=calendar_data.end_date,
@@ -86,6 +88,7 @@ async def add_course_calendar(
             "batch_id": new_calendar_entry.batch_id,
             "lesson_id": new_calendar_entry.lesson_id,
             "lesson_title": new_calendar_entry.lesson_title,
+            "select_date": new_calendar_entry.select_date,
             "day": new_calendar_entry.day,
             "start_date": str(new_calendar_entry.start_date),
             "end_date": str(new_calendar_entry.end_date),

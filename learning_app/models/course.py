@@ -115,6 +115,7 @@ class CourseCalendar(Base):
     batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
     lesson_title = Column(String(255), nullable=False)
+    select_date = Column(Date, nullable=False)
     day = Column(String(50), nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
