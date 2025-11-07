@@ -69,3 +69,37 @@ async def add_course_calendar(
             "end_date": str(new_calendar_entry.end_date),
         },
     }
+
+# view calaneder by course ID
+@router.get("/view/{course_id}")
+async def get_course_calendar(course_id: int, db: AsyncSession = Depends(get_session)):
+    # Check course existence
+    course = (await db.execute(select(Course).where(Course.id == course_id))).scalar_one_or_none()
+    if not course:
+        raise HTTPException(404, f"Course ID {course_id} not found")
+
+    # Fetch calendar entries
+    calendars = (await db.execute(
+        select(CourseCalendar).where(CourseCalendar.course_id == course_id)
+    )).scalars().all()
+
+    if not calendars:
+        return {"status": "success", "message": "No calendar entries found", "data": []}
+
+    # Build result
+    data = []
+    for c in calendars:
+        batch = await db.get(Batch, c.batch_id)
+        lesson = await db.get(Lesson, c.lesson_id)
+        data.append({
+            "calendar_id": c.id,
+            "course_id": c.course_id,
+            "batch_name": batch.batch_name if batch else None,
+            "lesson_title": lesson.lesson_title if lesson else None,
+            "select_date": str(c.select_date),
+            "day": c.day,
+            "start_date": str(c.start_date),
+            "end_date": str(c.end_date),
+        })
+
+    return {"status": "success", "data": data}

@@ -123,3 +123,4 @@ class CourseCalendar(Base):
     course = relationship("Course", back_populates="calendar_entries")
     batch = relationship("Batch", back_populates="calendar_entries")
     lesson = relationship("Lesson")
+
