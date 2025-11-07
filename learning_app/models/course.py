@@ -36,9 +36,8 @@ class Lesson(Base):
     instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     # instructor_name = Column(String, ForeignKey("users.name"), nullable=False)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
-    title = Column(String, nullable=False)
+    lesson_title = Column(String, nullable=False)
     description = Column(String, nullable=False)
-    file_url = Column(String, nullable=True)  # s
     created_at = Column(Date, default=date.today)
     
     instructor = relationship("User", foreign_keys=[instructor_id])
@@ -102,25 +101,8 @@ class Lab(Base):
     course = relationship("Course")
 
 
-class ScheduleClass(Base):
-    __tablename__ = "schedule_classes"
-
-    id = Column(Integer, primary_key=True, index=True)
-    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
-    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
-
-    session_date = Column(Date, nullable=False)
-    session_time = Column(Time, nullable=False)
-    created_at = Column(Date, default=date.today)
-
-    instructor = relationship("User")
-    course = relationship("Course")
-    lesson = relationship("Lesson")
-
-
 class Batch(Base):
-    __tablename__ = "assign_batches"
+    __tablename__ = "batches"
 
     id = Column(Integer, primary_key=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
@@ -134,17 +116,23 @@ class Batch(Base):
 
     course = relationship("Course")
     instructor = relationship("User")
+    calendar_entries = relationship("CourseCalendar", back_populates="batch", cascade="all, delete-orphan")
+
 
 class CourseCalendar(Base):
     __tablename__ = "course_calendar"
 
     id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
-    lesson_no = Column(Integer, nullable=False)
+    batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
     lesson_title = Column(String(255), nullable=False)
+    select_date = Column(Date, nullable=False)
     day = Column(String(50), nullable=False)
-    date = Column(Date, nullable=False)
-    time = Column(Time, nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
 
-    # Relationship (optional)
+    # Relationships
     course = relationship("Course", back_populates="calendar_entries")
+    batch = relationship("Batch", back_populates="calendar_entries")
+    lesson = relationship("Lesson")

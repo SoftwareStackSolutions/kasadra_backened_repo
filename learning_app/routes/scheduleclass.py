@@ -1,162 +1,96 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from models.course import ScheduleClass
-from models.course import Course, Lesson, CourseCalendar
-from models.user import User
+from models.course import CourseCalendar, Course, Lesson, Batch
 from database.db import get_session
-from schemas.course import ScheduleCreate, ScheduleResponse
-from sqlalchemy.orm import selectinload
-from datetime import datetime
+from datetime import date
+from pydantic import BaseModel
 
-router = APIRouter()
+router = APIRouter(tags=["calendar"])
 
-# ✅ Add Schedule
-@router.post("/add", response_model=ScheduleResponse, tags=["schedule"])
-async def add_schedule(
-    schedule: ScheduleCreate,
-    db: AsyncSession = Depends(get_session)
+# ✅ Request body schema
+class CourseCalendarCreate(BaseModel):
+    course_id: int
+    batch_id: int
+    lesson_id: int
+    select_date : date
+    day: str
+    start_date: date
+    end_date: date
+
+
+# ✅ Add Course Calendar Entry
+@router.post("/add")
+async def add_course_calendar(
+    calendar_data: CourseCalendarCreate,
+    db: AsyncSession = Depends(get_session),
 ):
-    # Check course
-    result = await db.execute(select(Course).where(Course.id == schedule.course_id))
+    # 1️⃣ Check if course exists
+    result = await db.execute(select(Course).where(Course.id == calendar_data.course_id))
     course = result.scalar_one_or_none()
     if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Course with ID {calendar_data.course_id} not found"
+        )
 
-    # Check lesson
-    result = await db.execute(select(Lesson).where(Lesson.id == schedule.lesson_id))
+    # 2️⃣ Check if batch exists and belongs to course
+    result = await db.execute(select(Batch).where(Batch.id == calendar_data.batch_id))
+    batch = result.scalar_one_or_none()
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Batch with ID {calendar_data.batch_id} not found"
+        )
+    if batch.course_id != course.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This batch does not belong to the specified course."
+        )
+
+    # 3️⃣ Check if lesson exists and belongs to course
+    result = await db.execute(select(Lesson).where(Lesson.id == calendar_data.lesson_id))
     lesson = result.scalar_one_or_none()
     if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-
-    new_schedule = ScheduleClass(
-        course_id=schedule.course_id,
-        lesson_id=schedule.lesson_id,
-        instructor_id=schedule.instructor_id,
-        session_date=schedule.session_date,
-        session_time=schedule.session_time
-    )
-
-    db.add(new_schedule)
-    await db.commit()
-    await db.refresh(new_schedule)
-
-    return new_schedule
-
-
-# ✅ Get all schedules for a course
-@router.get("/schedule/{course_id}", tags=["schedule"])
-async def get_schedules(course_id: int, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(
-        select(ScheduleClass)
-        .options(selectinload(ScheduleClass.lesson))  # preload lesson
-        .where(ScheduleClass.course_id == course_id)
-    )
-    schedules = result.scalars().all()
-
-    if not schedules:
-        return {"schedules": [], "message": "No schedules found"}
-
-    return {
-        "schedules": [
-            {
-                "id": s.id,
-                "course_id": s.course_id,
-                "lesson_id": s.lesson_id,
-                "lesson_title": s.lesson.title if s.lesson else None,
-                "instructor_id": s.instructor_id,
-                "session_date": s.session_date.strftime("%Y-%m-%d"),
-                "session_time": str(s.session_time),
-            }
-            for s in schedules
-        ]
-    }
-
-@router.post("/{course_id}/add", tags=["calendar"])
-async def add_calendar_entry(
-    course_id: int,
-    lesson_no: int,
-    lesson_title: str,
-    day: str,
-    date: str,  # Expecting something like '04-11-2025'
-    time: str,  # Expecting something like '4pm' or '16:00'
-    db: AsyncSession = Depends(get_session)
-):
-    # 1️⃣ Validate course exists
-    course = await db.get(Course, course_id)
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    # 2️⃣ Parse date string to Python date
-    try:
-        parsed_date = datetime.strptime(date.strip(), "%d-%m-%Y").date()
-    except ValueError:
         raise HTTPException(
-            status_code=400,
-            detail="Invalid date format. Please use DD-MM-YYYY (e.g., 04-11-2025)"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Lesson with ID {calendar_data.lesson_id} not found"
+        )
+    if lesson.course_id != course.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This lesson does not belong to the specified course."
         )
 
-    # 3️⃣ Parse time string to Python time
-    try:
-        # Handle both 12-hour and 24-hour formats
-        if "am" in time.lower() or "pm" in time.lower():
-            parsed_time = datetime.strptime(time.strip().lower(), "%I%p").time()
-        else:
-            parsed_time = datetime.strptime(time.strip(), "%H:%M").time()
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid time format. Please use '4pm' or '16:00'"
-        )
-
-    # 4️⃣ Create calendar entry
-    new_entry = CourseCalendar(
-        course_id=course_id,
-        lesson_no=lesson_no,
-        lesson_title=lesson_title,
-        day=day,
-        date=parsed_date,  # ✅ correct Python date object
-        time=parsed_time   # ✅ correct Python time object
+    # 4️⃣ Create new course calendar entry
+    new_calendar_entry = CourseCalendar(
+        course_id=calendar_data.course_id,
+        batch_id=calendar_data.batch_id,
+        lesson_id=calendar_data.lesson_id,
+        lesson_title=lesson.lesson_title,  
+        select_date=calendar_data.select_date,
+        day=calendar_data.day,
+        start_date=calendar_data.start_date,
+        end_date=calendar_data.end_date,
     )
 
-    db.add(new_entry)
+    db.add(new_calendar_entry)
     await db.commit()
-    await db.refresh(new_entry)
+    await db.refresh(new_calendar_entry)
 
+    # ✅ Response same structure as schedule API
     return {
         "status": "success",
-        "message": "Lesson added to calendar",
+        "message": "Course calendar entry added successfully",
         "data": {
-            "id": new_entry.id,
-            "lesson_no": new_entry.lesson_no,
-            "lesson_title": new_entry.lesson_title,
-            "day": new_entry.day,
-            "date": str(new_entry.date),
-            "time": str(new_entry.time)
-        }
+            "calendar_id": new_calendar_entry.id,
+            "course_id": new_calendar_entry.course_id,
+            "batch_id": new_calendar_entry.batch_id,
+            "lesson_id": new_calendar_entry.lesson_id,
+            "lesson_title": new_calendar_entry.lesson_title,
+            "select_date": new_calendar_entry.select_date,
+            "day": new_calendar_entry.day,
+            "start_date": str(new_calendar_entry.start_date),
+            "end_date": str(new_calendar_entry.end_date),
+        },
     }
-
-
-@router.get("/{course_id}/view",  tags=["calendar"])
-async def view_course_calendar(course_id: int, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(
-        select(CourseCalendar)
-        .where(CourseCalendar.course_id == course_id)
-        .order_by(CourseCalendar.lesson_no)
-    )
-    lessons = result.scalars().all()
-
-    if not lessons:
-        return {"status": "success", "data": [], "message": "No calendar entries for this course"}
-
-    data = [
-        {
-            "lesson_no": l.lesson_no,
-            "lesson_title": l.lesson_title,
-            "day": l.day,
-            "date": str(l.date),
-            "time": str(l.time)
-        } for l in lessons
-    ]
-
-    return {"status": "success", "data": data}

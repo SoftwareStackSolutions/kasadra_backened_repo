@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.user import User, RoleEnum
-from models.course import Course, Lesson, Concept, Quiz, Lab, ScheduleClass 
+from models.course import Course, Lesson, Concept, Quiz, Lab
 from database.db import get_session
 from datetime import datetime
 from typing import Optional
@@ -15,19 +15,21 @@ class LessonUpdate(BaseModel):
     title: Optional[str]
     description: Optional[str]
 
+class LessonCreate(BaseModel):
+    instructor_id: int
+    course_id: int
+    title: str
+    description: Optional[str] = None
+
 router = APIRouter()
 
 @router.post("/add", tags=["lessons"])
 async def add_lesson(
-    instructor_id: int = Form(...),
-    course_id: int = Form(...),
-    title: str = Form(...),
-    description: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
+    lesson_data: LessonCreate,
     db: AsyncSession = Depends(get_session),
 ):
     # Verify instructor
-    result = await db.execute(select(User).where(User.id == instructor_id))
+    result = await db.execute(select(User).where(User.id == lesson_data.instructor_id))
     instructor = result.scalar_one_or_none()
     if not instructor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instructor not found")
@@ -36,33 +38,23 @@ async def add_lesson(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not an instructor")
 
     # Verify course
-    result = await db.execute(select(Course).where(Course.id == course_id))
+    result = await db.execute(select(Course).where(Course.id == lesson_data.course_id))
     course = result.scalar_one_or_none()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
-    if course.instructor_id != instructor_id:
+    if course.instructor_id != lesson_data.instructor_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This course was not created by the provided instructor"
         )
 
-    # ✅ Optional file upload
-    file_url = None
-    if file and file.filename:
-        if file.content_type != "application/pdf":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files allowed")
-
-        filename = f"lessons/{course_id}/{datetime.utcnow().timestamp()}_{file.filename}"
-        file_url = await upload_file_to_gcs(file, filename)
-
     # Create lesson
     new_lesson = Lesson(
-        instructor_id=instructor_id,
+        instructor_id=lesson_data.instructor_id,
         course_id=course.id,
-        title=title,
-        description=description,
-        file_url=file_url,  # ✅ can be None
+        lesson_title=lesson_data.title,
+        description=lesson_data.description,
         created_at=datetime.utcnow(),
     )
 
@@ -75,11 +67,10 @@ async def add_lesson(
         "message": "Lesson added successfully",
         "data": {
             "lesson_id": new_lesson.id,
-            "instructor_id": instructor_id,
+            "instructor_id": lesson_data.instructor_id,
             "course_id": course.id,
-            "title": new_lesson.title,
+            "title": new_lesson.lesson_title,
             "description": new_lesson.description,
-            "file_url": new_lesson.file_url,  # may be None
         },
     }
 
