@@ -1,7 +1,7 @@
 from google.cloud import storage
 
 async def upload_file_to_gcs(file, destination_blob_name):
-    bucket_name = "kasadra-bucket"
+    bucket_name = "kasadra-project-bucket"
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
