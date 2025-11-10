@@ -186,7 +186,7 @@ async def get_all_lessons(db: AsyncSession = Depends(get_session)):
 
 @router.get("/all/{course_id}", tags=["lessons"])
 async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
-    # Fetch lessons with their course and concepts
+    # Fetch lessons with course and nested concepts, quizzes, and labs
     result = await db.execute(
         select(Lesson)
         .options(
@@ -202,28 +202,12 @@ async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_s
     if not lessons:
         return {"lessons": [], "message": "No lessons added yet"}
 
-    # Fetch all schedules for this course
-    schedule_result = await db.execute(
-        select(ScheduleClass).where(ScheduleClass.course_id == course_id)
-    )
-    schedules = schedule_result.scalars().all()
-
-    # Map lesson_id → schedule info
-    schedule_map = {
-        s.lesson_id: {
-            "session_date": s.session_date.strftime("%Y-%m-%d") if s.session_date else None,
-            "session_time": s.session_time.strftime("%H:%M") if s.session_time else None,
-        }
-        for s in schedules
-    }
-
+    # Build response
     lessons_response = [
         {
             "id": lesson.id,
-            "lesson": lesson.title,
+            "lesson": lesson.lesson_title,
             "courseName": lesson.course.title if lesson.course else None,
-            "sessionDate": schedule_map.get(lesson.id, {}).get("session_date"),
-            "releaseTime": schedule_map.get(lesson.id, {}).get("session_time"),
             "status": "Active",
             "concepts": [
                 {
@@ -239,6 +223,7 @@ async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_s
     ]
 
     return {"lessons": lessons_response}
+
 # Update lesson
 
 @router.put("/lesson/{lesson_id}", tags=["lessons"])
