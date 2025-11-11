@@ -19,6 +19,8 @@ class Course(Base):
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
     cart_entries = relationship("Cart", back_populates="course", cascade="all, delete-orphan")
     calendar_entries = relationship("CourseCalendar", back_populates="course", cascade="all, delete")
+    pdfs = relationship("Pdf", back_populates="course", cascade="all, delete-orphan")
+    weblinks = relationship("WebLink", back_populates="course", cascade="all, delete-orphan")
 
 
 
@@ -35,58 +37,37 @@ class Lesson(Base):
     
     instructor = relationship("User", foreign_keys=[instructor_id])
     course = relationship("Course", back_populates="lessons")
-    concepts = relationship("Concept", back_populates="lesson", cascade="all, delete-orphan")
+    pdfs = relationship("Pdf", back_populates="lesson", cascade="all, delete-orphan")
+    weblinks = relationship("WebLink", back_populates="lesson", cascade="all, delete-orphan")
 
-class Concept(Base):
-    __tablename__ = "concepts"
 
-    id = Column(Integer, primary_key=True, index=True)
-    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
-    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
-    title = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    file_url = Column(String, nullable=True)  # s
-    created_at = Column(Date, default=date.today)
-
-    lesson = relationship("Lesson", back_populates="concepts")
-    quizzes = relationship("Quiz", back_populates="concept", cascade="all, delete-orphan")
-    labs = relationship("Lab", back_populates="concept", cascade="all, delete-orphan")
-
-    
-class Quiz(Base):
-    __tablename__ = "quizzes"
+class Pdf(Base):
+    __tablename__ = "pdfs"
 
     id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
-    concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
-
-    title = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    quiz_link = Column(String, nullable=True) 
-    file_url = Column(String(500), nullable=True)  # new field
+    file_url = Column(String, nullable=False)
     created_at = Column(Date, default=date.today)
 
-    concept = relationship("Concept", back_populates="quizzes")
-    
+    course = relationship("Course", back_populates="pdfs")
+    lesson = relationship("Lesson", back_populates="pdfs")
 
-class Lab(Base):
-    __tablename__ = "labs"
+
+class WebLink(Base):
+    __tablename__ = "weblinks"
 
     id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
-    concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
-    title = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    file_url = Column(String, nullable=True)  
-    lab_link = Column(String, nullable=True)
+    link_url = Column(String, nullable=False)
     created_at = Column(Date, default=date.today)
-    
-    concept = relationship("Concept", back_populates="labs")
-    lesson = relationship("Lesson")   
-    course = relationship("Course")
+
+    course = relationship("Course", back_populates="weblinks")
+    lesson = relationship("Lesson", back_populates="weblinks")
+
+    course = relationship("Course", back_populates="weblinks")
+    lesson = relationship("Lesson", back_populates="weblinks")
 
 
 class Batch(Base):

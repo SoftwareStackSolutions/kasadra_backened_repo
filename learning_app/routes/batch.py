@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.user import User, RoleEnum
 from models.course import Lesson
 from models.course import Course
-from models.course import Concept
 from routes import course
 from database.db import get_session
 from datetime import datetime
