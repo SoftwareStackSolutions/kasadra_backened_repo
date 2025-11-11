@@ -26,6 +26,7 @@ from routes import batch
 from routes import contents
 from routes import cart
 from routes import purchased_course
+from routes import meeting_link
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
 
@@ -48,7 +49,11 @@ app.include_router(scheduleclass.router, prefix="/api/scheduleclass")
 app.include_router(batch.router, prefix="/api/batches")
 app.include_router(cart.router,prefix="/api/cart")
 app.include_router(purchased_course.router,prefix="/api/buy")
+<<<<<<< HEAD
 app.include_router(contents.router,prefix="/api")
+=======
+app.include_router(meeting_link.router,prefix="/api/link")
+>>>>>>> 61e4d79241e18e3f82311fa1b386854949f34fd6
 
 
 
