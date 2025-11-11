@@ -24,7 +24,7 @@ class CourseCalendarUpdate(BaseModel):
     day: str | None = None
     start_date: date | None = None
     end_date: date | None = None
-    
+
 @router.post("/add")
 async def add_course_calendar(
     calendar_data: CourseCalendarCreate,
@@ -65,7 +65,7 @@ async def add_course_calendar(
 
     return {
         "status": "success",
-        "message": "Course calendar entry added successfully",
+        "message": "Schedule class added successfully",
         "data": {
             "calendar_id": new_calendar_entry.id,
             "batch_id": new_calendar_entry.batch_id,
@@ -91,7 +91,7 @@ async def get_course_calendar(course_id: int, db: AsyncSession = Depends(get_ses
     )).scalars().all()
 
     if not calendars:
-        return {"status": "success", "message": "No calendar entries found", "data": []}
+        return {"status": "success", "message": "No schedule class entries found", "data": []}
 
     # Build result
     data = []
@@ -120,7 +120,7 @@ async def update_course_calendar(
 ):
     calendar = await db.get(CourseCalendar, calendar_id)
     if not calendar:
-        raise HTTPException(status_code=404, detail="Calendar entry not found")
+        raise HTTPException(status_code=404, detail="Schedule class entry not found")
 
     # Update fields if provided
     if update_data.batch_id:
@@ -150,7 +150,7 @@ async def update_course_calendar(
 
     return {
         "status": "success",
-        "message": f"Calendar entry {calendar_id} updated successfully",
+        "message": f"Schedule class  updated successfully",
         "data": {
             "calendar_id": calendar.id,
             "batch_id": calendar.batch_id,
@@ -168,12 +168,12 @@ async def update_course_calendar(
 async def delete_course_calendar(calendar_id: int, db: AsyncSession = Depends(get_session)):
     calendar = await db.get(CourseCalendar, calendar_id)
     if not calendar:
-        raise HTTPException(status_code=404, detail="Calendar entry not found")
+        raise HTTPException(status_code=404, detail="Schedule class entry not found")
 
     await db.delete(calendar)
     await db.commit()
 
     return {
         "status": "success",
-        "message": f"Calendar entry {calendar_id} deleted successfully"
+        "message": f"Schedule class deleted successfully"
     }
