@@ -19,6 +19,7 @@ class Course(Base):
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
     cart_entries = relationship("Cart", back_populates="course", cascade="all, delete-orphan")
     calendar_entries = relationship("CourseCalendar", back_populates="course", cascade="all, delete")
+    meetings = relationship("MeetingLink", back_populates="course", cascade="all, delete")
 
 
 
@@ -105,6 +106,8 @@ class Batch(Base):
     course = relationship("Course")
     instructor = relationship("User")
     calendar_entries = relationship("CourseCalendar", back_populates="batch", cascade="all, delete-orphan")
+    meetings = relationship("MeetingLink", back_populates="batch", cascade="all, delete")
+
 
 
 class CourseCalendar(Base):
@@ -124,3 +127,17 @@ class CourseCalendar(Base):
     batch = relationship("Batch", back_populates="calendar_entries")
     lesson = relationship("Lesson")
 
+
+class MeetingLink(Base):
+    __tablename__ = "meeting_links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    instructor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"))  # ✅ FIX
+    batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"))
+    meeting_url = Column(String(255), nullable=False)
+
+    # Relationships (optional, for easy access)
+    instructor = relationship("User", back_populates="meetings")
+    course = relationship("Course", back_populates="meetings")
+    batch = relationship("Batch", back_populates="meetings")

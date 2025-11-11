@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from typing import Optional
-from datetime import date, time
+from datetime import date, time, datetime
 
 
 class CourseCreate(BaseModel):
@@ -57,3 +57,24 @@ class BatchCreate(BaseModel):
     timing: Optional[str] = None
     start_date: date
     end_date: date
+
+#####################
+## Meeting link
+#####################
+
+class MeetingCreate(BaseModel):
+    instructor_id: int     # temporary until JWT added
+    course_id: int
+    batch_id: int
+    meeting_url: HttpUrl
+
+class MeetingResponse(BaseModel):
+    id: int
+    instructor_id: int
+    course_id: int
+    batch_id: int
+    meeting_url: str
+
+    class Config:
+        orm_mode = True
+

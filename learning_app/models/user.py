@@ -19,9 +19,12 @@ class User(Base):
     created_at = Column(Date, default=date.today)  
     password = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), nullable=False)
+
     token = relationship("Token", back_populates="user", uselist=False)
     courses = relationship("Course", back_populates="instructor")
     cart_items = relationship("Cart", back_populates="student", cascade="all, delete-orphan")
+    meetings = relationship("MeetingLink", back_populates="instructor", cascade="all, delete")
+
 
 
 class Token(Base):
