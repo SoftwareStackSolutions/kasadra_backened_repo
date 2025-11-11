@@ -17,7 +17,14 @@ class CourseCalendarCreate(BaseModel):
     start_date: date
     end_date: date
 
-
+class CourseCalendarUpdate(BaseModel):
+    batch_id: int | None = None
+    lesson_id: int | None = None
+    select_date: date | None = None
+    day: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    
 @router.post("/add")
 async def add_course_calendar(
     calendar_data: CourseCalendarCreate,
@@ -103,3 +110,70 @@ async def get_course_calendar(course_id: int, db: AsyncSession = Depends(get_ses
         })
 
     return {"status": "success", "data": data}
+
+# ✅ Update existing course calendar
+@router.put("/update/{calendar_id}")
+async def update_course_calendar(
+    calendar_id: int,
+    update_data: CourseCalendarUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    calendar = await db.get(CourseCalendar, calendar_id)
+    if not calendar:
+        raise HTTPException(status_code=404, detail="Calendar entry not found")
+
+    # Update fields if provided
+    if update_data.batch_id:
+        batch = (await db.execute(select(Batch).where(Batch.id == update_data.batch_id))).scalar_one_or_none()
+        if not batch:
+            raise HTTPException(404, "Batch not found")
+        calendar.batch_id = update_data.batch_id
+        calendar.course_id = batch.course_id
+
+    if update_data.lesson_id:
+        lesson = (await db.execute(select(Lesson).where(Lesson.id == update_data.lesson_id))).scalar_one_or_none()
+        if not lesson:
+            raise HTTPException(404, "Lesson not found")
+        calendar.lesson_id = update_data.lesson_id
+
+    if update_data.day:
+        calendar.day = update_data.day
+    if update_data.select_date:
+        calendar.select_date = update_data.select_date
+    if update_data.start_date:
+        calendar.start_date = update_data.start_date
+    if update_data.end_date:
+        calendar.end_date = update_data.end_date
+
+    await db.commit()
+    await db.refresh(calendar)
+
+    return {
+        "status": "success",
+        "message": f"Calendar entry {calendar_id} updated successfully",
+        "data": {
+            "calendar_id": calendar.id,
+            "batch_id": calendar.batch_id,
+            "lesson_id": calendar.lesson_id,
+            "day": calendar.day,
+            "select_date": str(calendar.select_date),
+            "start_date": str(calendar.start_date),
+            "end_date": str(calendar.end_date),
+        },
+    }
+
+
+# ✅ Delete course calendar
+@router.delete("/delete/{calendar_id}")
+async def delete_course_calendar(calendar_id: int, db: AsyncSession = Depends(get_session)):
+    calendar = await db.get(CourseCalendar, calendar_id)
+    if not calendar:
+        raise HTTPException(status_code=404, detail="Calendar entry not found")
+
+    await db.delete(calendar)
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Calendar entry {calendar_id} deleted successfully"
+    }
