@@ -21,4 +21,6 @@ class APIS:
         response = requests.post(self._construct_url(endpoint),headers=self.header, json=data)
         return response 
     
-    
+    def put(self,endpoint, data):
+        response = requests.put(self._construct_url(endpoint),headers=self.header, json=data)
+        return response

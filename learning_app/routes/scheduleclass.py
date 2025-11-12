@@ -5,58 +5,59 @@ from models.course import CourseCalendar, Course, Lesson, Batch
 from database.db import get_session
 from datetime import date
 from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter(tags=["calendar"])
 
 # ✅ Request body schema
 class CourseCalendarCreate(BaseModel):
-    batch_id: int
+    course_id: int
     lesson_id: int
-    select_date : date
     day: str
-    start_date: date
-    end_date: date
+    start_time: str  # store as string only (not actual time)
+    end_time: str    # store as string only (not actual time)
+    select_date: Optional[str] = None  # not used for storage, just received
 
 class CourseCalendarUpdate(BaseModel):
-    batch_id: int | None = None
-    lesson_id: int | None = None
-    select_date: date | None = None
-    day: str | None = None
-    start_date: date | None = None
-    end_date: date | None = None
-    
+    course_id: Optional[int] = None
+    lesson_id: Optional[int] = None
+    day: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    select_date: Optional[str] = None  # ignored for DB
+
+
+# ✅ API endpoint
 @router.post("/add")
 async def add_course_calendar(
     calendar_data: CourseCalendarCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    # Get the batch and related course
-    result = await db.execute(select(Batch).where(Batch.id == calendar_data.batch_id))
-    batch = result.scalar_one_or_none()
-    if not batch:
-        raise HTTPException(status_code=404, detail="Batch not found")
+    # ✅ Validate course
+    result = await db.execute(select(Course).where(Course.id == calendar_data.course_id))
+    course = result.scalar_one_or_none()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
 
-    # Ensure batch belongs to a course
-    if not batch.course_id:
-        raise HTTPException(status_code=400, detail="Batch is not linked to a course")
-
-    # Ensure lesson belongs to same course
+    # ✅ Validate lesson
     result = await db.execute(select(Lesson).where(Lesson.id == calendar_data.lesson_id))
     lesson = result.scalar_one_or_none()
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    if lesson.course_id != batch.course_id:
-        raise HTTPException(status_code=400, detail="Lesson does not belong to the batch's course")
+    # ✅ Ensure lesson belongs to the same course
+    if lesson.course_id != calendar_data.course_id:
+        raise HTTPException(status_code=400, detail="Lesson does not belong to the provided course")
 
+    # ✅ Create calendar entry (without saving actual date/time)
     new_calendar_entry = CourseCalendar(
-        course_id=batch.course_id,  # ✅ use course_id from batch
-        batch_id=calendar_data.batch_id,
+        course_id=calendar_data.course_id,
         lesson_id=calendar_data.lesson_id,
         day=calendar_data.day,
-        select_date=calendar_data.select_date,
-        start_date=calendar_data.start_date,
-        end_date=calendar_data.end_date,
+        start_time=calendar_data.start_time,  # treated as string
+        end_time=calendar_data.end_time,      # treated as string
+        select_date=None,  # explicitly not storing the frontend date
+
     )
 
     db.add(new_calendar_entry)
@@ -65,17 +66,19 @@ async def add_course_calendar(
 
     return {
         "status": "success",
-        "message": "Course calendar entry added successfully",
+        "message": "schedule created successfully",
         "data": {
             "calendar_id": new_calendar_entry.id,
-            "batch_id": new_calendar_entry.batch_id,
+            "course_id": new_calendar_entry.course_id,
             "lesson_id": new_calendar_entry.lesson_id,
+            "lesson_title": lesson.lesson_title,
             "day": new_calendar_entry.day,
-            "select_date": str(new_calendar_entry.select_date),
-            "start_date": str(new_calendar_entry.start_date),
-            "end_date": str(new_calendar_entry.end_date),
+            "start_time": new_calendar_entry.start_time,
+            "end_time": new_calendar_entry.end_time,
         },
     }
+
+
 
 # view calaneder by course ID
 @router.get("/view/{course_id}")
@@ -91,7 +94,7 @@ async def get_course_calendar(course_id: int, db: AsyncSession = Depends(get_ses
     )).scalars().all()
 
     if not calendars:
-        return {"status": "success", "message": "No calendar entries found", "data": []}
+        return {"status": "success", "message": "No schedule class entries found", "data": []}
 
     # Build result
     data = []
@@ -120,7 +123,7 @@ async def update_course_calendar(
 ):
     calendar = await db.get(CourseCalendar, calendar_id)
     if not calendar:
-        raise HTTPException(status_code=404, detail="Calendar entry not found")
+        raise HTTPException(status_code=404, detail="Schedule class entry not found")
 
     # Update fields if provided
     if update_data.batch_id:
@@ -150,7 +153,7 @@ async def update_course_calendar(
 
     return {
         "status": "success",
-        "message": f"Calendar entry {calendar_id} updated successfully",
+        "message": f"Schedule class  updated successfully",
         "data": {
             "calendar_id": calendar.id,
             "batch_id": calendar.batch_id,
@@ -168,12 +171,12 @@ async def update_course_calendar(
 async def delete_course_calendar(calendar_id: int, db: AsyncSession = Depends(get_session)):
     calendar = await db.get(CourseCalendar, calendar_id)
     if not calendar:
-        raise HTTPException(status_code=404, detail="Calendar entry not found")
+        raise HTTPException(status_code=404, detail="Schedule class entry not found")
 
     await db.delete(calendar)
     await db.commit()
 
     return {
         "status": "success",
-        "message": f"Calendar entry {calendar_id} deleted successfully"
+        "message": f"Schedule class deleted successfully"
     }

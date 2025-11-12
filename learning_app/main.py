@@ -21,13 +21,13 @@ from routes import student
 from routes import instructor
 from routes import course
 from routes import lessons
-from routes import concept
-from routes import quiz
-from routes import labs
 from routes import scheduleclass
 from routes import batch
+from routes import contents
 from routes import cart
 from routes import purchased_course
+from routes import meeting_link
+from routes import contents
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
 
@@ -46,22 +46,23 @@ app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
 app.include_router(course.router, prefix="/api/courses")
 app.include_router(lessons.router, prefix="/api/lessons")
-app.include_router(concept.router, prefix="/api/concepts")
-app.include_router(quiz.router, prefix="/api/quizzes")
-app.include_router(labs.router, prefix="/api/labs")
 app.include_router(scheduleclass.router, prefix="/api/scheduleclass")
 app.include_router(batch.router, prefix="/api/batches")
 app.include_router(cart.router,prefix="/api/cart")
 app.include_router(purchased_course.router,prefix="/api/buy")
-
-
+app.include_router(contents.router,prefix="/api/contents")
+app.include_router(meeting_link.router,prefix="/api")
 
 
 origins = [
     "http://localhost:5173",   # React dev server
     "http://127.0.0.1:5173",   
+    "http://127.0.0.1:8000",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
     "http://127.0.0.1:8000", 
     "http://127.0.0.1:8000/docs",
+    "http://127.0.0.1:8000/api/docs",
     "http://www.softwarestack.xyz/api/",
     "http://www.softwarestack.xyz",
     "http://www.softwarestack.xyz/api/docs"
@@ -106,4 +107,8 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     await init_db()
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
 

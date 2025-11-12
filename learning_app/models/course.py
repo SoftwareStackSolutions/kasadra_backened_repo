@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, LargeBinary
+from sqlalchemy import Column, Integer, String, Date,ForeignKey, LargeBinary
 from sqlalchemy.orm import relationship
 from datetime import date
 
@@ -27,6 +27,11 @@ class Course(Base):
     cart_entries = relationship("Cart", back_populates="course", cascade="all, delete-orphan")
     calendar_entries = relationship("CourseCalendar", back_populates="course", cascade="all, delete")
 
+    pdfs = relationship("Pdf", back_populates="course", cascade="all, delete-orphan")
+    weblinks = relationship("WebLink", back_populates="course", cascade="all, delete-orphan")
+
+    meetings = relationship("MeetingLink", back_populates="course", cascade="all, delete")
+
 
 
 class Lesson(Base):
@@ -42,63 +47,42 @@ class Lesson(Base):
     
     instructor = relationship("User", foreign_keys=[instructor_id])
     course = relationship("Course", back_populates="lessons")
-    concepts = relationship("Concept", back_populates="lesson", cascade="all, delete-orphan")
-
-class Concept(Base):
-    __tablename__ = "concepts"
-
-    id = Column(Integer, primary_key=True, index=True)
-    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
-    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
-    title = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    file_url = Column(String, nullable=True)  # s
-    created_at = Column(Date, default=date.today)
-
-    lesson = relationship("Lesson", back_populates="concepts")
-    quizzes = relationship("Quiz", back_populates="concept", cascade="all, delete-orphan")
-    labs = relationship("Lab", back_populates="concept", cascade="all, delete-orphan")
-
-    
+    pdfs = relationship("Pdf", back_populates="lesson", cascade="all, delete-orphan")
+    weblinks = relationship("WebLink", back_populates="lesson", cascade="all, delete-orphan")
+        
 
 
 
 # class LessonCreate(BaseModel):
     # description: Optional[str] = None
-class Quiz(Base):
-    __tablename__ = "quizzes"
+class Pdf(Base):
+    __tablename__ = "pdfs"
+
 
     id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
-    concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
-
-    title = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    quiz_link = Column(String, nullable=True) 
-    file_url = Column(String(500), nullable=True)  # new field
+    file_url = Column(String, nullable=False)
     created_at = Column(Date, default=date.today)
 
-    concept = relationship("Concept", back_populates="quizzes")
-    
+    course = relationship("Course", back_populates="pdfs")
+    lesson = relationship("Lesson", back_populates="pdfs")
 
-class Lab(Base):
-    __tablename__ = "labs"
+
+class WebLink(Base):
+    __tablename__ = "weblinks"
 
     id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
-    concept_id = Column(Integer, ForeignKey("concepts.id"), nullable=False)
-    title = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    file_url = Column(String, nullable=True)  
-    lab_link = Column(String, nullable=True)
+    link_url = Column(String, nullable=False)
     created_at = Column(Date, default=date.today)
-    
-    concept = relationship("Concept", back_populates="labs")
-    lesson = relationship("Lesson")   
-    course = relationship("Course")
+
+    course = relationship("Course", back_populates="weblinks")
+    lesson = relationship("Lesson", back_populates="weblinks")
+
+    course = relationship("Course", back_populates="weblinks")
+    lesson = relationship("Lesson", back_populates="weblinks")
 
 
 class Batch(Base):
@@ -117,22 +101,37 @@ class Batch(Base):
     course = relationship("Course")
     instructor = relationship("User")
     calendar_entries = relationship("CourseCalendar", back_populates="batch", cascade="all, delete-orphan")
+    meetings = relationship("MeetingLink", back_populates="batch", cascade="all, delete")
+
 
 
 class CourseCalendar(Base):
     __tablename__ = "course_calendar"
 
     id = Column(Integer, primary_key=True, index=True)
-    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)  # ✅ FIX
-    batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"), nullable=False)
-    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
-    select_date = Column(Date, nullable=False)
-    day = Column(String(50), nullable=False)
-    start_date = Column(Date, nullable=False)
-    end_date = Column(Date, nullable=False)
-
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=True)  # ✅ FIX
+    batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"), nullable=True)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=True)
+    select_date = Column(Date, nullable=True)
+    day = Column(String, nullable=False)
+    start_time = Column(String, nullable=True)
+    end_time = Column(String, nullable=True)
     # Relationships
     course = relationship("Course", back_populates="calendar_entries")
     batch = relationship("Batch", back_populates="calendar_entries")
     lesson = relationship("Lesson")
 
+
+class MeetingLink(Base):
+    __tablename__ = "meeting_links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    instructor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"))  # ✅ FIX
+    batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"))
+    meeting_url = Column(String(255), nullable=False)
+
+    # Relationships (optional, for easy access)
+    instructor = relationship("User", back_populates="meetings")
+    course = relationship("Course", back_populates="meetings")
+    batch = relationship("Batch", back_populates="meetings")
