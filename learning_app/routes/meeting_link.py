@@ -108,6 +108,49 @@ async def get_meeting_links_by_instructor(
     }
 
 
+# ------------------ Put  instructor_id ------------------ 
+
+@router.put("/meeting-links/{meeting_id}", tags=["Meeting link"])
+async def update_meeting_link(
+    meeting_id: int,
+    meeting_in: MeetingCreate,   # You can also make a separate Update schema if needed
+    db: AsyncSession = Depends(get_session)
+):
+    # 1️⃣ Fetch the meeting link
+    meeting = await db.get(MeetingLink, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting link not found")
+
+    # 2️⃣ Ensure instructor is updating *their own* meeting link
+    if meeting.instructor_id != meeting_in.instructor_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not authorized to update this meeting link"
+        )
+
+    # 3️⃣ Update allowed fields
+    meeting.course_id = meeting_in.course_id
+    meeting.batch_id = meeting_in.batch_id
+    meeting.meeting_url = str(meeting_in.meeting_url)
+
+    # 4️⃣ Commit changes
+    await db.commit()
+    await db.refresh(meeting)
+
+    # 5️⃣ Fetch related info for clean response
+    course = await db.get(Course, meeting.course_id)
+    batch = await db.get(Batch, meeting.batch_id)
+
+    return {
+        "status": "success",
+        "message": "Meeting link updated successfully",
+        "data": {
+            "id": meeting.id,
+            "course_title": course.title if course else None,
+            "batch_name": batch.batch_name if batch else None,
+            "meeting_url": meeting.meeting_url
+        }
+    }
 ##########################################################################################################
 
 
