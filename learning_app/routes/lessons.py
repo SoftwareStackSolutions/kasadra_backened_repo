@@ -78,71 +78,29 @@ async def add_lesson(
 
 
 @router.get("{lesson_id}", tags=["lessons"])
-async def get_lesson_by_id(lesson_id: int, db: AsyncSession = Depends(get_session)):
-    # Fetch lesson
+async def get_lesson_by_id(
+    lesson_id: int,
+    db: AsyncSession = Depends(get_session)
+):
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     lesson = result.scalar_one_or_none()
 
     if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-
-    # Build nested data
-    lesson_data = {
-        "lesson_id": lesson.id,
-        "title": lesson.lesson_title,
-        "description": lesson.description,
-        "course_id": lesson.course_id,
-        "created_at": lesson.created_at,
-        "concepts": []
-    }
-
-    # Fetch concepts under this lesson
-    result = await db.execute(select(Concept).where(Concept.lesson_id == lesson_id))
-    concepts = result.scalars().all()
-
-    for concept in concepts:
-        # Fetch quizzes for this concept
-        quiz_result = await db.execute(select(Quiz).where(Quiz.concept_id == concept.id))
-        quizzes = quiz_result.scalars().all()
-
-        # Fetch labs for this concept
-        lab_result = await db.execute(select(Lab).where(Lab.concept_id == concept.id))
-        labs = lab_result.scalars().all()
-
-        concept_data = {
-            "concept_id": concept.id,
-            "title": concept.title,
-            "description": concept.description,
-            "file_url": concept.file_url,
-            "created_at": concept.created_at,
-            "quizzes": [
-                {
-                    "quiz_id": quiz.id,
-                    "title": quiz.title,
-                    "description": quiz.description,
-                    "quiz_link": quiz.quiz_link,
-                    "created_at": quiz.created_at,
-                }
-                for quiz in quizzes
-            ],
-            "labs": [
-                {
-                    "lab_id": lab.id,
-                    "title": lab.title,
-                    "description": lab.description,
-                    "file_url": lab.file_url,
-                    "lab_link": lab.lab_link,
-                    "created_at": lab.created_at,
-                }
-                for lab in labs
-            ],
-        }
-
-        lesson_data["concepts"].append(concept_data)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lesson not found"
+        )
 
     return {
         "status": "success",
-        "data": lesson_data,
+        "data": {
+            "lesson_id": lesson.id,
+            "course_id": lesson.course_id,
+            "instructor_id": lesson.instructor_id,
+            "title": lesson.lesson_title,
+            "description": lesson.description,
+            "created_at": lesson.created_at
+        },
     }
 
 
