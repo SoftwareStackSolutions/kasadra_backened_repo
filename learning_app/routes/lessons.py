@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.user import User, RoleEnum
-from models.course import Course, Lesson, Concept, Quiz, Lab
+from models.course import Course, Lesson
 from database.db import get_session
 from datetime import datetime
 from typing import Optional
@@ -10,6 +10,7 @@ from dependencies.auth_dep import get_current_user
 from utils.gcp import upload_file_to_gcs  # Make sure this utility is implemented
 from pydantic import BaseModel
 from typing import Optional, Union
+from sqlalchemy.orm import selectinload
 
 class LessonUpdate(BaseModel):
     title: Optional[str]
@@ -21,7 +22,7 @@ class LessonCreate(BaseModel):
     title: str
     description: Optional[str] = None
 
-router = APIRouter()
+router = APIRouter(tags=["lessons"])
 
 @router.post("/add", tags=["lessons"])
 async def add_lesson(
@@ -74,7 +75,7 @@ async def add_lesson(
         },
     }
 
-from sqlalchemy.orm import selectinload
+
 
 @router.get("{lesson_id}", tags=["lessons"])
 async def get_lesson_by_id(lesson_id: int, db: AsyncSession = Depends(get_session)):
@@ -88,9 +89,8 @@ async def get_lesson_by_id(lesson_id: int, db: AsyncSession = Depends(get_sessio
     # Build nested data
     lesson_data = {
         "lesson_id": lesson.id,
-        "title": lesson.title,
+        "title": lesson.lesson_title,
         "description": lesson.description,
-        "file_url": lesson.file_url,
         "course_id": lesson.course_id,
         "created_at": lesson.created_at,
         "concepts": []
@@ -146,44 +146,6 @@ async def get_lesson_by_id(lesson_id: int, db: AsyncSession = Depends(get_sessio
     }
 
 
-@router.get("/all", tags=["lessons"])
-async def get_all_lessons(db: AsyncSession = Depends(get_session)):
-    from models.course import ScheduleClass  # import inside to avoid circular dependency
-
-    result = await db.execute(
-        select(Lesson)
-        .options(selectinload(Lesson.course))
-    )
-    lessons = result.scalars().all()
-
-    data = []
-    for lesson in lessons:
-        # Fetch the schedule for each lesson (if any)
-        schedule_result = await db.execute(
-            select(ScheduleClass)
-            .where(ScheduleClass.lesson_id == lesson.id)
-        )
-        schedule = schedule_result.scalar_one_or_none()
-
-        data.append({
-            "id": lesson.id,
-            "instructor_id": lesson.instructor_id,
-            "course_name": lesson.course.title if lesson.course else None,
-            "course_id": lesson.course_id,
-            "title": lesson.title,
-            "description": lesson.description,
-            "created_at": lesson.created_at,
-            "session_date": schedule.session_date.strftime("%Y-%m-%d %H:%M") if schedule and schedule.session_date else None,
-            "release_time": schedule.session_time if schedule and hasattr(schedule, "release_time") else "Not set",
-            "status": "Scheduled" if schedule else "Not Scheduled"
-        })
-
-    return {
-        "status": "success",
-        "data": data
-    }
-
-
 @router.get("/all/{course_id}", tags=["lessons"])
 async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
     # Fetch lessons with course and nested concepts, quizzes, and labs
@@ -226,12 +188,10 @@ async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_s
 
 # Update lesson
 
-@router.put("/lesson/{lesson_id}", tags=["lessons"])
+@router.put("/{lesson_id}")
 async def update_lesson(
     lesson_id: int,
-    title: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),  # Only accept UploadFile
+    lesson_data: LessonUpdate,
     db: AsyncSession = Depends(get_session),
 ):
     # Fetch lesson
@@ -240,21 +200,13 @@ async def update_lesson(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # Update title if provided
-    if title is not None and title.strip() not in ["", "string"]:
-        lesson.title = title.strip()
+    # Update fields if provided
+    if lesson_data.lesson_title and lesson_data.lesson_title.strip() not in ["", "string"]:
+        lesson.lesson_title = lesson_data.lesson_title.strip()
 
-    # Update description if provided
-    if description is not None and description.strip() not in ["", "string"]:
-        lesson.description = description.strip()
+    if lesson_data.description and lesson_data.description.strip() not in ["", "string"]:
+        lesson.description = lesson_data.description.strip()
 
-    # Update file only if a new file is uploaded
-    if file is not None and file.filename:  # Only update when a real file is provided
-        filename = f"lessons/{lesson.course_id}/{datetime.utcnow().timestamp()}_{file.filename}"
-        lesson.file_url = await upload_file_to_gcs(file, filename)
-    # else: file is None → keep existing file_url
-
-    # Commit and refresh
     await db.commit()
     await db.refresh(lesson)
 
@@ -263,9 +215,8 @@ async def update_lesson(
         "message": "Lesson updated successfully",
         "data": {
             "lesson_id": lesson.id,
-            "title": lesson.title,
+            "title": lesson.lesson_title,
             "description": lesson.description,
-            "file_url": lesson.file_url,
         },
     }
 

@@ -609,6 +609,3 @@ async def student_login(request: LoginRequestDetails, db: Session = Depends(get_
 #         "status": "success",
 #         "message": "Logged out successfully"
 #     }
-
-
-
