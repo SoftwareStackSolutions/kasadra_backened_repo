@@ -150,50 +150,7 @@ async def get_course_by_id(course_id: int, db: AsyncSession = Depends(get_sessio
         }
     }
 
-@router.put("/update/{course_id}", tags=["courses"])
-async def update_course(
-    course_id: int,
-    title: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    duration: Optional[str] = Form(None),
-    thumbnail: Optional[UploadFile] = File(None),  # Only accept UploadFile or None
-    db: AsyncSession = Depends(get_session),
-):
-    # Fetch course
-    result = await db.execute(select(Course).where(Course.id == course_id))
-    course = result.scalar_one_or_none()
-    if not course:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
-    # Update fields if provided
-    if title and title.strip() not in ["", "string"]:
-        course.title = title.strip()
-    if description and description.strip() not in ["", "string"]:
-        course.description = description.strip()
-    if duration and duration.strip() not in ["", "string"]:
-        course.duration = duration.strip()
-
-    # Update thumbnail only if a new file is uploaded
-    if thumbnail and thumbnail.filename:  # None if no file is sent
-        filename = f"courses/{datetime.utcnow().timestamp()}_{thumbnail.filename}"
-        course.thumbnail_url = await upload_file_to_s3(thumbnail, filename)
-
-    # Commit and refresh
-    await db.commit()
-    await db.refresh(course)
-
-    return {
-        "status": "success",
-        "message": "Course updated successfully",
-        "data": {
-            "course_id": course.id,
-            "title": course.title,
-            "description": course.description,
-            "duration": course.duration,
-            "instructor_id": course.instructor_id,
-            "thumbnail_url": course.thumbnail_url,
-        },
-    }
 
 @router.delete("/delete/{course_id}", tags=["courses"])
 async def delete_course(

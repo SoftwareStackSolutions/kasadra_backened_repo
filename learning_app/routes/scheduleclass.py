@@ -108,8 +108,8 @@ async def get_course_calendar(course_id: int, db: AsyncSession = Depends(get_ses
             "lesson_title": lesson.lesson_title if lesson else None,
             "select_date": str(c.select_date),
             "day": c.day,
-            "start_date": str(c.start_date),
-            "end_date": str(c.end_date),
+            "start_time": str(c.start_time),
+            "end_time": str(c.end_time),
         })
 
     return {"status": "success", "data": data}
