@@ -27,6 +27,7 @@ from routes import contents
 from routes import cart
 from routes import purchased_course
 from routes import meeting_link
+from routes import contents
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
 
@@ -49,15 +50,19 @@ app.include_router(scheduleclass.router, prefix="/api/scheduleclass")
 app.include_router(batch.router, prefix="/api/batches")
 app.include_router(cart.router,prefix="/api/cart")
 app.include_router(purchased_course.router,prefix="/api/buy")
-app.include_router(contents.router,prefix="/api/content")
+app.include_router(contents.router,prefix="/api/contents")
 app.include_router(meeting_link.router,prefix="/api/link")
 
 
 origins = [
     "http://localhost:5173",   # React dev server
     "http://127.0.0.1:5173",   
+    "http://127.0.0.1:8000",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
     "http://127.0.0.1:8000", 
     "http://127.0.0.1:8000/docs",
+    "http://127.0.0.1:8000/api/docs",
     "http://www.softwarestack.xyz/api/",
     "http://www.softwarestack.xyz",
     "http://www.softwarestack.xyz/api/docs"
@@ -102,3 +107,9 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     await init_db()
+
+
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
