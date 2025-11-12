@@ -51,7 +51,7 @@ app.include_router(batch.router, prefix="/api/batches")
 app.include_router(cart.router,prefix="/api/cart")
 app.include_router(purchased_course.router,prefix="/api/buy")
 app.include_router(contents.router,prefix="/api/contents")
-app.include_router(meeting_link.router,prefix="/api/link")
+app.include_router(meeting_link.router,prefix="/api")
 
 
 origins = [
