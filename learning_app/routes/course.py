@@ -26,8 +26,7 @@ class CourseResponse(BaseModel):
 
     class Config:
         orm_mode = True
-
-
+        
 @router.post("/add", tags=["courses"], response_model=CourseResponse)
 async def add_course(
     title: str = Form(...),
