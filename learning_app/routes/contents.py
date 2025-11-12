@@ -5,7 +5,7 @@ from models.course import Course, Lesson, Pdf, WebLink
 from database.db import get_session
 from utils.gcp import upload_file_to_gcs  # Assuming you already have this util
 
-router = APIRouter(prefix="/content", tags=["contents"])
+router = APIRouter(tags=["contents"])
 
 
 # ✅ Upload PDF file

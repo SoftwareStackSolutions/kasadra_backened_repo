@@ -19,12 +19,10 @@ class Course(Base):
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
     cart_entries = relationship("Cart", back_populates="course", cascade="all, delete-orphan")
     calendar_entries = relationship("CourseCalendar", back_populates="course", cascade="all, delete")
-<<<<<<< HEAD
+
     pdfs = relationship("Pdf", back_populates="course", cascade="all, delete-orphan")
     weblinks = relationship("WebLink", back_populates="course", cascade="all, delete-orphan")
-=======
     meetings = relationship("MeetingLink", back_populates="course", cascade="all, delete")
->>>>>>> 61e4d79241e18e3f82311fa1b386854949f34fd6
 
 
 
