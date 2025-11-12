@@ -22,13 +22,9 @@ class Course(Base):
 
     pdfs = relationship("Pdf", back_populates="course", cascade="all, delete-orphan")
     weblinks = relationship("WebLink", back_populates="course", cascade="all, delete-orphan")
-<<<<<<< HEAD
-    meetings = relationship("MeetingLink", back_populates="course", cascade="all, delete")
-=======
 
     meetings = relationship("MeetingLink", back_populates="course", cascade="all, delete")
 
->>>>>>> 1c8c2bef20cfe22e0f6e372494c778a4070be1ac
 
 
 
