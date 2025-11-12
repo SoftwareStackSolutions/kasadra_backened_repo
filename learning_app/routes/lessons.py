@@ -70,6 +70,7 @@ async def add_lesson(
             "lesson_id": new_lesson.id,
             "instructor_id": lesson_data.instructor_id,
             "course_id": course.id,
+            "course_title": course.title,
             "title": new_lesson.lesson_title,
             "description": new_lesson.description,
         },
@@ -124,6 +125,7 @@ async def get_lessons_by_course_id(
             {
                 "lesson_id": l.id,
                 "title": l.lesson_title,
+                "course_title": l.course.title,
                 "description": l.description,
                 "created_at": l.created_at,
             } for l in lessons
