@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.course import CourseCalendar, Course, Lesson, Batch
 from database.db import get_session
-from datetime import date
+from datetime import date, datetime
 from pydantic import BaseModel
 from typing import Optional
 
@@ -49,15 +49,25 @@ async def add_course_calendar(
     if lesson.course_id != calendar_data.course_id:
         raise HTTPException(status_code=400, detail="Lesson does not belong to the provided course")
 
-    # ✅ Create calendar entry (without saving actual date/time)
+    # ✅ Convert MM-DD-YYYY → date
+    select_date_value = None
+    if calendar_data.select_date:
+        try:
+            select_date_value = datetime.strptime(calendar_data.select_date, "%m-%d-%Y").date()
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format. Please use MM-DD-YYYY (e.g. 11-13-2025)."
+            )
+
+    # ✅ Create new record
     new_calendar_entry = CourseCalendar(
         course_id=calendar_data.course_id,
         lesson_id=calendar_data.lesson_id,
         day=calendar_data.day,
-        start_time=calendar_data.start_time,  # treated as string
-        end_time=calendar_data.end_time,      # treated as string
-        select_date=None,  # explicitly not storing the frontend date
-
+        start_time=calendar_data.start_time,
+        end_time=calendar_data.end_time,
+        select_date=select_date_value,
     )
 
     db.add(new_calendar_entry)
@@ -75,9 +85,9 @@ async def add_course_calendar(
             "day": new_calendar_entry.day,
             "start_time": new_calendar_entry.start_time,
             "end_time": new_calendar_entry.end_time,
+            "select_date": new_calendar_entry.select_date.strftime("%m-%d-%Y") if new_calendar_entry.select_date else None,
         },
     }
-
 
 
 # view calaneder by course ID
