@@ -53,11 +53,11 @@ async def add_course_calendar(
     select_date_value = None
     if calendar_data.select_date:
         try:
-            select_date_value = datetime.strptime(calendar_data.select_date, "%m-%d-%Y").date()
+            select_date_value = datetime.strptime(calendar_data.select_date, "%Y-%m-%d").date()
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid date format. Please use MM-DD-YYYY (e.g. 11-13-2025)."
+                detail="Invalid date format. Please use YYYY-MM-DD (e.g. 2025-11-13)."
             )
 
     # ✅ Create new record
@@ -85,7 +85,7 @@ async def add_course_calendar(
             "day": new_calendar_entry.day,
             "start_time": new_calendar_entry.start_time,
             "end_time": new_calendar_entry.end_time,
-            "select_date": new_calendar_entry.select_date.strftime("%m-%d-%Y") if new_calendar_entry.select_date else None,
+            "select_date": new_calendar_entry.select_date.strftime("%Y-%m-%d") if new_calendar_entry.select_date else None,
         },
     }
 
