@@ -2,32 +2,35 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.user import User, RoleEnum
-from models.course import Course, Lesson, Concept, Quiz, Lab, ScheduleClass 
+from models.course import Course, Lesson
 from database.db import get_session
 from datetime import datetime
 from typing import Optional
 from dependencies.auth_dep import get_current_user
-from utils.s3 import upload_file_to_s3  # Make sure this utility is implemented
+from utils.gcp import upload_file_to_gcs  # Make sure this utility is implemented
 from pydantic import BaseModel
 from typing import Optional, Union
+from sqlalchemy.orm import selectinload
 
 class LessonUpdate(BaseModel):
     title: Optional[str]
     description: Optional[str]
 
-router = APIRouter()
+class LessonCreate(BaseModel):
+    instructor_id: int
+    course_id: int
+    title: str
+    description: Optional[str] = None
+
+router = APIRouter(tags=["lessons"])
 
 @router.post("/add", tags=["lessons"])
 async def add_lesson(
-    instructor_id: int = Form(...),
-    course_id: int = Form(...),
-    title: str = Form(...),
-    description: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
+    lesson_data: LessonCreate,
     db: AsyncSession = Depends(get_session),
 ):
     # Verify instructor
-    result = await db.execute(select(User).where(User.id == instructor_id))
+    result = await db.execute(select(User).where(User.id == lesson_data.instructor_id))
     instructor = result.scalar_one_or_none()
     if not instructor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instructor not found")
@@ -35,34 +38,24 @@ async def add_lesson(
     if instructor.role != RoleEnum.instructor:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not an instructor")
 
-    #  Verify course
-    result = await db.execute(select(Course).where(Course.id == course_id))
+    # Verify course
+    result = await db.execute(select(Course).where(Course.id == lesson_data.course_id))
     course = result.scalar_one_or_none()
     if not course:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
-    # Ensure the course was created by the instructor
-    if course.instructor_id != instructor_id:
+    if course.instructor_id != lesson_data.instructor_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This course was not created by the provided instructor"
         )
 
-    # Upload file to S3 if provided
-    file_url = None
-    if file:
-        if file.content_type != "application/pdf":
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files allowed")
-        filename = f"lessons/{course_id}/{datetime.utcnow().timestamp()}_{file.filename}"
-        file_url = await upload_file_to_s3(file, filename)
-
     # Create lesson
     new_lesson = Lesson(
-        instructor_id=instructor_id,
+        instructor_id=lesson_data.instructor_id,
         course_id=course.id,
-        title=title,
-        description=description,
-        file_url=file_url,  # store S3 URL
+        lesson_title=lesson_data.title,
+        description=lesson_data.description,
         created_at=datetime.utcnow(),
     )
 
@@ -75,208 +68,92 @@ async def add_lesson(
         "message": "Lesson added successfully",
         "data": {
             "lesson_id": new_lesson.id,
-            "instructor_id": instructor_id,
+            "instructor_id": lesson_data.instructor_id,
             "course_id": course.id,
-            "title": new_lesson.title,
-            "file_url": file_url,  # return S3 URL
+            "course_title": course.title,
+            "title": new_lesson.lesson_title,
+            "description": new_lesson.description,
         },
     }
-from sqlalchemy.orm import selectinload
+
+
 
 @router.get("{lesson_id}", tags=["lessons"])
-async def get_lesson_by_id(lesson_id: int, db: AsyncSession = Depends(get_session)):
-    # Fetch lesson
+async def get_lesson_by_id(
+    lesson_id: int,
+    db: AsyncSession = Depends(get_session)
+):
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     lesson = result.scalar_one_or_none()
 
     if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-
-    # Build nested data
-    lesson_data = {
-        "lesson_id": lesson.id,
-        "title": lesson.title,
-        "description": lesson.description,
-        "file_url": lesson.file_url,
-        "course_id": lesson.course_id,
-        "created_at": lesson.created_at,
-        "concepts": []
-    }
-
-    # Fetch concepts under this lesson
-    result = await db.execute(select(Concept).where(Concept.lesson_id == lesson_id))
-    concepts = result.scalars().all()
-
-    for concept in concepts:
-        # Fetch quizzes for this concept
-        quiz_result = await db.execute(select(Quiz).where(Quiz.concept_id == concept.id))
-        quizzes = quiz_result.scalars().all()
-
-        # Fetch labs for this concept
-        lab_result = await db.execute(select(Lab).where(Lab.concept_id == concept.id))
-        labs = lab_result.scalars().all()
-
-        concept_data = {
-            "concept_id": concept.id,
-            "title": concept.title,
-            "description": concept.description,
-            "file_url": concept.file_url,
-            "created_at": concept.created_at,
-            "quizzes": [
-                {
-                    "quiz_id": quiz.id,
-                    "title": quiz.title,
-                    "description": quiz.description,
-                    "quiz_link": quiz.quiz_link,
-                    "created_at": quiz.created_at,
-                }
-                for quiz in quizzes
-            ],
-            "labs": [
-                {
-                    "lab_id": lab.id,
-                    "title": lab.title,
-                    "description": lab.description,
-                    "file_url": lab.file_url,
-                    "lab_link": lab.lab_link,
-                    "created_at": lab.created_at,
-                }
-                for lab in labs
-            ],
-        }
-
-        lesson_data["concepts"].append(concept_data)
-
-    return {
-        "status": "success",
-        "data": lesson_data,
-    }
-
-
-@router.get("/all", tags=["lessons"])
-async def get_all_lessons(db: AsyncSession = Depends(get_session)):
-    from models.course import ScheduleClass  # import inside to avoid circular dependency
-
-    result = await db.execute(
-        select(Lesson)
-        .options(selectinload(Lesson.course))
-    )
-    lessons = result.scalars().all()
-
-    data = []
-    for lesson in lessons:
-        # Fetch the schedule for each lesson (if any)
-        schedule_result = await db.execute(
-            select(ScheduleClass)
-            .where(ScheduleClass.lesson_id == lesson.id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lesson not found"
         )
-        schedule = schedule_result.scalar_one_or_none()
-
-        data.append({
-            "id": lesson.id,
-            "instructor_id": lesson.instructor_id,
-            "course_name": lesson.course.title if lesson.course else None,
-            "course_id": lesson.course_id,
-            "title": lesson.title,
-            "description": lesson.description,
-            "created_at": lesson.created_at,
-            "session_date": schedule.session_date.strftime("%Y-%m-%d %H:%M") if schedule and schedule.session_date else None,
-            "release_time": schedule.session_time if schedule and hasattr(schedule, "release_time") else "Not set",
-            "status": "Scheduled" if schedule else "Not Scheduled"
-        })
 
     return {
         "status": "success",
-        "data": data
+        "data": {
+            "lesson_id": lesson.id,
+            "course_id": lesson.course_id,
+            "instructor_id": lesson.instructor_id,
+            "title": lesson.lesson_title,
+            "description": lesson.description,
+            "created_at": lesson.created_at
+        },
     }
 
 
 @router.get("/all/{course_id}", tags=["lessons"])
-async def get_lessons_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
-    # Fetch lessons with their course and concepts
+async def get_lessons_by_course_id(
+    course_id: int,
+    db: AsyncSession = Depends(get_session)
+):
     result = await db.execute(
-        select(Lesson)
-        .options(
-            selectinload(Lesson.concepts).selectinload(Concept.quizzes),
-            selectinload(Lesson.concepts).selectinload(Concept.labs),
-            selectinload(Lesson.course)
-        )
-        .where(Lesson.course_id == course_id)
-        .order_by(Lesson.created_at.desc())
+        select(Lesson).where(Lesson.course_id == course_id).options(selectinload(Lesson.course))
     )
     lessons = result.scalars().all()
 
     if not lessons:
-        return {"lessons": [], "message": "No lessons added yet"}
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No lessons found for this course")
 
-    # Fetch all schedules for this course
-    schedule_result = await db.execute(
-        select(ScheduleClass).where(ScheduleClass.course_id == course_id)
-    )
-    schedules = schedule_result.scalars().all()
-
-    # Map lesson_id → schedule info
-    schedule_map = {
-        s.lesson_id: {
-            "session_date": s.session_date.strftime("%Y-%m-%d") if s.session_date else None,
-            "session_time": s.session_time.strftime("%H:%M") if s.session_time else None,
-        }
-        for s in schedules
+    return {
+        "status": "success",
+        "course_id": course_id,
+        "lessons": [
+            {
+                "lesson_id": l.id,
+                "title": l.lesson_title,
+                "course_title": l.course.title,
+                "description": l.description,
+                "created_at": l.created_at,
+            } for l in lessons
+        ]
     }
 
-    lessons_response = [
-        {
-            "id": lesson.id,
-            "lesson": lesson.title,
-            "courseName": lesson.course.title if lesson.course else None,
-            "sessionDate": schedule_map.get(lesson.id, {}).get("session_date"),
-            "releaseTime": schedule_map.get(lesson.id, {}).get("session_time"),
-            "status": "Active",
-            "concepts": [
-                {
-                    "id": concept.id,
-                    "title": concept.title,
-                    "quiz": len(concept.quizzes) > 0,
-                    "lab": len(concept.labs) > 0,
-                }
-                for concept in lesson.concepts
-            ],
-        }
-        for lesson in lessons
-    ]
-
-    return {"lessons": lessons_response}
 # Update lesson
 
-@router.put("/lesson/{lesson_id}", tags=["lessons"])
+@router.put("/{lesson_id}")
 async def update_lesson(
     lesson_id: int,
-    title: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),  # Only accept UploadFile
-    db: AsyncSession = Depends(get_session),
+    lesson_data: LessonUpdate,
+    db: AsyncSession = Depends(get_session)
 ):
-    # Fetch lesson
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     lesson = result.scalar_one_or_none()
+
     if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
 
-    # Update title if provided
-    if title is not None and title.strip() not in ["", "string"]:
-        lesson.title = title.strip()
+    if lesson_data.title:
+        lesson.lesson_title = lesson_data.title
+    if lesson_data.description:
+        lesson.description = lesson_data.description
 
-    # Update description if provided
-    if description is not None and description.strip() not in ["", "string"]:
-        lesson.description = description.strip()
+    lesson.updated_at = datetime.utcnow()
 
-    # Update file only if a new file is uploaded
-    if file is not None and file.filename:  # Only update when a real file is provided
-        filename = f"lessons/{lesson.course_id}/{datetime.utcnow().timestamp()}_{file.filename}"
-        lesson.file_url = await upload_file_to_s3(file, filename)
-    # else: file is None → keep existing file_url
-
-    # Commit and refresh
+    db.add(lesson)
     await db.commit()
     await db.refresh(lesson)
 
@@ -285,9 +162,8 @@ async def update_lesson(
         "message": "Lesson updated successfully",
         "data": {
             "lesson_id": lesson.id,
-            "title": lesson.title,
+            "title": lesson.lesson_title,
             "description": lesson.description,
-            "file_url": lesson.file_url,
         },
     }
 
@@ -297,8 +173,9 @@ async def update_lesson(
 async def delete_lesson(lesson_id: int, db: AsyncSession = Depends(get_session)):
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     lesson = result.scalar_one_or_none()
+
     if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
 
     await db.delete(lesson)
     await db.commit()

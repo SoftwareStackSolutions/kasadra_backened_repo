@@ -611,4 +611,3 @@ async def student_login(request: LoginRequestDetails, db: Session = Depends(get_
 #     }
 
 
-

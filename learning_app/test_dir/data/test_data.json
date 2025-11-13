@@ -47,7 +47,26 @@
   "title": "Introduction to AWS",
   "description": "Learn the basics of AWS.",
   "file": "aws_intro.mp4"
- }
+ },
 
+ "add_calendar": {
+        "batch_id": 1,
+        "lesson_id": 1,
+        "course_id": 1,        
+        "select_date": "2025-11-12",
+        "day": "Wednesday",
+        "start_date": "2025-11-12",
+        "end_date": "2025-11-12"
+    },
+    "update_calendar": {
+        "calendar_id": 1,
+        "payload": {
+            "day": "Thursday"
+        }
+    },
+    "delete_calendar": {
+        "calendar_id": 1
+    }
 }
+
 
