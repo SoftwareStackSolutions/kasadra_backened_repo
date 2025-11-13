@@ -25,7 +25,7 @@ class CourseCalendarUpdate(BaseModel):
     day: Optional[str] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
-    select_date: Optional[str] = None  # ignored for DB
+    select_date: Optional[str] = None
 
 
 # ✅ API endpoint
@@ -142,58 +142,54 @@ async def update_course_calendar(
     update_data: CourseCalendarUpdate,
     db: AsyncSession = Depends(get_session),
 ):
-    # ✅ Fetch existing calendar entry
     calendar = await db.get(CourseCalendar, calendar_id)
     if not calendar:
         raise HTTPException(status_code=404, detail="Schedule class entry not found")
 
     # ✅ Update batch if provided
-    if update_data.batch_id:
-        batch = (
-            await db.execute(select(Batch).where(Batch.id == update_data.batch_id))
-        ).scalar_one_or_none()
+    if update_data.batch_id is not None:
+        batch_result = await db.execute(select(Batch).where(Batch.id == update_data.batch_id))
+        batch = batch_result.scalar_one_or_none()
         if not batch:
             raise HTTPException(status_code=404, detail="Batch not found")
         calendar.batch_id = update_data.batch_id
         calendar.course_id = batch.course_id
 
     # ✅ Update lesson if provided
-    if update_data.lesson_id:
-        lesson = (
-            await db.execute(select(Lesson).where(Lesson.id == update_data.lesson_id))
-        ).scalar_one_or_none()
+    if update_data.lesson_id is not None:
+        lesson_result = await db.execute(select(Lesson).where(Lesson.id == update_data.lesson_id))
+        lesson = lesson_result.scalar_one_or_none()
         if not lesson:
             raise HTTPException(status_code=404, detail="Lesson not found")
         calendar.lesson_id = update_data.lesson_id
 
-    # ✅ Update other fields if provided
-    if update_data.day:
+    # ✅ Update only valid non-placeholder fields
+    if update_data.day and update_data.day.lower() != "string":
         calendar.day = update_data.day
-    if update_data.start_time:
+
+    if update_data.start_time and update_data.start_time.lower() != "string":
         calendar.start_time = update_data.start_time
-    if update_data.end_time:
+
+    if update_data.end_time and update_data.end_time.lower() != "string":
         calendar.end_time = update_data.end_time
 
-    # ✅ Convert and update select_date (MM-DD-YYYY)
-    if update_data.select_date:
+    # ✅ Update date only if valid
+    if update_data.select_date and update_data.select_date.lower() != "string":
         try:
-            calendar.select_date = datetime.strptime(update_data.select_date, "%Y-%m-%d").date()
+            parsed_date = datetime.strptime(update_data.select_date, "%Y-%m-%d").date()
+            calendar.select_date = parsed_date
         except ValueError:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid date format. "
-            )
+            # Skip invalid date without overwriting old value
+            print(f"⚠️ Skipping invalid date: {update_data.select_date}")
 
     await db.commit()
     await db.refresh(calendar)
 
-    # ✅ Fetch lesson title (if lesson_id exists)
-    lesson_title = None
+    # ✅ Fetch lesson for title
+    lesson = None
     if calendar.lesson_id:
-        lesson = (
-            await db.execute(select(Lesson).where(Lesson.id == calendar.lesson_id))
-        ).scalar_one_or_none()
-        lesson_title = lesson.lesson_title if lesson else None
+        result = await db.execute(select(Lesson).where(Lesson.id == calendar.lesson_id))
+        lesson = result.scalar_one_or_none()
 
     return {
         "status": "success",
@@ -203,13 +199,14 @@ async def update_course_calendar(
             "course_id": calendar.course_id,
             "batch_id": calendar.batch_id,
             "lesson_id": calendar.lesson_id,
-            "lesson_title": lesson_title,
+            "lesson_title": lesson.lesson_title if lesson else None,
             "day": calendar.day,
             "start_time": calendar.start_time,
             "end_time": calendar.end_time,
             "select_date": calendar.select_date.strftime("%Y-%m-%d") if calendar.select_date else None,
         },
     }
+
 
 # ✅ Delete course calendar
 @router.delete("/delete/{calendar_id}")
