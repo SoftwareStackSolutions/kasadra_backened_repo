@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-# from sqlalchemy.orm import joinedload
 from models.course import Course, MeetingLink, Batch
 from database.db import get_session
 from models.user import User
@@ -45,6 +44,116 @@ async def create_meeting_link(
         "meeting_url": meeting.meeting_url
     }
 
+# ------------------ GET  instructor_id ------------------ 
+
+@router.get("/meeting-links/{instructor_id}", tags=["Meeting link"])
+async def get_meeting_links_by_instructor(
+    instructor_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    """Fetch only the meeting links created by this instructor."""
+    query = await db.execute(
+        select(MeetingLink).where(MeetingLink.instructor_id == instructor_id)
+    )
+    meetings = query.scalars().all()
+
+    if not meetings:
+        return {
+            "status": "success",
+            "message": "No meeting links found for this instructor",
+            "data": []
+        }
+    
+
+    results = []
+    for m in meetings:
+        course = await db.get(Course, m.course_id)
+        batch = await db.get(Batch, m.batch_id)
+
+        results.append({
+            "id": m.id,
+            "course_id": m.course_id,       # added
+            "batch_id": m.batch_id,         # added
+            "course_title": course.title if course else None,
+            "batch_name": batch.batch_name if batch else None,
+            "meeting_url": m.meeting_url
+        })
+
+    return {
+        "status": "success",
+        "message": "Meeting links fetched successfully",
+        "data": results
+    }
+
+# ------------------ Put instructor_id ------------------ 
+
+@router.put("/meeting-links/{meeting_id}", tags=["Meeting link"])
+async def update_meeting_link(
+    meeting_id: int,
+    meeting_in: MeetingCreate,   # You can also make a separate Update schema if needed
+    db: AsyncSession = Depends(get_session)
+):
+    # Fetch the meeting link
+    meeting = await db.get(MeetingLink, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting link not found")
+
+    # Ensure instructor is updating *their own* meeting link
+    if meeting.instructor_id != meeting_in.instructor_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not authorized to update this meeting link"
+        )
+
+    # Update allowed fields
+    meeting.course_id = meeting_in.course_id
+    meeting.batch_id = meeting_in.batch_id
+    meeting.meeting_url = str(meeting_in.meeting_url)
+
+    # Commit changes
+    await db.commit()
+    await db.refresh(meeting)
+
+    # Fetch related info for clean response
+    course = await db.get(Course, meeting.course_id)
+    batch = await db.get(Batch, meeting.batch_id)
+
+    return {
+        "status": "success",
+        "message": "Meeting link updated successfully",
+        "data": {
+            "id": meeting.id,
+            "course_title": course.title if course else None,
+            "batch_name": batch.batch_name if batch else None,
+            "meeting_url": meeting.meeting_url
+        }
+    }
+
+# ------------------ Delete ------------------ 
+
+@router.delete("/meeting-links/{meeting_id}", tags=["Meeting link"])
+async def delete_meeting_link(
+    meeting_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    # Fetch meeting link
+    meeting = await db.get(MeetingLink, meeting_id)
+
+    if not meeting:
+        raise HTTPException(
+            status_code=404,
+            detail="Meeting link not found"
+        )
+
+    # Delete the record
+    await db.delete(meeting)
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "Meeting link deleted successfully",
+        "deleted_id": meeting_id
+    }
 
 
 # ------------------ GET All the courses ------------------
@@ -69,107 +178,3 @@ async def create_meeting_link(
 #         })
 #     return results
 
-
-# ------------------ GET  instructor_id ------------------ 
-@router.get("/meeting-links/{instructor_id}", tags=["Meeting link"])
-async def get_meeting_links_by_instructor(
-    instructor_id: int,
-    db: AsyncSession = Depends(get_session)
-):
-    """Fetch only the meeting links created by this instructor."""
-    query = await db.execute(
-        select(MeetingLink).where(MeetingLink.instructor_id == instructor_id)
-    )
-    meetings = query.scalars().all()
-
-    if not meetings:
-        return {
-            "status": "success",
-            "message": "No meeting links found for this instructor",
-            "data": []
-        }
-
-    results = []
-    for m in meetings:
-        course = await db.get(Course, m.course_id)
-        batch = await db.get(Batch, m.batch_id)
-
-        results.append({
-            "id": m.id,
-            "course_title": course.title if course else None,
-            "batch_name": batch.batch_name if batch else None,
-            "meeting_url": m.meeting_url
-        })
-
-    return {
-        "status": "success",
-        "message": "Meeting links fetched successfully",
-        "data": results
-    }
-
-
-# ------------------ Put  instructor_id ------------------ 
-
-@router.put("/meeting-links/{meeting_id}", tags=["Meeting link"])
-async def update_meeting_link(
-    meeting_id: int,
-    meeting_in: MeetingCreate,   # You can also make a separate Update schema if needed
-    db: AsyncSession = Depends(get_session)
-):
-    # 1️⃣ Fetch the meeting link
-    meeting = await db.get(MeetingLink, meeting_id)
-    if not meeting:
-        raise HTTPException(status_code=404, detail="Meeting link not found")
-
-    # 2️⃣ Ensure instructor is updating *their own* meeting link
-    if meeting.instructor_id != meeting_in.instructor_id:
-        raise HTTPException(
-            status_code=403,
-            detail="You are not authorized to update this meeting link"
-        )
-
-    # 3️⃣ Update allowed fields
-    meeting.course_id = meeting_in.course_id
-    meeting.batch_id = meeting_in.batch_id
-    meeting.meeting_url = str(meeting_in.meeting_url)
-
-    # 4️⃣ Commit changes
-    await db.commit()
-    await db.refresh(meeting)
-
-    # 5️⃣ Fetch related info for clean response
-    course = await db.get(Course, meeting.course_id)
-    batch = await db.get(Batch, meeting.batch_id)
-
-    return {
-        "status": "success",
-        "message": "Meeting link updated successfully",
-        "data": {
-            "id": meeting.id,
-            "course_title": course.title if course else None,
-            "batch_name": batch.batch_name if batch else None,
-            "meeting_url": meeting.meeting_url
-        }
-    }
-##########################################################################################################
-
-
-# @router.delete("/{meeting_id}", status_code=204)
-# async def delete_meeting(
-#     meeting_id: int,
-#     current_user: User = Depends(role_required(RoleEnum.instructor, RoleEnum.superuser)),
-#     db: AsyncSession = Depends(get_session)
-# ):
-#     # only instructor who created it or superuser can delete
-#     stmt = select(MeetingLink).where(MeetingLink.id == meeting_id)
-#     result = await db.execute(stmt)
-#     meeting = result.scalar_one_or_none()
-#     if not meeting:
-#         raise HTTPException(status_code=404, detail="Meeting not found")
-
-#     if current_user.role != RoleEnum.superuser and meeting.instructor_id != current_user.id:
-#         raise HTTPException(status_code=403, detail="Not allowed to delete this meeting")
-
-#     await db.delete(meeting)
-#     await db.commit()
-#     return None
