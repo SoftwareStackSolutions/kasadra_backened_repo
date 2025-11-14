@@ -24,3 +24,7 @@ class APIS:
     def put(self,endpoint, data):
         response = requests.put(self._construct_url(endpoint),headers=self.header, json=data)
         return response
+    
+    def delete(self,endpoint):
+        response = requests.delete(self._construct_url(endpoint),headers=self.header)
+        return response

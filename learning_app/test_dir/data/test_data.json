@@ -50,22 +50,23 @@
  },
 
  "add_calendar": {
-        "batch_id": 1,
-        "lesson_id": 1,
-        "course_id": 1,        
-        "select_date": "2025-11-12",
-        "day": "Wednesday",
-        "start_date": "2025-11-12",
-        "end_date": "2025-11-12"
+  "batch_id": 2,
+    "lesson_id": 2,
+    "course_id": 7,
+    "day": "Wednesday",
+    "start_time": "10:00",
+    "end_time": "11:00",
+    "select_date": "2025-11-12"
+        
     },
     "update_calendar": {
-        "calendar_id": 1,
+        "calendar_id": 2,
         "payload": {
             "day": "Thursday"
         }
     },
     "delete_calendar": {
-        "calendar_id": 1
+        "calendar_id": 7
     }
 }
 
