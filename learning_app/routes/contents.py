@@ -97,9 +97,9 @@ async def add_quiz(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
     name: str = Form(...),
-    description: str = Form(None),   # optional
-    url: str = Form(None),           # optional
-    file: UploadFile = File(None),   # optional
+    description: str = Form(None),
+    url: str = Form(...),             # optional
+    file: UploadFile = File(None),    # optional
     db: AsyncSession = Depends(get_session),
 ):
     # Verify course
@@ -148,8 +148,8 @@ async def add_lab(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
     name: str = Form(...),
-    description: str = Form(None),   # optional
-    url: str = Form(None),           # optional
+    description: str = Form(None), 
+    url: str = Form(...),           # optional
     file: UploadFile = File(None),   # optional
     db: AsyncSession = Depends(get_session),
 ):
