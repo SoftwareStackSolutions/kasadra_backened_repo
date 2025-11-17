@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.course import CourseCalendar, Course, Lesson, Batch
 from database.db import get_session
-from datetime import date
+from datetime import date, datetime
 from pydantic import BaseModel
 from typing import Optional
 
@@ -13,18 +13,19 @@ router = APIRouter(tags=["calendar"])
 class CourseCalendarCreate(BaseModel):
     course_id: int
     lesson_id: int
+    batch_id: Optional[int] = None
     day: str
-    start_time: str  # store as string only (not actual time)
-    end_time: str    # store as string only (not actual time)
+    start_time: str
+    end_time: str
     select_date: Optional[str] = None  # not used for storage, just received
 
 class CourseCalendarUpdate(BaseModel):
-    course_id: Optional[int] = None
+    batch_id: Optional[int] = None
     lesson_id: Optional[int] = None
     day: Optional[str] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
-    select_date: Optional[str] = None  # ignored for DB
+    select_date: Optional[str] = None
 
 
 # ✅ API endpoint
@@ -33,6 +34,15 @@ async def add_course_calendar(
     calendar_data: CourseCalendarCreate,
     db: AsyncSession = Depends(get_session),
 ):
+    # ✅ Validate batch (if provided)
+    if calendar_data.batch_id:
+        batch_result = await db.execute(select(Batch).where(Batch.id == calendar_data.batch_id))
+        batch = batch_result.scalar_one_or_none()
+        if not batch:
+            raise HTTPException(status_code=404, detail="Batch not found")
+        # Override course_id from batch if necessary
+        calendar_data.course_id = batch.course_id
+
     # ✅ Validate course
     result = await db.execute(select(Course).where(Course.id == calendar_data.course_id))
     course = result.scalar_one_or_none()
@@ -49,15 +59,26 @@ async def add_course_calendar(
     if lesson.course_id != calendar_data.course_id:
         raise HTTPException(status_code=400, detail="Lesson does not belong to the provided course")
 
-    # ✅ Create calendar entry (without saving actual date/time)
+    # ✅ Convert select_date from MM-DD-YYYY → date
+    select_date_value = None
+    if calendar_data.select_date:
+        try:
+            select_date_value = datetime.strptime(calendar_data.select_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid date format."
+            )
+
+    # ✅ Create calendar entry
     new_calendar_entry = CourseCalendar(
         course_id=calendar_data.course_id,
+        batch_id=calendar_data.batch_id,
         lesson_id=calendar_data.lesson_id,
         day=calendar_data.day,
-        start_time=calendar_data.start_time,  # treated as string
-        end_time=calendar_data.end_time,      # treated as string
-        select_date=None,  # explicitly not storing the frontend date
-
+        start_time=calendar_data.start_time,
+        end_time=calendar_data.end_time,
+        select_date=select_date_value,
     )
 
     db.add(new_calendar_entry)
@@ -70,15 +91,15 @@ async def add_course_calendar(
         "data": {
             "calendar_id": new_calendar_entry.id,
             "course_id": new_calendar_entry.course_id,
+            "batch_id": new_calendar_entry.batch_id,
             "lesson_id": new_calendar_entry.lesson_id,
             "lesson_title": lesson.lesson_title,
             "day": new_calendar_entry.day,
             "start_time": new_calendar_entry.start_time,
             "end_time": new_calendar_entry.end_time,
+            "select_date": new_calendar_entry.select_date.strftime("%Y-%m-%d") if new_calendar_entry.select_date else None,
         },
     }
-
-
 
 # view calaneder by course ID
 @router.get("/view/{course_id}")
@@ -125,43 +146,64 @@ async def update_course_calendar(
     if not calendar:
         raise HTTPException(status_code=404, detail="Schedule class entry not found")
 
-    # Update fields if provided
-    if update_data.batch_id:
-        batch = (await db.execute(select(Batch).where(Batch.id == update_data.batch_id))).scalar_one_or_none()
+    # ✅ Update batch if provided
+    if update_data.batch_id is not None:
+        batch_result = await db.execute(select(Batch).where(Batch.id == update_data.batch_id))
+        batch = batch_result.scalar_one_or_none()
         if not batch:
-            raise HTTPException(404, "Batch not found")
+            raise HTTPException(status_code=404, detail="Batch not found")
         calendar.batch_id = update_data.batch_id
         calendar.course_id = batch.course_id
 
-    if update_data.lesson_id:
-        lesson = (await db.execute(select(Lesson).where(Lesson.id == update_data.lesson_id))).scalar_one_or_none()
+    # ✅ Update lesson if provided
+    if update_data.lesson_id is not None:
+        lesson_result = await db.execute(select(Lesson).where(Lesson.id == update_data.lesson_id))
+        lesson = lesson_result.scalar_one_or_none()
         if not lesson:
-            raise HTTPException(404, "Lesson not found")
+            raise HTTPException(status_code=404, detail="Lesson not found")
         calendar.lesson_id = update_data.lesson_id
 
-    if update_data.day:
+    # ✅ Update only valid non-placeholder fields
+    if update_data.day and update_data.day.lower() != "string":
         calendar.day = update_data.day
-    if update_data.select_date:
-        calendar.select_date = update_data.select_date
-    if update_data.start_date:
-        calendar.start_date = update_data.start_date
-    if update_data.end_date:
-        calendar.end_date = update_data.end_date
+
+    if update_data.start_time and update_data.start_time.lower() != "string":
+        calendar.start_time = update_data.start_time
+
+    if update_data.end_time and update_data.end_time.lower() != "string":
+        calendar.end_time = update_data.end_time
+
+    # ✅ Update date only if valid
+    if update_data.select_date and update_data.select_date.lower() != "string":
+        try:
+            parsed_date = datetime.strptime(update_data.select_date, "%Y-%m-%d").date()
+            calendar.select_date = parsed_date
+        except ValueError:
+            # Skip invalid date without overwriting old value
+            print(f"⚠️ Skipping invalid date: {update_data.select_date}")
 
     await db.commit()
     await db.refresh(calendar)
 
+    # ✅ Fetch lesson for title
+    lesson = None
+    if calendar.lesson_id:
+        result = await db.execute(select(Lesson).where(Lesson.id == calendar.lesson_id))
+        lesson = result.scalar_one_or_none()
+
     return {
         "status": "success",
-        "message": f"Schedule class  updated successfully",
+        "message": "Schedule class updated successfully",
         "data": {
             "calendar_id": calendar.id,
+            "course_id": calendar.course_id,
             "batch_id": calendar.batch_id,
             "lesson_id": calendar.lesson_id,
+            "lesson_title": lesson.lesson_title if lesson else None,
             "day": calendar.day,
-            "select_date": str(calendar.select_date),
-            "start_date": str(calendar.start_date),
-            "end_date": str(calendar.end_date),
+            "start_time": calendar.start_time,
+            "end_time": calendar.end_time,
+            "select_date": calendar.select_date.strftime("%Y-%m-%d") if calendar.select_date else None,
         },
     }
 

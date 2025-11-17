@@ -26,7 +26,7 @@ def test_create_schedule_class(apis):
     payload = test_data["add_calendar"]
     assert payload, "Missing test data for 'add_calendar'"
     post_response = apis.post('scheduleclass/add', payload)
-    validate_response(post_response, HTTPStatus.OK, 'Schedule class added successfully')
+    validate_response(post_response, HTTPStatus.OK, 'schedule created successfully')
 
 
 #get all schedule classes
@@ -36,10 +36,16 @@ def test_get_all_schedule_classes(apis):
     print(get_response.json())
 
 # update schedule class
-@pytest.mark.dependency(name="update_calander", depends=["add_calander"])
+@pytest.mark.dependency(depends=["add_calander"])
 def test_update_schedule_class(apis):               
     payload = test_data["update_calendar"]
     assert payload, "Missing test data for 'update_calendar'"
-    calendar_id = 1  # Assuming calendar_id=1 for testing
-    put_response = apis.put(f'scheduleclass/update/1', payload)
-    validate_response(put_response, HTTPStatus.OK, 'Schedule class  updated successfully')
+    put_response = apis.put(f'scheduleclass/update/2', payload)
+    validate_response(put_response, HTTPStatus.OK, 'Schedule class updated successfully')
+
+# delete schedule class
+@pytest.mark.dependency(depends=["add_calander"])   
+def test_delete_schedule_class(apis):
+    calendar_id =6  # Assuming calendar_id=1 for testing
+    delete_response = apis.delete(f'scheduleclass/delete/{calendar_id}')
+    validate_response(delete_response, HTTPStatus.OK, 'Schedule class deleted successfully')
