@@ -51,6 +51,134 @@ async def upload_pdf(
         },
     }
 
+# Update PDF
+@router.put("/update/pdf/{pdf_id}")
+async def update_pdf(
+    pdf_id: int,
+    course_id: int = Form(...),
+    lesson_id: int = Form(...),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_session)
+):
+    # Verify PDF
+    pdf_result = await db.execute(select(Pdf).where(Pdf.id == pdf_id))
+    pdf_entry = pdf_result.scalar_one_or_none()
+    if not pdf_entry:
+        raise HTTPException(status_code=404, detail="PDF not found")
+
+    # Verify course
+    course_result = await db.execute(select(Course).where(Course.id == course_id))
+    if not course_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Verify lesson
+    lesson_result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    if not lesson_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    # Upload new file to GCP
+    new_file_url = await upload_file_to_gcs(file, "pdfs")
+
+    # Update DB entry
+    pdf_entry.course_id = course_id
+    pdf_entry.lesson_id = lesson_id
+    pdf_entry.file_url = new_file_url
+
+    await db.commit()
+    await db.refresh(pdf_entry)
+
+    return {
+        "status": "success",
+        "message": "PDF updated successfully",
+        "data": {
+            "pdf_id": pdf_entry.id,
+            "file_url": new_file_url,
+        },
+    }
+
+
+#  Delete PDF
+@router.delete("/delete/pdf/{pdf_id}")
+async def delete_pdf(
+    pdf_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    pdf_result = await db.execute(select(Pdf).where(Pdf.id == pdf_id))
+    pdf_entry = pdf_result.scalar_one_or_none()
+
+    if not pdf_entry:
+        raise HTTPException(status_code=404, detail="PDF not found")
+
+    await db.delete(pdf_entry)
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "PDF deleted successfully",
+    }
+# Update WebLink
+@router.put("/update/weblink/{weblink_id}")
+async def update_weblink(
+    weblink_id: int,
+    course_id: int = Form(...),
+    lesson_id: int = Form(...),
+    link_url: str = Form(...),
+    db: AsyncSession = Depends(get_session),
+):
+    # Verify WebLink
+    weblink_result = await db.execute(select(WebLink).where(WebLink.id == weblink_id))
+    weblink_entry = weblink_result.scalar_one_or_none()
+
+    if not weblink_entry:
+        raise HTTPException(status_code=404, detail="WebLink not found")
+
+    # Verify course
+    course_result = await db.execute(select(Course).where(Course.id == course_id))
+    if not course_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Verify lesson
+    lesson_result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    if not lesson_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    # Update DB Entry
+    weblink_entry.course_id = course_id
+    weblink_entry.lesson_id = lesson_id
+    weblink_entry.link_url = link_url
+
+    await db.commit()
+    await db.refresh(weblink_entry)
+
+    return {
+        "status": "success",
+        "message": "WebLink updated successfully",
+        "data": {
+            "weblink_id": weblink_entry.id,
+            "link_url": link_url,
+        },
+    }
+
+
+# Delete WebLink
+@router.delete("/delete/weblink/{weblink_id}")
+async def delete_weblink(
+    weblink_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    weblink_result = await db.execute(select(WebLink).where(WebLink.id == weblink_id))
+    weblink_entry = weblink_result.scalar_one_or_none()
+
+    if not weblink_entry:
+        raise HTTPException(status_code=404, detail="WebLink not found")
+
+    await db.delete(weblink_entry)
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "WebLink deleted successfully",
+    }
 
 # ✅ Add WebLink
 @router.post("/add/weblink")
@@ -143,6 +271,64 @@ async def add_quiz(
         },
     }
 
+@router.put("/update/quiz/{quiz_id}")
+async def update_quiz(
+    quiz_id: int,
+    name: str = Form(None),
+    description: str = Form(None),
+    url: str = Form(None),
+    file: UploadFile = File(None),
+    db: AsyncSession = Depends(get_session),
+):
+    quiz = (await db.execute(select(Quiz).where(Quiz.id == quiz_id))).scalar_one_or_none()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+
+    # Update ONLY if value is actually provided (and not default Swagger string)
+    if name not in [None, "", "string"]:
+        quiz.name = name
+
+    if description not in [None, "", "string"]:
+        quiz.description = description
+
+    if url not in [None, "", "string"]:
+        quiz.url = url
+
+    if file:
+        quiz.file_url = await upload_file_to_gcs(file, "quiz-files")
+
+    await db.commit()
+    await db.refresh(quiz)
+
+    return {
+        "status": "success",
+        "message": "Quiz updated successfully",
+        "data": {
+            "quiz_id": quiz.id,
+            "name": quiz.name,
+            "description": quiz.description,
+            "url": quiz.url,
+            "file_url": quiz.file_url,
+        },
+    }
+
+
+@router.delete("/delete/quiz/{quiz_id}")
+async def delete_quiz(
+    quiz_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    quiz = (await db.execute(select(Quiz).where(Quiz.id == quiz_id))).scalar_one_or_none()
+
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+
+    await db.delete(quiz)
+    await db.commit()
+
+    return {"status": "success", "message": "Quiz deleted"}
+
+
 @router.post("/add/lab")
 async def add_lab(
     course_id: int = Form(...),
@@ -193,3 +379,59 @@ async def add_lab(
             "file_url": file_url,
         },
     }
+
+@router.put("/update/lab/{lab_id}")
+async def update_lab(
+    lab_id: int,
+    course_id: int = Form(None),
+    lesson_id: int = Form(None),
+    name: str = Form(None),
+    description: str = Form(None),
+    url: str = Form(...),  # required
+    file: UploadFile = File(None),
+    db: AsyncSession = Depends(get_session),
+):
+    # Fetch lab
+    lab = (await db.execute(select(Lab).where(Lab.id == lab_id))).scalar_one_or_none()
+    if not lab:
+        raise HTTPException(status_code=404, detail="Lab not found")
+
+    # Update fields if provided
+    if course_id:
+        lab.course_id = course_id
+
+    if lesson_id:
+        lab.lesson_id = lesson_id
+
+    if name:
+        lab.name = name
+
+    if description is not None:
+        lab.description = description
+
+    # URL mandatory
+    lab.url = url
+
+    # File update if uploaded
+    if file:
+        lab.file_url = await upload_file_to_gcs(file, "lab-files")
+
+    await db.commit()
+    await db.refresh(lab)
+
+    return {"status": "success", "message": "Lab updated", "data": {"lab_id": lab.id}}
+
+@router.delete("/delete/lab/{lab_id}")
+async def delete_lab(
+    lab_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    lab = (await db.execute(select(Lab).where(Lab.id == lab_id))).scalar_one_or_none()
+
+    if not lab:
+        raise HTTPException(status_code=404, detail="Lab not found")
+
+    await db.delete(lab)
+    await db.commit()
+
+    return {"status": "success", "message": "Lab deleted"}
