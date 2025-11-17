@@ -116,6 +116,47 @@ async def delete_pdf(
         "status": "success",
         "message": "PDF deleted successfully",
     }
+
+# ✅ Add WebLink
+@router.post("/add/weblink")
+async def upload_weblink(
+    course_id: int = Form(...),
+    lesson_id: int = Form(...),
+    link_url: str = Form(...),
+    db: AsyncSession = Depends(get_session),
+):
+    # Verify course
+    course_result = await db.execute(select(Course).where(Course.id == course_id))
+    course = course_result.scalar_one_or_none()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Verify lesson
+    lesson_result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    lesson = lesson_result.scalar_one_or_none()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    # Store entry in DB
+    weblink_entry = WebLink(
+        course_id=course_id,
+        lesson_id=lesson_id,
+        link_url=link_url,
+    )
+
+    db.add(weblink_entry)
+    await db.commit()
+    await db.refresh(weblink_entry)
+
+    return {
+        "status": "success",
+        "message": "Web link added successfully",
+        "data": {
+            "weblink_id": weblink_entry.id,
+            "link_url": link_url,
+        },
+    }
+
 # Update WebLink
 @router.put("/update/weblink/{weblink_id}")
 async def update_weblink(
@@ -180,45 +221,7 @@ async def delete_weblink(
         "message": "WebLink deleted successfully",
     }
 
-# ✅ Add WebLink
-@router.post("/add/weblink")
-async def upload_weblink(
-    course_id: int = Form(...),
-    lesson_id: int = Form(...),
-    link_url: str = Form(...),
-    db: AsyncSession = Depends(get_session),
-):
-    # Verify course
-    course_result = await db.execute(select(Course).where(Course.id == course_id))
-    course = course_result.scalar_one_or_none()
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
 
-    # Verify lesson
-    lesson_result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
-    lesson = lesson_result.scalar_one_or_none()
-    if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-
-    # Store entry in DB
-    weblink_entry = WebLink(
-        course_id=course_id,
-        lesson_id=lesson_id,
-        link_url=link_url,
-    )
-
-    db.add(weblink_entry)
-    await db.commit()
-    await db.refresh(weblink_entry)
-
-    return {
-        "status": "success",
-        "message": "Web link added successfully",
-        "data": {
-            "weblink_id": weblink_entry.id,
-            "link_url": link_url,
-        },
-    }
 
 @router.post("/add/quiz")
 async def add_quiz(
