@@ -28,6 +28,13 @@ async def upload_pdf(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
+    # ✅ Verify that the lesson belongs to the given course
+    if lesson.course_id != course_id:
+        raise HTTPException(
+            status_code=400,
+            detail="The given lesson does not belong to the specified course"
+        )
+
     # Upload file to GCP
     file_url = await upload_file_to_gcs(file, "pdfs")
 
@@ -58,25 +65,37 @@ async def update_pdf(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(get_session),
 ):
     # Verify PDF
-    pdf_result = await db.execute(select(Pdf).where(Pdf.id == pdf_id))
-    pdf_entry = pdf_result.scalar_one_or_none()
+    pdf_entry = (
+        await db.execute(select(Pdf).where(Pdf.id == pdf_id))
+    ).scalar_one_or_none()
     if not pdf_entry:
         raise HTTPException(status_code=404, detail="PDF not found")
 
     # Verify course
-    course_result = await db.execute(select(Course).where(Course.id == course_id))
-    if not course_result.scalar_one_or_none():
+    course = (
+        await db.execute(select(Course).where(Course.id == course_id))
+    ).scalar_one_or_none()
+    if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
     # Verify lesson
-    lesson_result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
-    if not lesson_result.scalar_one_or_none():
+    lesson = (
+        await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    ).scalar_one_or_none()
+    if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # Upload new file to GCP
+    # ✅ Lesson must belong to the course
+    if lesson.course_id != course_id:
+        raise HTTPException(
+            status_code=400,
+            detail="The given lesson does not belong to the specified course",
+        )
+
+    # Upload new file
     new_file_url = await upload_file_to_gcs(file, "pdfs")
 
     # Update DB entry
@@ -95,7 +114,6 @@ async def update_pdf(
             "file_url": new_file_url,
         },
     }
-
 
 #  Delete PDF
 @router.delete("/delete/pdf/{pdf_id}")
@@ -137,6 +155,13 @@ async def upload_weblink(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
+    # ✅ Verify that the lesson belongs to the specified course
+    if lesson.course_id != course_id:
+        raise HTTPException(
+            status_code=400,
+            detail="The given lesson does not belong to the specified course"
+        )
+
     # Store entry in DB
     weblink_entry = WebLink(
         course_id=course_id,
@@ -157,6 +182,7 @@ async def upload_weblink(
         },
     }
 
+
 # Update WebLink
 @router.put("/update/weblink/{weblink_id}")
 async def update_weblink(
@@ -167,23 +193,34 @@ async def update_weblink(
     db: AsyncSession = Depends(get_session),
 ):
     # Verify WebLink
-    weblink_result = await db.execute(select(WebLink).where(WebLink.id == weblink_id))
-    weblink_entry = weblink_result.scalar_one_or_none()
-
+    weblink_entry = (
+        await db.execute(select(WebLink).where(WebLink.id == weblink_id))
+    ).scalar_one_or_none()
     if not weblink_entry:
         raise HTTPException(status_code=404, detail="WebLink not found")
 
     # Verify course
-    course_result = await db.execute(select(Course).where(Course.id == course_id))
-    if not course_result.scalar_one_or_none():
+    course = (
+        await db.execute(select(Course).where(Course.id == course_id))
+    ).scalar_one_or_none()
+    if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
     # Verify lesson
-    lesson_result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
-    if not lesson_result.scalar_one_or_none():
+    lesson = (
+        await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    ).scalar_one_or_none()
+    if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # Update DB Entry
+    # ✅ Lesson must belong to the course
+    if lesson.course_id != course_id:
+        raise HTTPException(
+            status_code=400,
+            detail="The given lesson does not belong to the specified course",
+        )
+
+    # Update DB entry
     weblink_entry.course_id = course_id
     weblink_entry.lesson_id = lesson_id
     weblink_entry.link_url = link_url
@@ -234,14 +271,25 @@ async def add_quiz(
     db: AsyncSession = Depends(get_session),
 ):
     # Verify course
-    course = (await db.execute(select(Course).where(Course.id == course_id))).scalar_one_or_none()
+    course = (
+        await db.execute(select(Course).where(Course.id == course_id))
+    ).scalar_one_or_none()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
     # Verify lesson
-    lesson = (await db.execute(select(Lesson).where(Lesson.id == lesson_id))).scalar_one_or_none()
+    lesson = (
+        await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    ).scalar_one_or_none()
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
+
+    # ✅ Verify lesson belongs to this course
+    if lesson.course_id != course_id:
+        raise HTTPException(
+            status_code=400,
+            detail="The given lesson does not belong to the specified course"
+        )
 
     # Upload file if provided
     file_url = None
@@ -273,6 +321,7 @@ async def add_quiz(
             "file_url": file_url,
         },
     }
+
 
 @router.put("/update/quiz/{quiz_id}")
 async def update_quiz(
@@ -337,20 +386,31 @@ async def add_lab(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
     name: str = Form(...),
-    description: str = Form(None), 
-    url: str = Form(...),           # optional
+    description: str = Form(None),
+    url: str = Form(...),            # optional
     file: UploadFile = File(None),   # optional
     db: AsyncSession = Depends(get_session),
 ):
     # Verify course
-    course = (await db.execute(select(Course).where(Course.id == course_id))).scalar_one_or_none()
+    course = (
+        await db.execute(select(Course).where(Course.id == course_id))
+    ).scalar_one_or_none()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
     # Verify lesson
-    lesson = (await db.execute(select(Lesson).where(Lesson.id == lesson_id))).scalar_one_or_none()
+    lesson = (
+        await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    ).scalar_one_or_none()
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
+
+    # ✅ Verify lesson belongs to this course
+    if lesson.course_id != course_id:
+        raise HTTPException(
+            status_code=400,
+            detail="The given lesson does not belong to the specified course"
+        )
 
     # Upload file if provided
     file_url = None
@@ -383,46 +443,53 @@ async def add_lab(
         },
     }
 
+
 @router.put("/update/lab/{lab_id}")
 async def update_lab(
     lab_id: int,
-    course_id: int = Form(None),
-    lesson_id: int = Form(None),
     name: str = Form(None),
     description: str = Form(None),
-    url: str = Form(...),  # required
+    url: str = Form(None),
     file: UploadFile = File(None),
     db: AsyncSession = Depends(get_session),
 ):
-    # Fetch lab
-    lab = (await db.execute(select(Lab).where(Lab.id == lab_id))).scalar_one_or_none()
-    if not lab:
+    # Fetch LAB record
+    lab_entry = (
+        await db.execute(select(Lab).where(Lab.id == lab_id))
+    ).scalar_one_or_none()
+
+    if not lab_entry:
         raise HTTPException(status_code=404, detail="Lab not found")
 
-    # Update fields if provided
-    if course_id:
-        lab.course_id = course_id
+    # Update fields ONLY if value is provided AND not Swagger's default "string"
+    if name not in [None, "", "string"]:
+        lab_entry.name = name
 
-    if lesson_id:
-        lab.lesson_id = lesson_id
+    if description not in [None, "", "string"]:
+        lab_entry.description = description
 
-    if name:
-        lab.name = name
+    if url not in [None, "", "string"]:
+        lab_entry.url = url
 
-    if description is not None:
-        lab.description = description
-
-    # URL mandatory
-    lab.url = url
-
-    # File update if uploaded
+    # File upload optional
     if file:
-        lab.file_url = await upload_file_to_gcs(file, "lab-files")
+        lab_entry.file_url = await upload_file_to_gcs(file, "lab-files")
 
     await db.commit()
-    await db.refresh(lab)
+    await db.refresh(lab_entry)
 
-    return {"status": "success", "message": "Lab updated", "data": {"lab_id": lab.id}}
+    return {
+        "status": "success",
+        "message": "Lab updated successfully",
+        "data": {
+            "lab_id": lab_entry.id,
+            "name": lab_entry.name,
+            "description": lab_entry.description,
+            "url": lab_entry.url,
+            "file_url": lab_entry.file_url,
+        },
+    }
+
 
 @router.delete("/delete/lab/{lab_id}")
 async def delete_lab(
