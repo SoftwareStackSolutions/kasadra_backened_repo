@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.user import User, RoleEnum
-from models.course import Course
+from models.course import Course, Note, Lesson
 from database.db import get_session
 from datetime import datetime
 from typing import Optional
@@ -12,6 +12,8 @@ from utils.gcp import upload_file_to_gcs
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from models.purchased_courses import PurchasedCourse
+from schemas.course import NoteCreate
+# from models.instructor import Instructor
 
 router = APIRouter()
 
@@ -171,4 +173,69 @@ async def delete_course(
     return {
         "status": "success",
         "message": f"Course with ID {course_id} deleted successfully"
+    }
+
+#################################################
+## NOTES Post API
+#################################################
+
+@router.post("/notes", tags=["Notes"])
+async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_session)):
+
+    # 1️⃣ Validate instructor (using User table)
+    result = await db.execute(
+        select(User).where(User.id == note_in.instructor_id)
+    )
+    instructor = result.scalar_one_or_none()
+
+    if not instructor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    if instructor.role != RoleEnum.instructor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not an instructor"
+        )
+
+    # 2️⃣ Validate course exists
+    course = await db.get(Course, note_in.course_id)
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found"
+        )
+
+    # 3️⃣ Validate lesson exists
+    lesson = await db.get(Lesson, note_in.lesson_id)
+    if not lesson:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lesson not found"
+        )
+
+    # 4️⃣ Create note
+    new_note = Note(
+        course_id=note_in.course_id,
+        lesson_id=note_in.lesson_id,
+        instructor_id=note_in.instructor_id,
+        notes=note_in.notes
+    )
+
+    db.add(new_note)
+    await db.commit()
+    await db.refresh(new_note)
+
+    return {
+        "status": "success",
+        "message": "Note created successfully",
+        "data": {
+            "id": new_note.id,
+            "course_id": new_note.course_id,
+            "lesson_id": new_note.lesson_id,
+            "instructor_id": new_note.instructor_id,
+            "notes": new_note.notes
+        }
     }

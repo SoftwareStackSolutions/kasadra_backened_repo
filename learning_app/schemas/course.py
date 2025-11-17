@@ -78,3 +78,21 @@ class MeetingResponse(BaseModel):
     class Config:
         orm_mode = True
 
+#####################
+## Notes
+#####################
+
+class NoteCreate(BaseModel):
+    course_id: int
+    lesson_id: int
+    instructor_id: int
+    notes: str
+
+class NoteResponse(BaseModel):
+    id: int
+    course_id: int
+    lesson_id: int
+    notes: str
+
+    class Config:
+        orm_mode = True
