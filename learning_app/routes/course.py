@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.user import User, RoleEnum
-from models.course import Course
+from models.course import Course, Note, Lesson
 from database.db import get_session
 from datetime import datetime
 from typing import Optional
@@ -12,6 +12,8 @@ from utils.gcp import upload_file_to_gcs
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from models.purchased_courses import PurchasedCourse
+from schemas.course import NoteCreate
+# from models.instructor import Instructor
 
 router = APIRouter()
 
@@ -171,4 +173,161 @@ async def delete_course(
     return {
         "status": "success",
         "message": f"Course with ID {course_id} deleted successfully"
+    }
+
+#################################################
+## NOTES Post API
+#################################################
+
+@router.post("/notes", tags=["Notes"])
+async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_session)):
+
+    # 1️⃣ Validate instructor exists
+    result = await db.execute(
+        select(User).where(User.id == note_in.instructor_id)
+    )
+    instructor = result.scalar_one_or_none()
+
+    if not instructor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Instructor not found"
+        )
+
+    if instructor.role != RoleEnum.instructor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not an instructor"
+        )
+
+    # 2️⃣ Validate course exists
+    course = await db.get(Course, note_in.course_id)
+    if not course:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found"
+        )
+
+    # 3️⃣ Validate lesson exists
+    lesson = await db.get(Lesson, note_in.lesson_id)
+    if not lesson:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lesson not found"
+        )
+
+    # 4️⃣ Validate lesson belongs to the course
+    if lesson.course_id != course.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This lesson does not belong to the selected course"
+        )
+
+    # 5️⃣ Validate instructor owns the course
+    if course.instructor_id != note_in.instructor_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not own this course"
+        )
+
+    # 6️⃣ Validate instructor owns the lesson
+    if lesson.instructor_id != note_in.instructor_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not own this lesson"
+        )
+
+    # 7️⃣ Create note
+    new_note = Note(
+        course_id=note_in.course_id,
+        lesson_id=note_in.lesson_id,
+        instructor_id=note_in.instructor_id,
+        notes=note_in.notes
+    )
+
+    db.add(new_note)
+    await db.commit()
+    await db.refresh(new_note)
+
+    return {
+        "status": "success",
+        "message": "Note created successfully",
+        "data": {
+            "id": new_note.id,
+            "course_id": new_note.course_id,
+            "lesson_id": new_note.lesson_id,
+            "instructor_id": new_note.instructor_id,
+            "notes": new_note.notes
+        }
+    }
+
+
+#################################################
+## NOTES Post API
+#################################################
+
+
+@router.get("/notes/{instructor_id}/{course_id}/{lesson_id}/{note_id}", tags=["Notes"])
+async def get_note_by_full_hierarchy(
+    instructor_id: int,
+    course_id: int,
+    lesson_id: int,
+    note_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+
+    # 1️⃣ Validate instructor
+    result = await db.execute(select(User).where(User.id == instructor_id))
+    instructor = result.scalar_one_or_none()
+
+    if not instructor:
+        raise HTTPException(status_code=404, detail="Instructor not found")
+
+    if instructor.role != RoleEnum.instructor:
+        raise HTTPException(status_code=403, detail="User is not an instructor")
+
+    # 2️⃣ Validate course
+    course = await db.get(Course, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    if course.instructor_id != instructor_id:
+        raise HTTPException(
+            status_code=403,
+            detail="This course does not belong to the instructor"
+        )
+
+    # 3️⃣ Validate lesson
+    lesson = await db.get(Lesson, lesson_id)
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    if lesson.course_id != course_id:
+        raise HTTPException(
+            status_code=400,
+            detail="This lesson does not belong to the course"
+        )
+
+    # 4️⃣ Validate note
+    note = await db.get(Note, note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    if note.lesson_id != lesson_id or note.course_id != course_id or note.instructor_id != instructor_id:
+        raise HTTPException(
+            status_code=403,
+            detail="This note does not belong to the given instructor/course/lesson"
+        )
+
+    # 5️⃣ Final response
+    return {
+        "status": "success",
+        "message": "Note fetched successfully",
+        "data": {
+            "id": note.id,
+            "course_id": note.course_id,
+            "lesson_id": note.lesson_id,
+            "instructor_id": note.instructor_id,
+            "notes": note.notes
+        }
     }

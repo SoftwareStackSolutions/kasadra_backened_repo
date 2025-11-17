@@ -1,5 +1,5 @@
 from pydantic import BaseModel, HttpUrl
-from typing import Optional
+from typing import Optional, Any
 from datetime import date, time, datetime
 
 
@@ -78,3 +78,21 @@ class MeetingResponse(BaseModel):
     class Config:
         orm_mode = True
 
+#####################
+## Notes
+#####################
+
+class NoteCreate(BaseModel):
+    course_id: int
+    lesson_id: int
+    instructor_id: int
+    notes: Any
+
+class NoteResponse(BaseModel):
+    id: int
+    course_id: int
+    lesson_id: int
+    notes: Any
+
+    class Config:
+        orm_mode = True
