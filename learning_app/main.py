@@ -52,7 +52,10 @@ app.include_router(scheduleclass.router, prefix="/api/scheduleclass")
 app.include_router(batch.router, prefix="/api/batches")
 app.include_router(cart.router,prefix="/api/cart")
 app.include_router(purchased_course.router,prefix="/api/buy")
-app.include_router(contents.router,prefix="/api/contents")
+app.include_router(contents.pdf_router,prefix="/api/contents")
+app.include_router(contents.weblink_router,prefix="/api/contents")
+app.include_router(contents.quiz_router,prefix="/api/contents")
+app.include_router(contents.lab_router,prefix="/api/contents")
 app.include_router(meeting_link.router,prefix="/api")
 
 
