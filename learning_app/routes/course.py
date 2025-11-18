@@ -178,7 +178,9 @@ async def delete_course(
         "message": f"Course with ID {course_id} deleted successfully"
     }
 
-############# NOTES Post API #############
+###################################
+# NOTES Post API
+###################################
 
 @router.post("/notes", tags=["Notes"])
 async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_session)):
@@ -263,7 +265,9 @@ async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_sessio
     }
 
 
-########## NOTES Get API #############
+###################################
+# NOTES Get API 
+###################################
 
 @router.get("/notes/{instructor_id}/{course_id}/{lesson_id}/{note_id}", tags=["Notes"])
 async def get_note_by_full_hierarchy(
@@ -329,7 +333,9 @@ async def get_note_by_full_hierarchy(
         }
     }
 
-########## NOTES Put API #############
+###################################
+# NOTES Put API 
+###################################
 
 @router.put("/notes/{instructor_id}/{course_id}/{lesson_id}/{note_id}", tags=["Notes"])
 async def update_note(
@@ -341,7 +347,7 @@ async def update_note(
     db: AsyncSession = Depends(get_session)
 ):
 
-    # 1️⃣ Validate instructor
+    # Validate instructor
     result = await db.execute(select(User).where(User.id == instructor_id))
     instructor = result.scalar_one_or_none()
 
@@ -351,7 +357,7 @@ async def update_note(
     if instructor.role != RoleEnum.instructor:
         raise HTTPException(status_code=403, detail="User is not an instructor")
 
-    # 2️⃣ Validate course
+    # Validate course
     course = await db.get(Course, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -359,7 +365,7 @@ async def update_note(
     if course.instructor_id != instructor_id:
         raise HTTPException(status_code=403, detail="This course does not belong to the instructor")
 
-    # 3️⃣ Validate lesson
+    # Validate lesson
     lesson = await db.get(Lesson, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
@@ -370,7 +376,7 @@ async def update_note(
             detail="This lesson does not belong to the course"
         )
 
-    # 4️⃣ Validate note
+    # Validate note
     note = await db.get(Note, note_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -381,7 +387,7 @@ async def update_note(
             detail="This note does not belong to the given instructor/course/lesson"
         )
 
-    # 5️⃣ Update note
+    # Update note
     note.notes = note_in.notes
     await db.commit()
     await db.refresh(note)
@@ -399,7 +405,9 @@ async def update_note(
     }
 
 
-########## Delete Notes #############
+###################################
+# Delete Notes 
+###################################
 
 @router.delete("/notes/{instructor_id}/{course_id}/{lesson_id}/{note_id}", tags=["Notes"])
 async def delete_note(
@@ -410,7 +418,7 @@ async def delete_note(
     db: AsyncSession = Depends(get_session)
 ):
 
-    # 1️⃣ Validate instructor
+    # Validate instructor
     result = await db.execute(select(User).where(User.id == instructor_id))
     instructor = result.scalar_one_or_none()
 
@@ -420,7 +428,7 @@ async def delete_note(
     if instructor.role != RoleEnum.instructor:
         raise HTTPException(status_code=403, detail="User is not an instructor")
 
-    # 2️⃣ Validate course
+    # Validate course
     course = await db.get(Course, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -431,7 +439,7 @@ async def delete_note(
             detail="This course does not belong to the instructor"
         )
 
-    # 3️⃣ Validate lesson
+    # Validate lesson
     lesson = await db.get(Lesson, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
@@ -442,7 +450,7 @@ async def delete_note(
             detail="This lesson does not belong to the course"
         )
 
-    # 4️⃣ Validate note
+    # Validate note
     note = await db.get(Note, note_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -453,7 +461,7 @@ async def delete_note(
             detail="This note does not belong to the given instructor/course/lesson"
         )
 
-    # 5️⃣ Delete the note
+    # Delete the note
     await db.delete(note)
     await db.commit()
 
@@ -467,7 +475,9 @@ async def delete_note(
 
 
 
-##########   GET All Notes API  ##########
+###################################
+# GET All Notes API
+###################################
 
 @router.get("/notes/{instructor_id}/{course_id}/{lesson_id}", tags=["Notes"])
 async def get_all_notes(
@@ -477,7 +487,7 @@ async def get_all_notes(
     db: AsyncSession = Depends(get_session)
 ):
 
-    # 1️⃣ Validate instructor
+    # Validate instructor
     result = await db.execute(select(User).where(User.id == instructor_id))
     instructor = result.scalar_one_or_none()
 
@@ -487,7 +497,7 @@ async def get_all_notes(
     if instructor.role != RoleEnum.instructor:
         raise HTTPException(status_code=403, detail="User is not an instructor")
 
-    # 2️⃣ Validate course
+    # Validate course
     course = await db.get(Course, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -498,7 +508,7 @@ async def get_all_notes(
             detail="This course does not belong to the instructor"
         )
 
-    # 3️⃣ Validate lesson
+    # Validate lesson
     lesson = await db.get(Lesson, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
@@ -509,7 +519,7 @@ async def get_all_notes(
             detail="This lesson does not belong to the course"
         )
 
-    # 4️⃣ Fetch all notes under lesson
+    # Fetch all notes under lesson
     notes_result = await db.execute(
         select(Note).where(
             Note.course_id == course_id,
