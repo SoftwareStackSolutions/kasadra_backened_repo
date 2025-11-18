@@ -1,12 +1,14 @@
 import os
 import sys
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Optional
 from database.db import Base
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from json import JSONDecodeError
 
 root_dir = os.path.dirname(__file__)
 sys.path.append(root_dir)
@@ -50,7 +52,10 @@ app.include_router(scheduleclass.router, prefix="/api/scheduleclass")
 app.include_router(batch.router, prefix="/api/batches")
 app.include_router(cart.router,prefix="/api/cart")
 app.include_router(purchased_course.router,prefix="/api/buy")
-app.include_router(contents.router,prefix="/api/contents")
+app.include_router(contents.pdf_router,prefix="/api/contents")
+app.include_router(contents.weblink_router,prefix="/api/contents")
+app.include_router(contents.quiz_router,prefix="/api/contents")
+app.include_router(contents.lab_router,prefix="/api/contents")
 app.include_router(meeting_link.router,prefix="/api")
 
 
@@ -108,6 +113,30 @@ async def health_check():
 async def startup_event():
     await init_db()
 
+
+@app.exception_handler(RequestValidationError)
+async def custom_validation_handler(request: Request, exc: RequestValidationError):
+
+    # Detect JSON decode error
+    for err in exc.errors():
+        if err["type"] == "json_invalid":
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "status": "error",
+                    "message": "Your JSON contains invalid or unsupported characters. Please clean the text.",
+                }
+            )
+
+    # Other validation errors
+    return JSONResponse(
+        status_code=422,
+        content={
+            "status": "error",
+            "message": "Invalid input data",
+            "detail": exc.errors()
+        }
+    )
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

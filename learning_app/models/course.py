@@ -1,15 +1,9 @@
-from sqlalchemy import Column, Integer, String, Date,ForeignKey, LargeBinary
+from sqlalchemy import Column, Integer, String, Date,ForeignKey, LargeBinary, Text
 from sqlalchemy.orm import relationship
 from datetime import date
-
 from models.user import User
-# from typing import Optional
-# from pydantic import BaseModel
-
-
 from sqlalchemy import Time
 from .base import Base
-
 
 class Course(Base):
     __tablename__ = "courses"
@@ -32,8 +26,7 @@ class Course(Base):
     quizzes = relationship("Quiz", back_populates="course", cascade="all, delete-orphan")
     labs = relationship("Lab", back_populates="course", cascade="all, delete-orphan")
     meetings = relationship("MeetingLink", back_populates="course", cascade="all, delete")
-
-
+    notes = relationship("Note", back_populates="course", cascade="all, delete")
 
 class Lesson(Base):
     __tablename__ = "lessons"
@@ -52,6 +45,7 @@ class Lesson(Base):
     weblinks = relationship("WebLink", back_populates="lesson", cascade="all, delete-orphan")
     quizzes = relationship("Quiz", back_populates="lesson", cascade="all, delete-orphan")
     labs = relationship("Lab", back_populates="lesson", cascade="all, delete-orphan")
+    notes = relationship("Note", back_populates="lesson", cascade="all, delete")
 
 class Batch(Base):
     __tablename__ = "batches"
@@ -71,8 +65,6 @@ class Batch(Base):
     calendar_entries = relationship("CourseCalendar", back_populates="batch", cascade="all, delete-orphan")
     meetings = relationship("MeetingLink", back_populates="batch", cascade="all, delete")
 
-
-
 class CourseCalendar(Base):
     __tablename__ = "course_calendar"
 
@@ -88,7 +80,6 @@ class CourseCalendar(Base):
     course = relationship("Course", back_populates="calendar_entries")
     batch = relationship("Batch", back_populates="calendar_entries")
     lesson = relationship("Lesson")
-
 
 class MeetingLink(Base):
     __tablename__ = "meeting_links"
@@ -107,7 +98,6 @@ class MeetingLink(Base):
 
 class Pdf(Base):
     __tablename__ = "pdfs"
-
 
     id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
@@ -157,3 +147,17 @@ class Lab(Base):
     
     course = relationship("Course", back_populates="labs")
     lesson = relationship("Lesson", back_populates="labs")
+
+class Note(Base):
+    __tablename__ = "notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
+    instructor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+
+    notes = Column(Text, nullable=False)
+    course = relationship("Course", back_populates="notes", lazy="joined")
+    lesson = relationship("Lesson", back_populates="notes", lazy="joined")
+    instructor = relationship("User")
