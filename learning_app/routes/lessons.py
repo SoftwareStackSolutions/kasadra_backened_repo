@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.user import User, RoleEnum
-from models.course import Course, Lesson
+from models.course import Course, Lesson, Pdf, WebLink, Quiz, Lab
 from database.db import get_session
 from datetime import datetime
 from typing import Optional
@@ -85,14 +85,39 @@ async def get_lesson_by_id(
     lesson_id: int,
     db: AsyncSession = Depends(get_session)
 ):
+    # Fetch lesson
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     lesson = result.scalar_one_or_none()
 
     if not lesson:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail="Lesson not found"
         )
+
+    # Fetch PDFs
+    pdfs_result = await db.execute(
+        select(Pdf).where(Pdf.lesson_id == lesson_id)
+    )
+    pdfs = pdfs_result.scalars().all()
+
+    # Fetch WebLinks
+    weblinks_result = await db.execute(
+        select(WebLink).where(WebLink.lesson_id == lesson_id)
+    )
+    weblinks = weblinks_result.scalars().all()
+
+    # Fetch Quizzes
+    quizzes_result = await db.execute(
+        select(Quiz).where(Quiz.lesson_id == lesson_id)
+    )
+    quizzes = quizzes_result.scalars().all()
+
+    # Fetch Labs
+    labs_result = await db.execute(
+        select(Lab).where(Lab.lesson_id == lesson_id)
+    )
+    labs = labs_result.scalars().all()
 
     return {
         "status": "success",
@@ -102,10 +127,45 @@ async def get_lesson_by_id(
             "instructor_id": lesson.instructor_id,
             "title": lesson.lesson_title,
             "description": lesson.description,
-            "created_at": lesson.created_at
+            "created_at": lesson.created_at,
+
+            # Add all related content
+            "pdfs": [
+                {
+                    "id": pdf.id,
+                    "file_url": pdf.file_url
+                }
+                for pdf in pdfs
+            ],
+            "weblinks": [
+                {
+                    "id": link.id,
+                    "url": link.link_url
+                }
+                for link in weblinks
+            ],
+            "quizzes": [
+                {
+                    "id": quiz.id,
+                    "name": quiz.name,
+                    "description": quiz.description,
+                    "url": quiz.url,
+                    "file_url": quiz.file_url
+                }
+                for quiz in quizzes
+            ],
+            "labs": [
+                {
+                    "id": lab.id,
+                    "name": lab.name,
+                    "description": lab.description,
+                    "url": lab.url,
+                    "file_url": lab.file_url
+                }
+                for lab in labs
+            ]
         },
     }
-
 ###################### Get lessons by course_id #####################
 
 @router.get("/all/{course_id}", tags=["lessons"])
