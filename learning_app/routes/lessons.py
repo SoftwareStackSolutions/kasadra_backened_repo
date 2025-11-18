@@ -7,7 +7,7 @@ from database.db import get_session
 from datetime import datetime
 from typing import Optional
 from dependencies.auth_dep import get_current_user
-from utils.gcp import upload_file_to_gcs  # Make sure this utility is implemented
+from utils.gcp import upload_file_to_gcs 
 from pydantic import BaseModel
 from typing import Optional, Union
 from sqlalchemy.orm import selectinload
@@ -23,6 +23,8 @@ class LessonCreate(BaseModel):
     description: Optional[str] = None
 
 router = APIRouter(tags=["lessons"])
+
+################# Create lesson ################
 
 @router.post("/add", tags=["lessons"])
 async def add_lesson(
@@ -76,7 +78,7 @@ async def add_lesson(
         },
     }
 
-
+################## Get lessons by lesson_id #################
 
 @router.get("{lesson_id}", tags=["lessons"])
 async def get_lesson_by_id(
@@ -104,6 +106,7 @@ async def get_lesson_by_id(
         },
     }
 
+###################### Get lessons by course_id #####################
 
 @router.get("/all/{course_id}", tags=["lessons"])
 async def get_lessons_by_course_id(
@@ -132,7 +135,7 @@ async def get_lessons_by_course_id(
         ]
     }
 
-# Update lesson
+######################## Update lesson #######################
 
 @router.put("/{lesson_id}")
 async def update_lesson(
@@ -167,8 +170,8 @@ async def update_lesson(
         },
     }
 
+################### Delete lesson ###################
 
-# Delete lesson
 @router.delete("/delete/{lesson_id}", tags=["lessons"])
 async def delete_lesson(lesson_id: int, db: AsyncSession = Depends(get_session)):
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))

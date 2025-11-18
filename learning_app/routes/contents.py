@@ -3,12 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.course import Course, Lesson, Pdf, WebLink, Quiz, Lab
 from database.db import get_session
-from utils.gcp import upload_file_to_gcs  # Assuming you already have this util
+from utils.gcp import upload_file_to_gcs  
 
 router = APIRouter(tags=["contents"])
 
+######### Upload PDF file ###########
 
-# ✅ Upload PDF file
 @router.post("/add/pdf")
 async def upload_pdf(
     course_id: int = Form(...),
@@ -28,7 +28,7 @@ async def upload_pdf(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # ✅ Verify that the lesson belongs to the given course
+    # Verify that the lesson belongs to the given course
     if lesson.course_id != course_id:
         raise HTTPException(
             status_code=400,
@@ -58,7 +58,8 @@ async def upload_pdf(
         },
     }
 
-# Update PDF
+######### Update PDF file ###########
+
 @router.put("/update/pdf/{pdf_id}")
 async def update_pdf(
     pdf_id: int,
@@ -81,21 +82,18 @@ async def update_pdf(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    # Verify lesson
     lesson = (
         await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     ).scalar_one_or_none()
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # ✅ Lesson must belong to the course
     if lesson.course_id != course_id:
         raise HTTPException(
             status_code=400,
             detail="The given lesson does not belong to the specified course",
         )
 
-    # Upload new file
     new_file_url = await upload_file_to_gcs(file, "pdfs")
 
     # Update DB entry
@@ -115,7 +113,8 @@ async def update_pdf(
         },
     }
 
-#  Delete PDF
+############# Delete PDF #############
+
 @router.delete("/delete/pdf/{pdf_id}")
 async def delete_pdf(
     pdf_id: int,
@@ -135,7 +134,8 @@ async def delete_pdf(
         "message": "PDF deleted successfully",
     }
 
-# ✅ Add WebLink
+############# Add WebLink #############
+
 @router.post("/add/weblink")
 async def upload_weblink(
     course_id: int = Form(...),
@@ -155,7 +155,6 @@ async def upload_weblink(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # ✅ Verify that the lesson belongs to the specified course
     if lesson.course_id != course_id:
         raise HTTPException(
             status_code=400,
@@ -183,7 +182,8 @@ async def upload_weblink(
     }
 
 
-# Update WebLink
+############# Update WebLink #############
+
 @router.put("/update/weblink/{weblink_id}")
 async def update_weblink(
     weblink_id: int,
@@ -213,7 +213,7 @@ async def update_weblink(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # ✅ Lesson must belong to the course
+    # Lesson must belong to the course
     if lesson.course_id != course_id:
         raise HTTPException(
             status_code=400,
@@ -238,7 +238,8 @@ async def update_weblink(
     }
 
 
-# Delete WebLink
+############# Delete WebLink #############
+
 @router.delete("/delete/weblink/{weblink_id}")
 async def delete_weblink(
     weblink_id: int,
@@ -259,6 +260,7 @@ async def delete_weblink(
     }
 
 
+############# Add Quiz #############
 
 @router.post("/add/quiz")
 async def add_quiz(
@@ -322,6 +324,7 @@ async def add_quiz(
         },
     }
 
+############# Update Quiz #############
 
 @router.put("/update/quiz/{quiz_id}")
 async def update_quiz(
@@ -364,6 +367,7 @@ async def update_quiz(
         },
     }
 
+############# Delete Quiz #############
 
 @router.delete("/delete/quiz/{quiz_id}")
 async def delete_quiz(
@@ -380,6 +384,7 @@ async def delete_quiz(
 
     return {"status": "success", "message": "Quiz deleted"}
 
+############# Add Lab #############
 
 @router.post("/add/lab")
 async def add_lab(
@@ -405,7 +410,7 @@ async def add_lab(
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # ✅ Verify lesson belongs to this course
+    # Verify lesson belongs to this course
     if lesson.course_id != course_id:
         raise HTTPException(
             status_code=400,
@@ -443,6 +448,7 @@ async def add_lab(
         },
     }
 
+############# Update Lab #############
 
 @router.put("/update/lab/{lab_id}")
 async def update_lab(
@@ -490,6 +496,7 @@ async def update_lab(
         },
     }
 
+############# Delete Lab #############
 
 @router.delete("/delete/lab/{lab_id}")
 async def delete_lab(

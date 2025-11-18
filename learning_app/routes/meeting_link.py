@@ -8,7 +8,7 @@ from schemas.course import MeetingCreate, MeetingResponse
 
 router = APIRouter()
 
-
+################## Create Meeting Link #################
 @router.post("/meeting-links", tags=["Meeting link"])
 async def create_meeting_link(
     meeting_in: MeetingCreate,
@@ -44,7 +44,7 @@ async def create_meeting_link(
         "meeting_url": meeting.meeting_url
     }
 
-# ------------------ GET  instructor_id ------------------ 
+################## Get Meeting Links by Instructor ID #################
 
 @router.get("/meeting-links/{instructor_id}", tags=["Meeting link"])
 async def get_meeting_links_by_instructor(
@@ -85,7 +85,7 @@ async def get_meeting_links_by_instructor(
         "data": results
     }
 
-# ------------------ Put instructor_id ------------------ 
+################## Update Meeting Link #################
 
 @router.put("/meeting-links/{meeting_id}", tags=["Meeting link"])
 async def update_meeting_link(
@@ -129,7 +129,7 @@ async def update_meeting_link(
         }
     }
 
-# ------------------ Delete ------------------ 
+################## Delete Meeting Link #################
 
 @router.delete("/meeting-links/{meeting_id}", tags=["Meeting link"])
 async def delete_meeting_link(

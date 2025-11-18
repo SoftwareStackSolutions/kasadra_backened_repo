@@ -13,10 +13,9 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from models.purchased_courses import PurchasedCourse
 from schemas.course import NoteCreate
-# from models.instructor import Instructor
+
 
 router = APIRouter()
-
 
 class CourseResponse(BaseModel):
     course_id: int
@@ -28,7 +27,9 @@ class CourseResponse(BaseModel):
 
     class Config:
         orm_mode = True
-        
+
+
+################## Course APIs ##################
 @router.post("/add", tags=["courses"], response_model=CourseResponse)
 async def add_course(
     title: str = Form(...),
@@ -76,8 +77,8 @@ async def add_course(
         "thumbnail_url": thumbnail_url,
     }
 
+######################## Get all courses ########################
 
-# Get all courses
 @router.get("/all", tags=["courses"])
 async def get_all_courses(db: AsyncSession = Depends(get_session)):
     # Step 1: Get all courses with instructor data
@@ -114,7 +115,9 @@ async def get_all_courses(db: AsyncSession = Depends(get_session)):
         ]
     }
 
-# Get course by ID
+################## Get course by ID ####################
+
+
 @router.get("/{course_id}", tags=["courses"])
 async def get_course_by_id(course_id: int, db: AsyncSession = Depends(get_session)):
     # Query course with instructor join
@@ -152,37 +155,35 @@ async def get_course_by_id(course_id: int, db: AsyncSession = Depends(get_sessio
         }
     }
 
-
+########### Delete course by ID ##############
 
 @router.delete("/delete/{course_id}", tags=["courses"])
 async def delete_course(
     course_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    # 1️⃣ Fetch the course
+    # Fetch the course
     result = await db.execute(select(Course).where(Course.id == course_id))
     course = result.scalar_one_or_none()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    # 2️⃣ Delete the course
+    # Delete the course
     await db.delete(course)
     await db.commit()
 
-    # 3️⃣ Return minimal success response
+    # Return minimal success response
     return {
         "status": "success",
         "message": f"Course with ID {course_id} deleted successfully"
     }
 
-#################################################
-## NOTES Post API
-#################################################
+############# NOTES Post API #############
 
 @router.post("/notes", tags=["Notes"])
 async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_session)):
 
-    # 1️⃣ Validate instructor exists
+    # Validate instructor exists
     result = await db.execute(
         select(User).where(User.id == note_in.instructor_id)
     )
@@ -200,7 +201,7 @@ async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_sessio
             detail="You are not an instructor"
         )
 
-    # 2️⃣ Validate course exists
+    # Validate course exists
     course = await db.get(Course, note_in.course_id)
     if not course:
         raise HTTPException(
@@ -208,7 +209,7 @@ async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_sessio
             detail="Course not found"
         )
 
-    # 3️⃣ Validate lesson exists
+    # Validate lesson exists
     lesson = await db.get(Lesson, note_in.lesson_id)
     if not lesson:
         raise HTTPException(
@@ -216,28 +217,28 @@ async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_sessio
             detail="Lesson not found"
         )
 
-    # 4️⃣ Validate lesson belongs to the course
+    # Validate lesson belongs to the course
     if lesson.course_id != course.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This lesson does not belong to the selected course"
         )
 
-    # 5️⃣ Validate instructor owns the course
+    # Validate instructor owns the course
     if course.instructor_id != note_in.instructor_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not own this course"
         )
 
-    # 6️⃣ Validate instructor owns the lesson
+    # Validate instructor owns the lesson
     if lesson.instructor_id != note_in.instructor_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not own this lesson"
         )
 
-    # 7️⃣ Create note
+    # Create note
     new_note = Note(
         course_id=note_in.course_id,
         lesson_id=note_in.lesson_id,
@@ -262,10 +263,7 @@ async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_sessio
     }
 
 
-#################################################
-## NOTES Post API
-#################################################
-
+########## NOTES Post API #############
 
 @router.get("/notes/{instructor_id}/{course_id}/{lesson_id}/{note_id}", tags=["Notes"])
 async def get_note_by_full_hierarchy(
@@ -276,7 +274,7 @@ async def get_note_by_full_hierarchy(
     db: AsyncSession = Depends(get_session)
 ):
 
-    # 1️⃣ Validate instructor
+    #  Validate instructor
     result = await db.execute(select(User).where(User.id == instructor_id))
     instructor = result.scalar_one_or_none()
 
@@ -286,7 +284,7 @@ async def get_note_by_full_hierarchy(
     if instructor.role != RoleEnum.instructor:
         raise HTTPException(status_code=403, detail="User is not an instructor")
 
-    # 2️⃣ Validate course
+    # Validate course
     course = await db.get(Course, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -297,7 +295,7 @@ async def get_note_by_full_hierarchy(
             detail="This course does not belong to the instructor"
         )
 
-    # 3️⃣ Validate lesson
+    # Validate lesson
     lesson = await db.get(Lesson, lesson_id)
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
@@ -308,7 +306,7 @@ async def get_note_by_full_hierarchy(
             detail="This lesson does not belong to the course"
         )
 
-    # 4️⃣ Validate note
+    # Validate note
     note = await db.get(Note, note_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -319,7 +317,6 @@ async def get_note_by_full_hierarchy(
             detail="This note does not belong to the given instructor/course/lesson"
         )
 
-    # 5️⃣ Final response
     return {
         "status": "success",
         "message": "Note fetched successfully",

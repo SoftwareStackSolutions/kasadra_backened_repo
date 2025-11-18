@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 from sqlalchemy.orm import Session
+from utils.passwd import hash_password, verify_password
 import re
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from utils.passwd import hash_password, verify_password
 from models.user import User, RoleEnum
 from database.db import get_session
 from common import get_user_by_email
 from utils.auth import create_access_token
 from datetime import timedelta
-
 from dependencies.auth_dep import get_current_user
 
 
@@ -48,7 +47,6 @@ class LoginRequestDetails(BaseModel):
 ##############################
 ### Create instructors
 ##############################
-
 
 @router.post("/create", tags=["instructors"])
 async def create_instructor(instructor: InstructorCreate, db: Session = Depends(get_session)):
@@ -149,8 +147,6 @@ async def get_all_instructors(db: Session = Depends(get_session)):
 ### Get instuctor by id
 ##############################    
 
-
-
 @router.get("/{instructor_id}", tags=["instructors"])
 async def get_instructor_by_id(
     instructor_id: int,
@@ -195,12 +191,9 @@ async def get_instructor_by_id(
             }
         )
 
-
-
 ##############################
 ## Instructors login
 ##############################
-
 
 @router.post("/login", tags=["instructors"])
 async def instructor_login(
@@ -208,24 +201,24 @@ async def instructor_login(
     db: Session = Depends(get_session)
 ):
     try:
-        # 1️⃣ Fetch user by email
+        # Fetch user by email
         instructor = await get_user_by_email(request.Email, db)
 
-        # 2️⃣ Validate existence and role
+        # Validate existence and role
         if instructor is None or instructor.role != RoleEnum.instructor:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"status": "error", "message": "Incorrect email or role", "data": {}}
             )
 
-        # 3️⃣ Validate password
+        # Validate password
         if not verify_password(request.Password, instructor.password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"status": "error", "message": "Incorrect password", "data": {}}
             )
 
-        # 4️⃣ Create JWT token (Correct usage)
+        # Create JWT token (Correct usage)
         access_token = create_access_token(
             user_id=instructor.id,
             expires_delta=timedelta(minutes=30)
