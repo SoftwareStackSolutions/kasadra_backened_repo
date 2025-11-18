@@ -5,11 +5,14 @@ from models.course import Course, Lesson, Pdf, WebLink, Quiz, Lab
 from database.db import get_session
 from utils.gcp import upload_file_to_gcs  
 
-router = APIRouter(tags=["contents"])
 
+pdf_router = APIRouter(tags=["PDF"])
+weblink_router = APIRouter(tags=["WebLink"])
+quiz_router = APIRouter(tags=["Quiz"])  
+lab_router = APIRouter(tags=["Lab"])
 ######### Upload PDF file ###########
 
-@router.post("/add/pdf")
+@pdf_router.post("/add/pdf")
 async def upload_pdf(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
@@ -60,7 +63,7 @@ async def upload_pdf(
 
 ######### Update PDF file ###########
 
-@router.put("/update/pdf/{pdf_id}")
+@pdf_router.put("/update/pdf/{pdf_id}")
 async def update_pdf(
     pdf_id: int,
     course_id: int = Form(...),
@@ -115,7 +118,7 @@ async def update_pdf(
 
 ############# Delete PDF #############
 
-@router.delete("/delete/pdf/{pdf_id}")
+@pdf_router.delete("/delete/pdf/{pdf_id}")
 async def delete_pdf(
     pdf_id: int,
     db: AsyncSession = Depends(get_session)
@@ -136,7 +139,7 @@ async def delete_pdf(
 
 ############# Add WebLink #############
 
-@router.post("/add/weblink")
+@weblink_router.post("/add/weblink")
 async def upload_weblink(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
@@ -184,7 +187,7 @@ async def upload_weblink(
 
 ############# Update WebLink #############
 
-@router.put("/update/weblink/{weblink_id}")
+@weblink_router.put("/update/weblink/{weblink_id}")
 async def update_weblink(
     weblink_id: int,
     course_id: int = Form(...),
@@ -240,7 +243,7 @@ async def update_weblink(
 
 ############# Delete WebLink #############
 
-@router.delete("/delete/weblink/{weblink_id}")
+@weblink_router.delete("/delete/weblink/{weblink_id}")
 async def delete_weblink(
     weblink_id: int,
     db: AsyncSession = Depends(get_session)
@@ -262,7 +265,7 @@ async def delete_weblink(
 
 ############# Add Quiz #############
 
-@router.post("/add/quiz")
+@quiz_router.post("/add/quiz")
 async def add_quiz(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
@@ -326,7 +329,7 @@ async def add_quiz(
 
 ############# Update Quiz #############
 
-@router.put("/update/quiz/{quiz_id}")
+@quiz_router.put("/update/quiz/{quiz_id}")
 async def update_quiz(
     quiz_id: int,
     name: str = Form(None),
@@ -369,7 +372,7 @@ async def update_quiz(
 
 ############# Delete Quiz #############
 
-@router.delete("/delete/quiz/{quiz_id}")
+@quiz_router.delete("/delete/quiz/{quiz_id}")
 async def delete_quiz(
     quiz_id: int,
     db: AsyncSession = Depends(get_session),
@@ -386,7 +389,7 @@ async def delete_quiz(
 
 ############# Add Lab #############
 
-@router.post("/add/lab")
+@lab_router.post("/add/lab")
 async def add_lab(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
@@ -450,7 +453,7 @@ async def add_lab(
 
 ############# Update Lab #############
 
-@router.put("/update/lab/{lab_id}")
+@lab_router.put("/update/lab/{lab_id}")
 async def update_lab(
     lab_id: int,
     name: str = Form(None),
@@ -498,7 +501,7 @@ async def update_lab(
 
 ############# Delete Lab #############
 
-@router.delete("/delete/lab/{lab_id}")
+@lab_router.delete("/delete/lab/{lab_id}")
 async def delete_lab(
     lab_id: int,
     db: AsyncSession = Depends(get_session),
