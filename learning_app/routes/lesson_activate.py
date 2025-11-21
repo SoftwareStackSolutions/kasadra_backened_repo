@@ -1,18 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from models.user import User, RoleEnum
-from models.course import Course, Note, Lesson, BatchLessonActivation, Batch
+from models.course import Lesson, Batch
 from database.db import get_session
-from datetime import datetime
-from typing import Optional
 from dependencies.auth_dep import get_current_user
-from utils.gcp import upload_file_to_gcs
-from sqlalchemy.orm import joinedload
-from sqlalchemy import func
-from schemas.course import NoteCreate
-
 from sqlalchemy import text
 
 
