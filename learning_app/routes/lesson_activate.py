@@ -99,31 +99,37 @@ async def activate_lesson(batch_id: int, lesson_id: int, db: AsyncSession = Depe
     }
 
 
-# @router.post("/batches/{batch_id}/lessons/{lesson_id}/deactivate", tags=["lessons"])
-# async def deactivate_lesson(batch_id: int, lesson_id: int, db: AsyncSession = Depends(get_session), current_user: User = Depends(get_current_user)):
-    
-#     # 1. Ensure batch + lesson exist
-#     batch = await db.get(Batch, batch_id)
-#     lesson = await db.get(Lesson, lesson_id)
+@router.post("/batches/{batch_id}/lessons/{lesson_id}/deactivate", tags=["lesson-activate"])
+async def deactivate_lesson(
+    batch_id: int, 
+    lesson_id: int, 
+    db: AsyncSession = Depends(get_session)
+):
+    # 1. Ensure batch exists
+    batch = await db.get(Batch, batch_id)
+    if not batch:
+        raise HTTPException(404, "Batch not found")
 
-#     if not batch: raise HTTPException(404, "Batch not found")
-#     if not lesson: raise HTTPException(404, "Lesson not found")
+    # 2. Ensure lesson exists
+    lesson = await db.get(Lesson, lesson_id)
+    if not lesson:
+        raise HTTPException(404, "Lesson not found")
 
-#     # 2. Ensure course match
-#     if lesson.course_id != batch.course_id:
-#         raise HTTPException(400, "Lesson does not belong to this batch course")
+    # 3. Ensure lesson belongs to the same course as batch
+    if lesson.course_id != batch.course_id:
+        raise HTTPException(400, "Lesson does not belong to this batch course")
 
-#     # 3. Delete row
-#     await db.execute(
-#         text("DELETE FROM batch_lesson_activation WHERE batch_id=:b AND lesson_id=:l"),
-#         {"b": batch_id, "l": lesson_id}
-#     )
-#     await db.commit()
+    # 4. Delete activation row
+    await db.execute(
+        text("DELETE FROM batch_lesson_activation WHERE batch_id = :b AND lesson_id = :l"),
+        {"b": batch_id, "l": lesson_id}
+    )
+    await db.commit()
 
-#     return {
-#         "status": "success",
-#         "message": "Lesson deactivated",
-#         "lesson_id": lesson_id,
-#         "batch_id": batch_id,
-#         "is_active": False
-#     }
+    return {
+        "status": "success",
+        "message": "Lesson deactivated",
+        "lesson_id": lesson_id,
+        "batch_id": batch_id,
+        "is_active": False
+    }
