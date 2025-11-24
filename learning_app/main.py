@@ -29,7 +29,7 @@ from routes import contents
 from routes import cart
 from routes import purchased_course
 from routes import meeting_link
-from routes import contents
+from routes import contents, lesson_activate
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
 
@@ -57,7 +57,7 @@ app.include_router(contents.weblink_router,prefix="/api/contents")
 app.include_router(contents.quiz_router,prefix="/api/contents")
 app.include_router(contents.lab_router,prefix="/api/contents")
 app.include_router(meeting_link.router,prefix="/api")
-
+app.include_router(lesson_activate.router,prefix="/api/activate")
 
 origins = [
     "http://localhost:5173",   # React dev server

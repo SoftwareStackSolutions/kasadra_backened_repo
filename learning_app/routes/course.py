@@ -340,131 +340,133 @@ async def get_note_by_full_hierarchy(
 # NOTES Put API 
 ###################################
 
-@router.put("/notes/{instructor_id}/{course_id}/{lesson_id}/{note_id}", tags=["Notes"])
+## simply PUT method, only pass note id
+
+@router.put("/notes/{note_id}",  tags=["Notes"])
 async def update_note(
-    instructor_id: int,
-    course_id: int,
-    lesson_id: int,
     note_id: int,
-    note_in: NoteCreate,
+    note_data: NoteCreate,
     db: AsyncSession = Depends(get_session)
 ):
+    # 1. Get existing note
+    result = await db.execute(select(Note).where(Note.id == note_id))
+    note = result.scalar_one_or_none()
 
-    # Validate instructor
-    result = await db.execute(select(User).where(User.id == instructor_id))
-    instructor = result.scalar_one_or_none()
-
-    if not instructor:
-        raise HTTPException(status_code=404, detail="Instructor not found")
-
-    if instructor.role != RoleEnum.instructor:
-        raise HTTPException(status_code=403, detail="User is not an instructor")
-
-    # Validate course
-    course = await db.get(Course, course_id)
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    if course.instructor_id != instructor_id:
-        raise HTTPException(status_code=403, detail="This course does not belong to the instructor")
-
-    # Validate lesson
-    lesson = await db.get(Lesson, lesson_id)
-    if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-
-    if lesson.course_id != course_id:
-        raise HTTPException(
-            status_code=400,
-            detail="This lesson does not belong to the course"
-        )
-
-    # Validate note
-    note = await db.get(Note, note_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
-    if note.lesson_id != lesson_id or note.course_id != course_id or note.instructor_id != instructor_id:
-        raise HTTPException(
-            status_code=403,
-            detail="This note does not belong to the given instructor/course/lesson"
-        )
+    # 2. Update fields
+    note.course_id = note_data.course_id
+    note.lesson_id = note_data.lesson_id
+    note.instructor_id = note_data.instructor_id
+    note.notes = note_data.notes
 
-    # Update note
-    note.notes = note_in.notes
+    # 3. Save to DB
     await db.commit()
     await db.refresh(note)
 
+    # return note
     return {
         "status": "success",
         "message": "Note updated successfully",
         "data": {
             "id": note.id,
+            "instructor_id": note.instructor_id,
             "course_id": note.course_id,
             "lesson_id": note.lesson_id,
-            "instructor_id": note.instructor_id,
             "notes": note.notes
         }
     }
+
+
+# @router.put("/notes/{instructor_id}/{course_id}/{lesson_id}/{note_id}", tags=["Notes"])
+# async def update_note(
+#     instructor_id: int,
+#     course_id: int,
+#     lesson_id: int,
+#     note_id: int,
+#     note_in: NoteCreate,
+#     db: AsyncSession = Depends(get_session)
+# ):
+
+#     # Validate instructor
+#     result = await db.execute(select(User).where(User.id == instructor_id))
+#     instructor = result.scalar_one_or_none()
+
+#     if not instructor:
+#         raise HTTPException(status_code=404, detail="Instructor not found")
+
+#     if instructor.role != RoleEnum.instructor:
+#         raise HTTPException(status_code=403, detail="User is not an instructor")
+
+#     # Validate course
+#     course = await db.get(Course, course_id)
+#     if not course:
+#         raise HTTPException(status_code=404, detail="Course not found")
+
+#     if course.instructor_id != instructor_id:
+#         raise HTTPException(status_code=403, detail="This course does not belong to the instructor")
+
+#     # Validate lesson
+#     lesson = await db.get(Lesson, lesson_id)
+#     if not lesson:
+#         raise HTTPException(status_code=404, detail="Lesson not found")
+
+#     if lesson.course_id != course_id:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="This lesson does not belong to the course"
+#         )
+
+#     # Validate note
+#     note = await db.get(Note, note_id)
+#     if not note:
+#         raise HTTPException(status_code=404, detail="Note not found")
+
+#     if note.lesson_id != lesson_id or note.course_id != course_id or note.instructor_id != instructor_id:
+#         raise HTTPException(
+#             status_code=403,
+#             detail="This note does not belong to the given instructor/course/lesson"
+#         )
+
+#     # Update note
+#     note.notes = note_in.notes
+#     await db.commit()
+#     await db.refresh(note)
+
+#     return {
+#         "status": "success",
+#         "message": "Note updated successfully",
+#         "data": {
+#             "id": note.id,
+#             "course_id": note.course_id,
+#             "lesson_id": note.lesson_id,
+#             "instructor_id": note.instructor_id,
+#             "notes": note.notes
+#         }
+#     }
 
 
 ###################################
 # Delete Notes 
 ###################################
 
-@router.delete("/notes/{instructor_id}/{course_id}/{lesson_id}/{note_id}", tags=["Notes"])
+## simply delete method only pass note id
+
+@router.delete("/notes/{note_id}", tags=["Notes"])
 async def delete_note(
-    instructor_id: int,
-    course_id: int,
-    lesson_id: int,
     note_id: int,
     db: AsyncSession = Depends(get_session)
 ):
 
-    # Validate instructor
-    result = await db.execute(select(User).where(User.id == instructor_id))
-    instructor = result.scalar_one_or_none()
+    # Fetch the note
+    result = await db.execute(select(Note).where(Note.id == note_id))
+    note = result.scalar_one_or_none()
 
-    if not instructor:
-        raise HTTPException(status_code=404, detail="Instructor not found")
-
-    if instructor.role != RoleEnum.instructor:
-        raise HTTPException(status_code=403, detail="User is not an instructor")
-
-    # Validate course
-    course = await db.get(Course, course_id)
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    if course.instructor_id != instructor_id:
-        raise HTTPException(
-            status_code=403,
-            detail="This course does not belong to the instructor"
-        )
-
-    # Validate lesson
-    lesson = await db.get(Lesson, lesson_id)
-    if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-
-    if lesson.course_id != course_id:
-        raise HTTPException(
-            status_code=400,
-            detail="This lesson does not belong to the course"
-        )
-
-    # Validate note
-    note = await db.get(Note, note_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
-    if note.lesson_id != lesson_id or note.course_id != course_id or note.instructor_id != instructor_id:
-        raise HTTPException(
-            status_code=403,
-            detail="This note does not belong to the given instructor/course/lesson"
-        )
-
-    # Delete the note
+    # Delete note
     await db.delete(note)
     await db.commit()
 
@@ -472,9 +474,73 @@ async def delete_note(
         "status": "success",
         "message": "Note deleted successfully",
         "data": {
-            "deleted_note_id": note_id
+            "id": note_id
         }
     }
+
+# @router.delete("/notes/{instructor_id}/{course_id}/{lesson_id}/{note_id}", tags=["Notes"])
+# async def delete_note(
+#     instructor_id: int,
+#     course_id: int,
+#     lesson_id: int,
+#     note_id: int,
+#     db: AsyncSession = Depends(get_session)
+# ):
+
+#     # Validate instructor
+#     result = await db.execute(select(User).where(User.id == instructor_id))
+#     instructor = result.scalar_one_or_none()
+
+#     if not instructor:
+#         raise HTTPException(status_code=404, detail="Instructor not found")
+
+#     if instructor.role != RoleEnum.instructor:
+#         raise HTTPException(status_code=403, detail="User is not an instructor")
+
+#     # Validate course
+#     course = await db.get(Course, course_id)
+#     if not course:
+#         raise HTTPException(status_code=404, detail="Course not found")
+
+#     if course.instructor_id != instructor_id:
+#         raise HTTPException(
+#             status_code=403,
+#             detail="This course does not belong to the instructor"
+#         )
+
+#     # Validate lesson
+#     lesson = await db.get(Lesson, lesson_id)
+#     if not lesson:
+#         raise HTTPException(status_code=404, detail="Lesson not found")
+
+#     if lesson.course_id != course_id:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="This lesson does not belong to the course"
+#         )
+
+#     # Validate note
+#     note = await db.get(Note, note_id)
+#     if not note:
+#         raise HTTPException(status_code=404, detail="Note not found")
+
+#     if note.lesson_id != lesson_id or note.course_id != course_id or note.instructor_id != instructor_id:
+#         raise HTTPException(
+#             status_code=403,
+#             detail="This note does not belong to the given instructor/course/lesson"
+#         )
+
+#     # Delete the note
+#     await db.delete(note)
+#     await db.commit()
+
+#     return {
+#         "status": "success",
+#         "message": "Note deleted successfully",
+#         "data": {
+#             "deleted_note_id": note_id
+#         }
+#     }
 
 
 
