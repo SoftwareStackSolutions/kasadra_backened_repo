@@ -1,8 +1,10 @@
-from sqlalchemy import Column, Integer, String, Date,ForeignKey, LargeBinary, Text
+from sqlalchemy import Column, Integer, String, Date,ForeignKey, LargeBinary, Text, DateTime
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from datetime import date
 from models.user import User
-from sqlalchemy import Time
+from sqlalchemy import Time,  UniqueConstraint
+
 from .base import Base
 
 class Course(Base):
@@ -161,3 +163,24 @@ class Note(Base):
     course = relationship("Course", back_populates="notes", lazy="joined")
     lesson = relationship("Lesson", back_populates="notes", lazy="joined")
     instructor = relationship("User")
+
+###########################################
+## BatchLessonActivation
+###########################################
+
+class BatchLessonActivation(Base):
+    __tablename__ = "batch_lesson_activation"
+
+    id = Column(Integer, primary_key=True, index=True)
+    batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
+    activated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    activated_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Optional relationships
+    batch = relationship("Batch", backref="activated_lessons")
+    lesson = relationship("Lesson", backref="lesson_activations")
+
+    __table_args__ = (
+    UniqueConstraint('batch_id', 'lesson_id', name='unique_batch_lesson'),
+)
