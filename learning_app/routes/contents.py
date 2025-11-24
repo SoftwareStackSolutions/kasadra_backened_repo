@@ -327,14 +327,42 @@ async def add_quiz(
         },
     }
 
+############# quiz get by ID ##########
+@quiz_router.get("/get/quiz/{quiz_id}")
+async def get_quiz_by_id(
+    quiz_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    quiz = (
+        await db.execute(select(Quiz).where(Quiz.id == quiz_id))
+    ).scalar_one_or_none()
+
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+
+    return {
+        "status": "success",
+        "message": "Quiz fetched successfully",
+        "data": {
+            "quiz_id": quiz.id,
+            "course_id": quiz.course_id,
+            "lesson_id": quiz.lesson_id,
+            "name": quiz.name,
+            "description": quiz.description,
+            "url": quiz.url,
+            "file_url": quiz.file_url,
+        },
+    }
+
+
 ############# Update Quiz #############
 
 @quiz_router.put("/update/quiz/{quiz_id}")
 async def update_quiz(
     quiz_id: int,
-    name: str = Form(None),
+    name: str = Form(...),
     description: str = Form(None),
-    url: str = Form(None),
+    url: str = Form(...),
     file: UploadFile = File(None),
     db: AsyncSession = Depends(get_session),
 ):

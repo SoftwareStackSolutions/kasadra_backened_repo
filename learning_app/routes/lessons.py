@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.user import User, RoleEnum
-from models.course import Course, Lesson, Pdf, WebLink, Quiz, Lab
+from models.course import Course, Lesson, Pdf, WebLink, Quiz, Lab, Note
 from database.db import get_session
 from datetime import datetime
 from typing import Optional
@@ -118,7 +118,11 @@ async def get_lesson_by_id(
         select(Lab).where(Lab.lesson_id == lesson_id)
     )
     labs = labs_result.scalars().all()
-
+    
+    notes_result = await db.execute(
+    select(Note).where(Note.lesson_id == lesson_id)
+    )
+    notes = notes_result.scalars().all()
     return {
         "status": "success",
         "data": {
@@ -163,7 +167,17 @@ async def get_lesson_by_id(
                     "file_url": lab.file_url
                 }
                 for lab in labs
-            ]
+            ],
+            "notes": [
+                {
+                    "id": n.id,
+                    "course_id": n.course_id,
+                    "lesson_id": n.lesson_id,
+                    "instructor_id": n.instructor_id,
+                    "notes": n.notes
+                }
+                for n in notes
+            ]  # Placeholder for notes if needed in future
         },
     }
 ###################### Get lessons by course_id #####################
