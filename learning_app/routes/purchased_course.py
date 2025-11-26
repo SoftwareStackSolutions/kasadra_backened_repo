@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.add_to_cart import Cart
-from models.course import Course
+from models.course import User, Course
 from database.db import get_session
+
 
 router = APIRouter()
 
@@ -187,4 +188,47 @@ async def get_all_courses_for_student(student_id: int, db: AsyncSession = Depend
         "message": message,
         "purchased_courses": purchased_data,
         "recommended_courses": recommended_data
+    }
+
+######### get students list by course ID ########3
+
+@router.get("/course/{course_id}/students", tags=["purchased"])
+async def get_purchased_students(
+    course_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    # Step 1: Join PurchasedCourse → User
+    result = await db.execute(
+        select(
+            User.id,
+            User.name,
+            User.email,
+            PurchasedCourse.purchased_at
+        )
+        .join(PurchasedCourse, PurchasedCourse.student_id == User.id)
+        .where(PurchasedCourse.course_id == course_id)
+    )
+
+    students = [
+        {
+            "student_id": row.id,
+            "name": row.name,
+            "email": row.email,
+            "purchased_at": row.purchased_at
+        }
+        for row in result.all()
+    ]
+
+    if not students:
+        return {
+            "status": "success",
+            "message": "No students purchased this course yet",
+            "students": []
+        }
+
+    return {
+        "status": "success",
+        "course_id": course_id,
+        "total_students": len(students),
+        "students": students
     }

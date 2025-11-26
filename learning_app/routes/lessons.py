@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.user import User, RoleEnum
-from models.course import Course, Lesson, Pdf, WebLink, Quiz, Lab, Note
+from models.course import Course, Lesson, Pdf, WebLink, Quiz, Lab, Note, BatchLessonActivation
 from database.db import get_session
 from datetime import datetime
 from typing import Optional
