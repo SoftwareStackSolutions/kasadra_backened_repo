@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.add_to_cart import Cart
 from models.course import User, Course
+from models.course import Batch, BatchStudent
 from database.db import get_session
 
 
@@ -197,15 +198,26 @@ async def get_purchased_students(
     course_id: int,
     db: AsyncSession = Depends(get_session)
 ):
-    # Step 1: Join PurchasedCourse → User
+    # LEFT JOIN BatchStudent & Batch to include batch info (nullable)
     result = await db.execute(
         select(
             User.id,
             User.name,
             User.email,
-            PurchasedCourse.purchased_at
+            PurchasedCourse.purchased_at,
+            Batch.batch_name     # <-- returns NULL if no batch assigned
         )
         .join(PurchasedCourse, PurchasedCourse.student_id == User.id)
+        .join(
+            BatchStudent,
+            BatchStudent.student_id == User.id,
+            isouter=True  # LEFT JOIN
+        )
+        .join(
+            Batch,
+            Batch.id == BatchStudent.batch_id,
+            isouter=True  # LEFT JOIN
+        )
         .where(PurchasedCourse.course_id == course_id)
     )
 
@@ -214,7 +226,8 @@ async def get_purchased_students(
             "student_id": row.id,
             "name": row.name,
             "email": row.email,
-            "purchased_at": row.purchased_at
+            "purchased_at": row.purchased_at,
+            "batch_name": row.batch_name  # returns value or null
         }
         for row in result.all()
     ]
