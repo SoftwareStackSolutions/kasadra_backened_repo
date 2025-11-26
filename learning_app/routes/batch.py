@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
 from sqlalchemy.orm import selectinload
-from models.course import Batch
+from models.course import Batch, BatchStudent
 from schemas.course import BatchCreate
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
@@ -158,5 +158,54 @@ async def get_all_batches(course_id: int, db: AsyncSession = Depends(get_session
             }
             for batch in batches
         ]
+    }
+
+
+####### Assign bayches #########
+
+@router.post("/assign", tags=["batches"])
+async def assign_student_to_batch(
+    student_id: int = Form(...),
+    batch_id: int = Form(...),
+    db: AsyncSession = Depends(get_session)
+):
+
+    # Validate student
+    student = await db.get(User, student_id)
+    if not student or student.role != RoleEnum.student:
+        raise HTTPException(status_code=404, detail="Invalid student")
+
+    # Validate batch
+    batch = await db.get(Batch, batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    # Check if already assigned
+    result = await db.execute(
+        select(BatchStudent).where(
+            BatchStudent.batch_id == batch_id,
+            BatchStudent.student_id == student_id
+        )
+    )
+    exists = result.scalar_one_or_none()
+
+    if exists:
+        return {
+            "status": "success",
+            "message": "Student is already assigned to this batch",
+            "student_name": student.name,
+            "batch_name": batch.batch_name,
+        }
+
+    # Assign student
+    assignment = BatchStudent(student_id=student_id, batch_id=batch_id)
+    db.add(assignment)
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "Student assigned successfully to batch",
+        "student_name": student.name,
+        "batch_name": batch.batch_name,
     }
 
