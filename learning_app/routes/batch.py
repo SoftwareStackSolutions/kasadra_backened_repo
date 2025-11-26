@@ -161,7 +161,7 @@ async def get_all_batches(course_id: int, db: AsyncSession = Depends(get_session
     }
 
 
-####### Assign bayches #########
+####### Assign batches #########
 
 @router.post("/assign", tags=["batches"])
 async def assign_student_to_batch(
@@ -180,7 +180,20 @@ async def assign_student_to_batch(
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
 
-    # Check if already assigned
+    # Count assigned students
+    assigned_students_count = await db.execute(
+        select(BatchStudent).where(BatchStudent.batch_id == batch_id)
+    )
+    assigned_count = len(assigned_students_count.all())
+
+    # Check if batch limit reached
+    if assigned_count >= batch.num_students:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{batch.batch_name} is full. Limit: {batch.num_students} students."
+        )
+
+    # Check if student already assigned
     result = await db.execute(
         select(BatchStudent).where(
             BatchStudent.batch_id == batch_id,
@@ -207,5 +220,7 @@ async def assign_student_to_batch(
         "message": "Student assigned successfully to batch",
         "student_name": student.name,
         "batch_name": batch.batch_name,
+        "assigned_count": assigned_count + 1,
+        "capacity": batch.num_students
     }
 
