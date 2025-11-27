@@ -11,7 +11,7 @@ from models.user import User
 from sqlalchemy.future import select
 from models.course import Course, Lesson
 from schemas.course import CourseCreate, LessonCreate
-from schemas.batch import AssignStudentRequest
+from schemas.batch import AssignStudentsRequest
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
@@ -20,6 +20,7 @@ from models.course import Batch, BatchStudent
 from schemas.course import BatchCreate
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
+from schemas.batch import AssignStudentsRequest
 
 
 from dependencies.auth_dep import get_current_user
@@ -165,65 +166,66 @@ async def get_all_batches(course_id: int, db: AsyncSession = Depends(get_session
 ####### Assign batches #########
 
 @router.post("/assign", tags=["batches"])
-async def assign_student_to_batch(
-    data: AssignStudentRequest,
+async def assign_students_to_batch(
+    data: AssignStudentsRequest,
     db: AsyncSession = Depends(get_session)
 ):
 
-    student_id = data.student_id
     batch_id = data.batch_id
-
-    # Validate student
-    student = await db.get(User, student_id)
-    if not student or student.role != RoleEnum.student:
-        raise HTTPException(status_code=404, detail="Invalid student")
+    student_ids = data.student_ids  # ⬅️ now accepts multiple IDs
 
     # Validate batch
     batch = await db.get(Batch, batch_id)
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
 
-    # Count assigned students
-    assigned_students_count = await db.execute(
+    # Current assigned count
+    assigned_students = await db.execute(
         select(BatchStudent).where(BatchStudent.batch_id == batch_id)
     )
-    assigned_count = len(assigned_students_count.all())
+    assigned_count = len(assigned_students.all())
 
-    # Check if batch limit reached
-    if assigned_count >= batch.num_students:
+    # Validate capacity before assigning
+    total_requested = len(student_ids)
+    available_slots = batch.num_students - assigned_count
+
+    if total_requested > available_slots:
         raise HTTPException(
             status_code=400,
-            detail=f"{batch.batch_name} is full. Limit: {batch.num_students} students."
+            detail=f"Batch full. Limit: {batch.num_students} students."
         )
 
-    # Check if student already assigned
-    result = await db.execute(
-        select(BatchStudent).where(
-            BatchStudent.batch_id == batch_id,
-            BatchStudent.student_id == student_id
+    # Assign students
+    assigned = []
+    already_exists = []
+
+    for student_id in student_ids:
+        student = await db.get(User, student_id)
+        if not student or student.role != RoleEnum.student:
+            continue
+
+        # Check duplicate
+        result = await db.execute(
+            select(BatchStudent).where(
+                BatchStudent.batch_id == batch_id,
+                BatchStudent.student_id == student_id
+            )
         )
-    )
-    exists = result.scalar_one_or_none()
 
-    if exists:
-        return {
-            "status": "success",
-            "message": "Student is already assigned to this batch",
-            "student_name": student.name,
-            "batch_name": batch.batch_name,
-        }
+        if result.scalar_one_or_none():
+            already_exists.append(student_id)
+            continue
 
-    # Assign student
-    assignment = BatchStudent(student_id=student_id, batch_id=batch_id)
-    db.add(assignment)
+        db.add(BatchStudent(student_id=student_id, batch_id=batch_id))
+        assigned.append(student_id)
+
     await db.commit()
 
     return {
         "status": "success",
-        "message": "Student assigned successfully to batch",
-        "student_name": student.name,
+        "message": f"Students assigned successfully.",
         "batch_name": batch.batch_name,
-        "assigned_count": assigned_count + 1,
-        "capacity": batch.num_students
+        "limit": batch.num_students,
+        "assigned_now": len(assigned),
+        "already_assigned": already_exists,
     }
-

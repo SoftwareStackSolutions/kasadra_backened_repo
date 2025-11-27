@@ -1,5 +1,6 @@
 from pydantic import BaseModel
+from typing import List
 
-class AssignStudentRequest(BaseModel):
-    student_id: int
+class AssignStudentsRequest(BaseModel):
     batch_id: int
+    student_ids: List[int]
