@@ -16,26 +16,28 @@ async def get_lessons_for_batch(batch_id: int, db: AsyncSession = Depends(get_se
     if not batch:
         raise HTTPException(404, "Batch not found")
 
-    # 2. Get course_id from batch
     course_id = batch.course_id
 
-    # 3. Fetch lessons for that course + LEFT JOIN activation
+    # 2. Updated SQL (JOIN courses table)
     sql = """
     SELECT 
         l.id AS lesson_id,
         l.lesson_title AS title,
         l.description,
+        c.id AS course_id,
+        c.title AS course_name,
         COALESCE(a.id IS NOT NULL, FALSE) AS is_active,
         a.activated_at
     FROM lessons l
+    JOIN courses c ON l.course_id = c.id
     LEFT JOIN batch_lesson_activation a
         ON l.id = a.lesson_id AND a.batch_id = :batch_id
     WHERE l.course_id = :course_id
     ORDER BY l.id;
-"""
+    """
 
     result = await db.execute(
-        text(sql), 
+        text(sql),
         {"batch_id": batch_id, "course_id": course_id}
     )
 
@@ -44,6 +46,8 @@ async def get_lessons_for_batch(batch_id: int, db: AsyncSession = Depends(get_se
             "lesson_id": row.lesson_id,
             "title": row.title,
             "description": row.description,
+            "course_id": row.course_id,
+            "course_name": row.course_name,
             "is_active": row.is_active,
             "activated_at": row.activated_at,
         }
@@ -51,6 +55,7 @@ async def get_lessons_for_batch(batch_id: int, db: AsyncSession = Depends(get_se
     ]
 
     return {"status": "success", "lessons": lessons}
+
 
 
 ####################################################
