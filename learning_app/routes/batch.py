@@ -11,6 +11,7 @@ from models.user import User
 from sqlalchemy.future import select
 from models.course import Course, Lesson
 from schemas.course import CourseCreate, LessonCreate
+from schemas.batch import AssignStudentRequest
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
@@ -165,10 +166,12 @@ async def get_all_batches(course_id: int, db: AsyncSession = Depends(get_session
 
 @router.post("/assign", tags=["batches"])
 async def assign_student_to_batch(
-    student_id: int = Form(...),
-    batch_id: int = Form(...),
+    data: AssignStudentRequest,
     db: AsyncSession = Depends(get_session)
 ):
+
+    student_id = data.student_id
+    batch_id = data.batch_id
 
     # Validate student
     student = await db.get(User, student_id)
