@@ -198,25 +198,25 @@ async def get_purchased_students(
     course_id: int,
     db: AsyncSession = Depends(get_session)
 ):
-    # LEFT JOIN BatchStudent & Batch to include batch info (nullable)
+    # LEFT JOIN BatchStudent + Batch ONLY for the requested course
     result = await db.execute(
         select(
             User.id,
             User.name,
             User.email,
             PurchasedCourse.purchased_at,
-            Batch.batch_name     # <-- returns NULL if no batch assigned
+            Batch.batch_name
         )
         .join(PurchasedCourse, PurchasedCourse.student_id == User.id)
         .join(
             BatchStudent,
-            BatchStudent.student_id == User.id,
-            isouter=True  # LEFT JOIN
+            (BatchStudent.student_id == User.id),
+            isouter=True
         )
         .join(
             Batch,
-            Batch.id == BatchStudent.batch_id,
-            isouter=True  # LEFT JOIN
+            (Batch.id == BatchStudent.batch_id) & (Batch.course_id == course_id),  # <-- FIXED
+            isouter=True
         )
         .where(PurchasedCourse.course_id == course_id)
     )
@@ -227,17 +227,10 @@ async def get_purchased_students(
             "name": row.name,
             "email": row.email,
             "purchased_at": row.purchased_at,
-            "batch_name": row.batch_name  # returns value or null
+            "batch_name": row.batch_name
         }
         for row in result.all()
     ]
-
-    if not students:
-        return {
-            "status": "success",
-            "message": "No students purchased this course yet",
-            "students": []
-        }
 
     return {
         "status": "success",
