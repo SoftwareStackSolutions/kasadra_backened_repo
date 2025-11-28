@@ -198,7 +198,7 @@ async def get_purchased_students(
     course_id: int,
     db: AsyncSession = Depends(get_session)
 ):
-    # LEFT JOIN BatchStudent + Batch ONLY for the requested course
+    # Fetch with LEFT JOIN so unassigned students are included
     result = await db.execute(
         select(
             User.id,
@@ -208,15 +208,12 @@ async def get_purchased_students(
             Batch.batch_name
         )
         .join(PurchasedCourse, PurchasedCourse.student_id == User.id)
-        .join(
-            BatchStudent,
-            (BatchStudent.student_id == User.id),
-            isouter=True
+        .outerjoin(
+            BatchStudent, BatchStudent.student_id == User.id
         )
-        .join(
+        .outerjoin(
             Batch,
-            (Batch.id == BatchStudent.batch_id) & (Batch.course_id == course_id),  # <-- FIXED
-            isouter=True
+            (Batch.id == BatchStudent.batch_id) & (Batch.course_id == course_id)
         )
         .where(PurchasedCourse.course_id == course_id)
     )
@@ -227,7 +224,8 @@ async def get_purchased_students(
             "name": row.name,
             "email": row.email,
             "purchased_at": row.purchased_at,
-            "batch_name": row.batch_name
+            "batch_name": row.batch_name,
+            "status": "Assigned" if row.batch_name else "Unassigned"   # <-- ADDED LOGIC
         }
         for row in result.all()
     ]

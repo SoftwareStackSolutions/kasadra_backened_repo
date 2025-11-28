@@ -136,33 +136,6 @@ async def get_batches_by_course(
         ]
     }
 
-
-@router.get("/all/{course_id}", tags=["assign_batches"])
-async def get_all_batches(course_id: int, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(
-        select(Batch)
-        .options(joinedload(Batch.course), joinedload(Batch.instructor))
-        .where(Batch.course_id == course_id)   # ✅ filter by course_id
-    )
-    batches = result.scalars().all()
-
-    return {
-        "status": "success",
-        "data": [
-            {
-                "batch_id": batch.id,
-                "course_name": batch.course.title if batch.course else None,
-                "batch_name": batch.batch_name,
-                "num_students": batch.num_students,
-                "instructor_name": batch.instructor.name if batch.instructor else None,
-                "timing": batch.timing,
-                "start_date": batch.start_date,
-            }
-            for batch in batches
-        ]
-    }
-
-
 ####### Assign batches #########
 
 @router.post("/assign", tags=["batches"])
