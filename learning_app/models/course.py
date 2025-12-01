@@ -67,6 +67,22 @@ class Batch(Base):
     calendar_entries = relationship("CourseCalendar", back_populates="batch", cascade="all, delete-orphan")
     meetings = relationship("MeetingLink", back_populates="batch", cascade="all, delete")
 
+class BatchStudent(Base):
+    __tablename__ = "batch_students"
+
+    id = Column(Integer, primary_key=True)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    batch_name = Column(String, nullable=True)   # ✅ allow null
+    assigned_at = Column(DateTime, default=date.today)
+
+    batch = relationship("Batch")
+    student = relationship("User")
+
+    __table_args__ = (UniqueConstraint('batch_id', 'student_id', name='unique_batch_student'),)
+
+
+
 class CourseCalendar(Base):
     __tablename__ = "course_calendar"
 

@@ -11,14 +11,16 @@ from models.user import User
 from sqlalchemy.future import select
 from models.course import Course, Lesson
 from schemas.course import CourseCreate, LessonCreate
+from schemas.batch import AssignStudentsRequest
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
 from sqlalchemy.orm import selectinload
-from models.course import Batch
+from models.course import Batch, BatchStudent
 from schemas.course import BatchCreate
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
+from schemas.batch import AssignStudentsRequest
 
 
 from dependencies.auth_dep import get_current_user
@@ -134,29 +136,129 @@ async def get_batches_by_course(
         ]
     }
 
+####### Assign batches #########
 
-@router.get("/all/{course_id}", tags=["assign_batches"])
-async def get_all_batches(course_id: int, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(
-        select(Batch)
-        .options(joinedload(Batch.course), joinedload(Batch.instructor))
-        .where(Batch.course_id == course_id)   # ✅ filter by course_id
+@router.post("/assign", tags=["batches"])
+async def assign_students_to_batch(
+    data: AssignStudentsRequest,
+    db: AsyncSession = Depends(get_session)
+):
+
+    batch_id = data.batch_id
+    student_ids = data.student_ids
+
+    batch = await db.get(Batch, batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    assigned_students = await db.execute(
+        select(BatchStudent).where(BatchStudent.batch_id == batch_id)
     )
-    batches = result.scalars().all()
+    assigned_count = len(assigned_students.all())
+
+    available_slots = batch.num_students - assigned_count
+
+    if len(student_ids) > available_slots:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Batch full. Limit: {batch.num_students} students."
+        )
+
+    assigned = []
+    already_exists = []
+
+    for student_id in student_ids:
+
+        result = await db.execute(
+            select(BatchStudent).where(
+                BatchStudent.batch_id == batch_id,
+                BatchStudent.student_id == student_id
+            )
+        )
+
+        if result.scalar_one_or_none():
+            already_exists.append(student_id)
+            continue
+
+        db.add(
+            BatchStudent(
+                student_id=student_id,
+                batch_id=batch_id,
+                batch_name=batch.batch_name  # ✅ now storing batch name
+            )
+        )
+
+        assigned.append(student_id)
+
+    await db.commit()
 
     return {
         "status": "success",
-        "data": [
-            {
-                "batch_id": batch.id,
-                "course_name": batch.course.title if batch.course else None,
-                "batch_name": batch.batch_name,
-                "num_students": batch.num_students,
-                "instructor_name": batch.instructor.name if batch.instructor else None,
-                "timing": batch.timing,
-                "start_date": batch.start_date,
-            }
-            for batch in batches
-        ]
+        "message": "Students assigned successfully",
+        "batch_name": batch.batch_name,
+        "limit": batch.num_students,
+        "assigned": assigned,
+        "already_assigned": already_exists
     }
 
+
+######## update assigned students #########
+
+@router.put("/assign", tags=["batches"])
+async def update_student_batch(
+    data: AssignStudentsRequest,
+    db: AsyncSession = Depends(get_session)
+):
+
+    batch_id = data.batch_id
+    student_ids = data.student_ids
+
+    batch = await db.get(Batch, batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    moved_students = []
+    assigned_new = []
+
+    for student_id in student_ids:
+
+        # Fetch student batch record (regardless of batch)
+        result = await db.execute(
+            select(BatchStudent).where(BatchStudent.student_id == student_id)
+        )
+        record = result.scalar_one_or_none()
+
+        if record:
+            # 🚨 If same batch → throw error
+            if record.batch_id == batch_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Student {student_id} is already assigned to this batch."
+                )
+
+            # 🔁 Move to new batch
+            record.batch_id = batch_id
+            record.batch_name = batch.batch_name
+            moved_students.append(student_id)
+
+        else:
+            # 🆕 Assign new student
+            db.add(
+                BatchStudent(
+                    student_id=student_id,
+                    batch_id=batch_id,
+                    batch_name=batch.batch_name
+                )
+            )
+            assigned_new.append(student_id)
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "Batch assignment updated successfully",
+        "batch_name": batch.batch_name,
+        "assigned_new": assigned_new,
+        "moved_students": moved_students,
+        "total_processed": len(student_ids)
+    }
