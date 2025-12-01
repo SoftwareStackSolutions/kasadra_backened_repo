@@ -199,7 +199,6 @@ async def update_student_batch(
     data: AssignStudentsRequest,
     db: AsyncSession = Depends(get_session)
 ):
-
     batch_id = data.batch_id
     student_ids = data.student_ids
 
@@ -210,13 +209,12 @@ async def update_student_batch(
     moved = []
 
     for sid in student_ids:
-
-        # DELETE ALL previous assignments for this student
+        # Remove student from any batch first
         await db.execute(
             delete(BatchStudent).where(BatchStudent.student_id == sid)
         )
 
-        # INSERT new assignment
+        # Assign to new batch
         db.add(BatchStudent(student_id=sid, batch_id=batch_id))
         moved.append(sid)
 
