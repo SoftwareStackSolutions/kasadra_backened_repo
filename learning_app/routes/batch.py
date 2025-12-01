@@ -206,15 +206,12 @@ async def update_student_batch(
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
 
+    # Delete ALL students currently assigned to this batch
+    await db.execute(delete(BatchStudent).where(BatchStudent.batch_id == batch_id))
+
+    # Insert new assignments
     moved = []
-
     for sid in student_ids:
-        # Remove student from any batch first
-        await db.execute(
-            delete(BatchStudent).where(BatchStudent.student_id == sid)
-        )
-
-        # Assign to new batch
         db.add(BatchStudent(student_id=sid, batch_id=batch_id))
         moved.append(sid)
 
