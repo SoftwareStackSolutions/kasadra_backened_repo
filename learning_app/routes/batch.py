@@ -21,6 +21,8 @@ from schemas.course import BatchCreate
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
 from schemas.batch import AssignStudentsRequest
+from sqlalchemy import select, delete, func
+
 
 
 from dependencies.auth_dep import get_current_user
@@ -143,7 +145,6 @@ async def assign_students_to_batch(
     data: AssignStudentsRequest,
     db: AsyncSession = Depends(get_session)
 ):
-
     batch_id = data.batch_id
     student_ids = data.student_ids
 
@@ -151,13 +152,13 @@ async def assign_students_to_batch(
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
 
-    # Count current students
-    current_count = (
-        await db.execute(select(BatchStudent).where(BatchStudent.batch_id == batch_id))
-    ).scalars().count()
+    # Count current students in batch
+    result = await db.execute(
+        select(func.count()).select_from(BatchStudent).where(BatchStudent.batch_id == batch_id)
+    )
+    current_count = result.scalar() or 0
 
     available_slots = batch.num_students - current_count
-
     if len(student_ids) > available_slots:
         raise HTTPException(
             status_code=400,
@@ -168,16 +169,16 @@ async def assign_students_to_batch(
     already = []
 
     for sid in student_ids:
-        exists = (
-            await db.execute(
-                select(BatchStudent).where(BatchStudent.student_id == sid)
-            )
-        ).scalar_one_or_none()
-
+        # Check if student already assigned to this batch
+        result = await db.execute(
+            select(BatchStudent).where(BatchStudent.student_id == sid, BatchStudent.batch_id == batch_id)
+        )
+        exists = result.scalar_one_or_none()
         if exists:
             already.append(sid)
             continue
 
+        # Add student to batch
         db.add(BatchStudent(student_id=sid, batch_id=batch_id))
         assigned.append(sid)
 
@@ -192,7 +193,6 @@ async def assign_students_to_batch(
 
 ######## update assigned students #########
 
-from sqlalchemy import delete
 
 @router.put("/assign", tags=["batches"])
 async def update_student_batch(
