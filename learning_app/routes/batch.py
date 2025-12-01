@@ -151,58 +151,48 @@ async def assign_students_to_batch(
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
 
-    assigned_students = await db.execute(
-        select(BatchStudent).where(BatchStudent.batch_id == batch_id)
-    )
-    assigned_count = len(assigned_students.all())
+    # Count current students
+    current_count = (
+        await db.execute(select(BatchStudent).where(BatchStudent.batch_id == batch_id))
+    ).scalars().count()
 
-    available_slots = batch.num_students - assigned_count
+    available_slots = batch.num_students - current_count
 
     if len(student_ids) > available_slots:
         raise HTTPException(
             status_code=400,
-            detail=f"Batch full. Limit: {batch.num_students} students."
+            detail=f"Batch full (limit: {batch.num_students})."
         )
 
     assigned = []
-    already_exists = []
+    already = []
 
-    for student_id in student_ids:
-
-        result = await db.execute(
-            select(BatchStudent).where(
-                BatchStudent.batch_id == batch_id,
-                BatchStudent.student_id == student_id
+    for sid in student_ids:
+        exists = (
+            await db.execute(
+                select(BatchStudent).where(BatchStudent.student_id == sid)
             )
-        )
+        ).scalar_one_or_none()
 
-        if result.scalar_one_or_none():
-            already_exists.append(student_id)
+        if exists:
+            already.append(sid)
             continue
 
-        db.add(
-            BatchStudent(
-                student_id=student_id,
-                batch_id=batch_id,
-                batch_name=batch.batch_name  # ✅ now storing batch name
-            )
-        )
-
-        assigned.append(student_id)
+        db.add(BatchStudent(student_id=sid, batch_id=batch_id))
+        assigned.append(sid)
 
     await db.commit()
 
     return {
         "status": "success",
-        "message": "Students assigned successfully",
-        "batch_name": batch.batch_name,
-        "limit": batch.num_students,
+        "message": "Students assigned",
         "assigned": assigned,
-        "already_assigned": already_exists
+        "already_assigned": already
     }
 
-
 ######## update assigned students #########
+
+from sqlalchemy import delete
 
 @router.put("/assign", tags=["batches"])
 async def update_student_batch(
@@ -217,48 +207,23 @@ async def update_student_batch(
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
 
-    moved_students = []
-    assigned_new = []
+    moved = []
 
-    for student_id in student_ids:
+    for sid in student_ids:
 
-        # Fetch student batch record (regardless of batch)
-        result = await db.execute(
-            select(BatchStudent).where(BatchStudent.student_id == student_id)
+        # DELETE ALL previous assignments for this student
+        await db.execute(
+            delete(BatchStudent).where(BatchStudent.student_id == sid)
         )
-        record = result.scalar_one_or_none()
 
-        if record:
-            # 🚨 If same batch → throw error
-            if record.batch_id == batch_id:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Student {student_id} is already assigned to this batch."
-                )
-
-            # 🔁 Move to new batch
-            record.batch_id = batch_id
-            record.batch_name = batch.batch_name
-            moved_students.append(student_id)
-
-        else:
-            # 🆕 Assign new student
-            db.add(
-                BatchStudent(
-                    student_id=student_id,
-                    batch_id=batch_id,
-                    batch_name=batch.batch_name
-                )
-            )
-            assigned_new.append(student_id)
+        # INSERT new assignment
+        db.add(BatchStudent(student_id=sid, batch_id=batch_id))
+        moved.append(sid)
 
     await db.commit()
 
     return {
         "status": "success",
-        "message": "Batch assignment updated successfully",
-        "batch_name": batch.batch_name,
-        "assigned_new": assigned_new,
-        "moved_students": moved_students,
-        "total_processed": len(student_ids)
+        "message": "Batch updated",
+        "moved_students": moved
     }
