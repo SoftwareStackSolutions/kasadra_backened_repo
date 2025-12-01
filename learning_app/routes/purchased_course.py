@@ -4,8 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from models.add_to_cart import Cart
-from models.course import Course
+from models.course import User, Course
+from models.course import Batch, BatchStudent
 from database.db import get_session
+
 
 router = APIRouter()
 
@@ -187,4 +189,50 @@ async def get_all_courses_for_student(student_id: int, db: AsyncSession = Depend
         "message": message,
         "purchased_courses": purchased_data,
         "recommended_courses": recommended_data
+    }
+
+######### get students list by course ID ########3
+
+@router.get("/course/{course_id}/students", tags=["purchased"])
+async def get_purchased_students(
+    course_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    # Fetch with LEFT JOIN so unassigned students are included
+    result = await db.execute(
+        select(
+            User.id,
+            User.name,
+            User.email,
+            PurchasedCourse.purchased_at,
+            Batch.batch_name
+        )
+        .join(PurchasedCourse, PurchasedCourse.student_id == User.id)
+        .outerjoin(
+            BatchStudent, BatchStudent.student_id == User.id
+        )
+        .outerjoin(
+            Batch,
+            (Batch.id == BatchStudent.batch_id) & (Batch.course_id == course_id)
+        )
+        .where(PurchasedCourse.course_id == course_id)
+    )
+
+    students = [
+        {
+            "student_id": row.id,
+            "name": row.name,
+            "email": row.email,
+            "purchased_at": row.purchased_at,
+            "batch_name": row.batch_name,
+            "status": "Assigned" if row.batch_name else "Unassigned"   # <-- ADDED LOGIC
+        }
+        for row in result.all()
+    ]
+
+    return {
+        "status": "success",
+        "course_id": course_id,
+        "total_students": len(students),
+        "students": students
     }

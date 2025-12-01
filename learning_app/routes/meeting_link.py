@@ -156,25 +156,53 @@ async def delete_meeting_link(
     }
 
 
-# ------------------ GET All the courses ------------------
-# @router.get("/meeting-links", tags=["Meeting link"])
-# async def get_all_meeting_links(db: AsyncSession = Depends(get_session)):
-#     """Fetch all meeting links with course & batch names."""
-#     query = await db.execute(select(MeetingLink))
-#     meetings = query.scalars().all()
+################## Get Meeting Link for Student #################
+@router.get("/meeting-links/student/{student_id}/{batch_id}", tags=["Meeting link"])
+async def get_meeting_link_for_student(
+    student_id: int,
+    batch_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    """
+    Student view meeting link using student_id + batch_id.
+    """
 
-#     results = []
-#     for m in meetings:
-#         course = await db.get(Course, m.course_id)
-#         batch = await db.get(Batch, m.batch_id)
-#         instructor = await db.get(User, m.instructor_id)
+    #Check if student exists
+    student = await db.get(User, student_id)
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
 
-#         results.append({
-#             "id": m.id,
-#             "course_title": course.title if course else None,
-#             "batch_name": batch.batch_name if batch else None,
-#             "instructor_name": instructor.name if instructor else None,
-#             "meeting_url": m.meeting_url
-#         })
-#     return results
+    #Check if batch exists
+    batch = await db.get(Batch, batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    #Fetch the meeting link for that batch
+    query = await db.execute(
+        select(MeetingLink).where(MeetingLink.batch_id == batch_id)
+    )
+    meeting = query.scalars().first()
+
+    if not meeting:
+        return {
+            "status": "success",
+            "message": "No meeting link found for this batch",
+            "data": None
+        }
+
+    # Also fetch course data
+    course = await db.get(Course, meeting.course_id)
+
+    return {
+        "status": "success",
+        "message": "Meeting link fetched successfully",
+        "data": {
+            "meeting_id": meeting.id,
+            "course_id": meeting.course_id,
+            "course_title": course.title if course else None,
+            "batch_id": batch_id,
+            "batch_name": batch.batch_name,
+            "meeting_url": meeting.meeting_url
+        }
+    }
 

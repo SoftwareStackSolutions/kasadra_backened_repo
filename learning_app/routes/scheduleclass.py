@@ -222,3 +222,72 @@ async def delete_course_calendar(calendar_id: int, db: AsyncSession = Depends(ge
         "status": "success",
         "message": f"Schedule class deleted successfully"
     }
+
+###############################################
+
+## Owner AK
+from models.user import User,RoleEnum
+from models.course import BatchStudent
+
+@router.get("/student/{student_id}/{course_id}", tags=["student-calendar"])
+async def get_student_calendar(student_id: int, course_id: int, db: AsyncSession = Depends(get_session)):
+    
+    # 1. Validate student
+    student = await db.get(User, student_id)
+    if not student:
+        raise HTTPException(404, "Student not found")
+    
+    if student.role != RoleEnum.student:
+        raise HTTPException(403, "User is not a student")
+
+    # 2. Find batch for this student
+    result = await db.execute(
+        select(BatchStudent).where(BatchStudent.student_id == student_id)
+    )
+    mapping = result.scalar_one_or_none()
+
+    if not mapping:
+        raise HTTPException(404, "Student is not assigned to any batch")
+
+    batch = await db.get(Batch, mapping.batch_id)
+
+    if not batch:
+        raise HTTPException(404, "Batch not found")
+
+    # 3. Check batch belongs to same course
+    if batch.course_id != course_id:
+        raise HTTPException(400, "Student is not enrolled in this course")
+
+    # 4. Fetch calendar entries for this student's batch
+    calendar_entries = (await db.execute(
+        select(CourseCalendar).where(CourseCalendar.batch_id == batch.id)
+    )).scalars().all()
+
+    if not calendar_entries:
+        return {"status": "success", "message": "No scheduled classes", "data": []}
+
+    # 5. Build response
+    data = []
+    for c in calendar_entries:
+        lesson = await db.get(Lesson, c.lesson_id)
+
+        data.append({
+            "calendar_id": c.id,
+            "course_id": c.course_id,
+            "batch_id": c.batch_id,
+            "batch_name": batch.batch_name,
+            "lesson_title": lesson.lesson_title if lesson else None,
+            "select_date": str(c.select_date),
+            "day": c.day,
+            "start_time": str(c.start_time),
+            "end_time": str(c.end_time)
+        })
+
+    return {
+        "status": "success",
+        "student_id": student_id,
+        "course_id": course_id,
+        "batch_id": batch.id,
+        "batch_name": batch.batch_name,
+        "data": data
+    }
