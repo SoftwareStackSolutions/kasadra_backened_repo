@@ -244,12 +244,15 @@ async def get_student_meeting(student_id: int, course_id: int, db: AsyncSession 
     ).scalar_one_or_none()
     if not meeting:
         raise HTTPException(404, "No meeting scheduled for this batch")
+     # 5. Fetch course for course_name
+    course = await db.get(Course, course_id)
 
     # 5. Final Response (NO CALENDAR!)
     return {
         "status": "success",
         "student_id": student_id,
         "course_id": course_id,
+        "course_title": course.title if course else None,
         "batch_id": batch.id,
         "batch_name": batch.batch_name,
         "meeting_url": meeting.meeting_url
