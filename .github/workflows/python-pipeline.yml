@@ -1,299 +1,299 @@
-name: python CI/CD - Feature to Development
+# name: python CI/CD - Feature to Development
 
-on:
-  pull_request:
-    branches: [development]
-    types: [closed]
-  workflow_dispatch:
+# on:
+#   pull_request:
+#     branches: [development]
+#     types: [closed]
+#   workflow_dispatch:
 
-permissions:
-  contents: write
-  packages: write
-  pull-requests: write
-  security-events: write
-  actions: read
+# permissions:
+#   contents: write
+#   packages: write
+#   pull-requests: write
+#   security-events: write
+#   actions: read
 
-jobs:
-  checkout-source-code:
-    name: Checkout Source Code
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
-    outputs:
-      should_run: ${{ steps.set_output.outputs.should_run }}
-    steps:
-      - id: set_output
-        run: echo "should_run=true" >> $GITHUB_OUTPUT
+# jobs:
+#   checkout-source-code:
+#     name: Checkout Source Code
+#     runs-on: ubuntu-latest
+#     if: github.event.pull_request.merged == true
+#     outputs:
+#       should_run: ${{ steps.set_output.outputs.should_run }}
+#     steps:
+#       - id: set_output
+#         run: echo "should_run=true" >> $GITHUB_OUTPUT
 
-  # codeql-scan:
-  #   name: CodeQL Scanning
-  #   needs: checkout-source-code
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
+#   # codeql-scan:
+#   #   name: CodeQL Scanning
+#   #   needs: checkout-source-code
+#   #   runs-on: ubuntu-latest
+#   #   steps:
+#   #     - name: Checkout Code
+#   #       uses: actions/checkout@v4
 
-  #     - name: Initialize CodeQL
-  #       uses: github/codeql-action/init@v3
-  #       with:
-  #         languages: python
+#   #     - name: Initialize CodeQL
+#   #       uses: github/codeql-action/init@v3
+#   #       with:
+#   #         languages: python
 
-  #     - name: Autobuild
-  #       uses: github/codeql-action/autobuild@v3
+#   #     - name: Autobuild
+#   #       uses: github/codeql-action/autobuild@v3
 
-  #     - name: Run CodeQL Analysis
-  #       uses: github/codeql-action/analyze@v3
-  #       with:
-  #         category: "/language:python"
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+#   #     - name: Run CodeQL Analysis
+#   #       uses: github/codeql-action/analyze@v3
+#   #       with:
+#   #         category: "/language:python"
+#   #       env:
+#   #         GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-  # testing:
-  #   name: Run Unit Tests with Pytest
-  #   needs: checkout-source-code
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
+#   # testing:
+#   #   name: Run Unit Tests with Pytest
+#   #   needs: checkout-source-code
+#   #   runs-on: ubuntu-latest
+#   #   steps:
+#   #     - name: Checkout Code
+#   #       uses: actions/checkout@v4
 
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.10"
+#   #     - name: Set up Python
+#   #       uses: actions/setup-python@v5
+#   #       with:
+#   #         python-version: "3.10"
 
-  #     - name: Install Dependencies
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install -r learning_app/requirements.txt
-  #         pip install pytest pytest-cov
+#   #     - name: Install Dependencies
+#   #       run: |
+#   #         python -m pip install --upgrade pip
+#   #         pip install -r learning_app/requirements.txt
+#   #         pip install pytest pytest-cov
 
-  #     - name: Run tests with coverage
-  #       run: pytest learning_app/test_dir/tests/ --cov=learning_app --cov-report=xml --junitxml=pytest-report.xml
+#   #     - name: Run tests with coverage
+#   #       run: pytest learning_app/test_dir/tests/ --cov=learning_app --cov-report=xml --junitxml=pytest-report.xml
 
-  build-and-publish-artifact:
-    name: Build and Publish Artifact Package
-    runs-on: ubuntu-latest
-    needs: checkout-source-code
-    steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
+#   build-and-publish-artifact:
+#     name: Build and Publish Artifact Package
+#     runs-on: ubuntu-latest
+#     needs: checkout-source-code
+#     steps:
+#       - name: Checkout Source Code
+#         uses: actions/checkout@v4
   
-      - name: Install zip tool
-        run: sudo apt-get update && sudo apt-get install -y zip
+#       - name: Install zip tool
+#         run: sudo apt-get update && sudo apt-get install -y zip
   
-      - name: Zip Fast_API folder into artifact
-        run: |
-          zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore" 
+#       - name: Zip Fast_API folder into artifact
+#         run: |
+#           zip -r python-package.zip . -x "*.git*" "*.github*" "*.gitignore" 
   
-      - name: Upload Python Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-Artifact-code
-          path: python-package.zip
+#       - name: Upload Python Artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: python-Artifact-code
+#           path: python-package.zip
   
-      - name: Checkout Artifact Repo
-        uses: actions/checkout@v4
-        with:
-          repository: SoftwareStackSolutions/Artifact_Storage
-          ref: main
-          token: ${{ secrets.MY_GITHUB_TOKEN }}
-          path: Artifact_Storage
+#       - name: Checkout Artifact Repo
+#         uses: actions/checkout@v4
+#         with:
+#           repository: SoftwareStackSolutions/Artifact_Storage
+#           ref: main
+#           token: ${{ secrets.MY_GITHUB_TOKEN }}
+#           path: Artifact_Storage
   
-      - name: Check for existing latest version hash
-        id: skip-check
-        run: |
-          cd Artifact_Storage/Backend_Artifact
-          latest_file=$(ls Backend_Artifact-v*.zip 2>/dev/null | sort -V | tail -n 1)
-          if [[ -f "$latest_file" ]]; then
-            unzip -p "$latest_file" | sha256sum | cut -d' ' -f1 > ../../latest_hash.txt
-          else
-            echo "no_previous_hash" > ../../latest_hash.txt
-          fi
+#       - name: Check for existing latest version hash
+#         id: skip-check
+#         run: |
+#           cd Artifact_Storage/Backend_Artifact
+#           latest_file=$(ls Backend_Artifact-v*.zip 2>/dev/null | sort -V | tail -n 1)
+#           if [[ -f "$latest_file" ]]; then
+#             unzip -p "$latest_file" | sha256sum | cut -d' ' -f1 > ../../latest_hash.txt
+#           else
+#             echo "no_previous_hash" > ../../latest_hash.txt
+#           fi
   
-      - name: Download Python Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: python-Artifact-code
-          path: python-Artifact-code
+#       - name: Download Python Artifact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: python-Artifact-code
+#           path: python-Artifact-code
   
-      - name: Generate current artifact hash
-        run: |
-          cd python-Artifact-code
-          unzip -p python-package.zip | sha256sum | cut -d' ' -f1 > ../current_hash.txt
+#       - name: Generate current artifact hash
+#         run: |
+#           cd python-Artifact-code
+#           unzip -p python-package.zip | sha256sum | cut -d' ' -f1 > ../current_hash.txt
   
-      - name: Check for changes
-        id: hash-diff
-        run: |
-          if cmp -s latest_hash.txt current_hash.txt; then
-            echo "no_change=true" >> $GITHUB_OUTPUT
-          else
-            echo "no_change=false" >> $GITHUB_OUTPUT
-          fi
+#       - name: Check for changes
+#         id: hash-diff
+#         run: |
+#           if cmp -s latest_hash.txt current_hash.txt; then
+#             echo "no_change=true" >> $GITHUB_OUTPUT
+#           else
+#             echo "no_change=false" >> $GITHUB_OUTPUT
+#           fi
   
-      - name: Skip if no changes
-        if: steps.hash-diff.outputs.no_change == 'true'
-        run: echo "No changes in Python Artifact code — skipping commit and push."
+#       - name: Skip if no changes
+#         if: steps.hash-diff.outputs.no_change == 'true'
+#         run: echo "No changes in Python Artifact code — skipping commit and push."
   
-      - name: Determine next version
-        if: steps.hash-diff.outputs.no_change == 'false'
-        id: version
-        run: |
-          cd Artifact_Storage/Backend_Artifact
-          count=$(ls Backend_Artifact-v*.zip 2>/dev/null | wc -l)
-          echo "version=v$((count + 1))" >> $GITHUB_OUTPUT
+#       - name: Determine next version
+#         if: steps.hash-diff.outputs.no_change == 'false'
+#         id: version
+#         run: |
+#           cd Artifact_Storage/Backend_Artifact
+#           count=$(ls Backend_Artifact-v*.zip 2>/dev/null | wc -l)
+#           echo "version=v$((count + 1))" >> $GITHUB_OUTPUT
   
-      - name: Rename and move artifact
-        if: steps.hash-diff.outputs.no_change == 'false'
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          mv python-Artifact-code/python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
-          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
+#       - name: Rename and move artifact
+#         if: steps.hash-diff.outputs.no_change == 'false'
+#         run: |
+#           VERSION=${{ steps.version.outputs.version }}
+#           mv python-Artifact-code/python-package.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip
+#           cp Artifact_Storage/Backend_Artifact/Backend_Artifact-${VERSION}.zip Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip
   
-      - name: Validate ZIP presence
-        if: steps.hash-diff.outputs.no_change == 'false'
-        run: ls -lh Artifact_Storage/Backend_Artifact
+#       - name: Validate ZIP presence
+#         if: steps.hash-diff.outputs.no_change == 'false'
+#         run: ls -lh Artifact_Storage/Backend_Artifact
   
-      - name: Commit and push ZIP to main branch
-        if: steps.hash-diff.outputs.no_change == 'false'
-        run: |
-          cd Artifact_Storage
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Backend_Artifact/Backend_Artifact-*.zip
-          git commit -m "Add Backend_Artifact ${{ steps.version.outputs.version }}"
-          git push origin main
+#       - name: Commit and push ZIP to main branch
+#         if: steps.hash-diff.outputs.no_change == 'false'
+#         run: |
+#           cd Artifact_Storage
+#           git config user.name "github-actions[bot]"
+#           git config user.email "github-actions[bot]@users.noreply.github.com"
+#           git add Backend_Artifact/Backend_Artifact-*.zip
+#           git commit -m "Add Backend_Artifact ${{ steps.version.outputs.version }}"
+#           git push origin main
 
 
-  create-pr-development-to-main:
-    needs: build-and-publish-artifact
-    runs-on: ubuntu-latest
-    outputs:
-      pr_url: ${{ steps.create_pr.outputs.pr_url }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+#   create-pr-development-to-main:
+#     needs: build-and-publish-artifact
+#     runs-on: ubuntu-latest
+#     outputs:
+#       pr_url: ${{ steps.create_pr.outputs.pr_url }}
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v2
 
-      - name: Create Pull Request from development to main
-        id: create_pr
-        uses: repo-sync/pull-request@v2
-        with:
-          source_branch: development
-          destination_branch: main
-          pr_title: "Auto PR: development to main"
-          pr_body: |
-            This PR was created from the development to main branch.
-        env:
-          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+#       - name: Create Pull Request from development to main
+#         id: create_pr
+#         uses: repo-sync/pull-request@v2
+#         with:
+#           source_branch: development
+#           destination_branch: main
+#           pr_title: "Auto PR: development to main"
+#           pr_body: |
+#             This PR was created from the development to main branch.
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-      - name: Wait for PR Merge
-        run: |
-          while true; do
-            STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
-            if [ "$STATE" = "MERGED" ]; then
-              echo " PR #$PR_NUMBER has been merged!"
-              break
-            else
-              echo "Not merged yet. Waiting for approval..."
-              sleep 30
-            fi
-          done
-        env:
-         GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+#       - name: Wait for PR Merge
+#         run: |
+#           while true; do
+#             STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
+#             if [ "$STATE" = "MERGED" ]; then
+#               echo " PR #$PR_NUMBER has been merged!"
+#               break
+#             else
+#               echo "Not merged yet. Waiting for approval..."
+#               sleep 30
+#             fi
+#           done
+#         env:
+#          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-  Container-Build-and-Publish-into-Registry:
-    name: Container Build and Publish into Registry
-    needs: create-pr-development-to-main
-    runs-on: ubuntu-latest
+#   Container-Build-and-Publish-into-Registry:
+#     name: Container Build and Publish into Registry
+#     needs: create-pr-development-to-main
+#     runs-on: ubuntu-latest
 
-    steps:
+#     steps:
 
-      - name: Checkout main repository (kasadra_backened_repo)
-        uses: actions/checkout@v3
-        with:
-          ref: main
+#       - name: Checkout main repository (kasadra_backened_repo)
+#         uses: actions/checkout@v3
+#         with:
+#           ref: main
 
-      - name: Checkout artifact repository
-        uses: actions/checkout@v3
-        with:
-          repository: SoftwareStackSolutions/Artifact_Storage
-          token: ${{ secrets.MY_GITHUB_TOKEN }}
-          path: Artifact_Storage
+#       - name: Checkout artifact repository
+#         uses: actions/checkout@v3
+#         with:
+#           repository: SoftwareStackSolutions/Artifact_Storage
+#           token: ${{ secrets.MY_GITHUB_TOKEN }}
+#           path: Artifact_Storage
 
       
-      - name: Prepare artifact for Docker build
-        run: |
-          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
+#       - name: Prepare artifact for Docker build
+#         run: |
+#           cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
           
    
-      - name: Log in to GitHub Container Registry (GHCR)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.MY_GITHUB_TOKEN }}
+#       - name: Log in to GitHub Container Registry (GHCR)
+#         uses: docker/login-action@v3
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.MY_GITHUB_TOKEN }}
 
       
-      - name: Build Docker image
-        run: |
-          docker build -t python-application:latest -f Dockerfile . 
+#       - name: Build Docker image
+#         run: |
+#           docker build -t python-application:latest -f Dockerfile . 
             
-      - name: Tag image for GHCR
-        run: |
-          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker tag python-application:latest ghcr.io/${REPO_OWNER_LC}/python-application:latest
+#       - name: Tag image for GHCR
+#         run: |
+#           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+#           docker tag python-application:latest ghcr.io/${REPO_OWNER_LC}/python-application:latest
       
-      - name: Push image to GHCR
-        run: |
-          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker push ghcr.io/${REPO_OWNER_LC}/python-application:latest      
+#       - name: Push image to GHCR
+#         run: |
+#           REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+#           docker push ghcr.io/${REPO_OWNER_LC}/python-application:latest      
 
-  Deploy-Application-to-GKE:
-    name: Deploy Application to GKE
-    needs: Container-Build-and-Publish-into-Registry
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout main repository
-        uses: actions/checkout@v3
-        with:
-          ref: main
+#   Deploy-Application-to-GKE:
+#     name: Deploy Application to GKE
+#     needs: Container-Build-and-Publish-into-Registry
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout main repository
+#         uses: actions/checkout@v3
+#         with:
+#           ref: main
 
   
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+#       - name: Authenticate to GCP
+#         uses: google-github-actions/auth@v2
+#         with:
+#           credentials_json: '${{ secrets.GCP_SA_KEY }}'
   
-      - name: Set up kubectl
-        uses: google-github-actions/get-gke-credentials@v2
-        with:
-          cluster_name: ${{ secrets.GKE_CLUSTER }}
-          location: ${{ secrets.GKE_ZONE }}
-          project_id: ${{ secrets.GCP_PROJECT }}
+#       - name: Set up kubectl
+#         uses: google-github-actions/get-gke-credentials@v2
+#         with:
+#           cluster_name: ${{ secrets.GKE_CLUSTER }}
+#           location: ${{ secrets.GKE_ZONE }}
+#           project_id: ${{ secrets.GCP_PROJECT }}
   
-      - name: Create GHCR imagePullSecret in GKE
-        run: |
-          kubectl delete secret ghcr-secret --ignore-not-found --namespace=kasadara
-          kubectl create secret docker-registry ghcr-secret \
-            --docker-server=ghcr.io \
-            --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
-            --docker-email=no@email.com \
-            --namespace=kasadara
+#       - name: Create GHCR imagePullSecret in GKE
+#         run: |
+#           kubectl delete secret ghcr-secret --ignore-not-found --namespace=kasadara
+#           kubectl create secret docker-registry ghcr-secret \
+#             --docker-server=ghcr.io \
+#             --docker-username=${{ github.actor }} \
+#             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
+#             --docker-email=no@email.com \
+#             --namespace=kasadara
 
-      - name: Deploy to GKE
-        run: |
-          kubectl apply -f config.yaml -n kasadara
-          kubectl apply -f deployment.yaml -n kasadara
-          kubectl apply -f service.yaml -n kasadara
-          kubectl apply -f ingress.yaml -n kasadara
-          sleep 59
-          kubectl rollout restart deployment python-application -n kasadara
-          kubectl get pods -n kasadara -o wide
-          kubectl get svc -n kasadara -o wide
-          kubectl get ingress -n kasadara -o wide
+#       - name: Deploy to GKE
+#         run: |
+#           kubectl apply -f config.yaml -n kasadara
+#           kubectl apply -f deployment.yaml -n kasadara
+#           kubectl apply -f service.yaml -n kasadara
+#           kubectl apply -f ingress.yaml -n kasadara
+#           sleep 59
+#           kubectl rollout restart deployment python-application -n kasadara
+#           kubectl get pods -n kasadara -o wide
+#           kubectl get svc -n kasadara -o wide
+#           kubectl get ingress -n kasadara -o wide
       
-      - name: Patch deployment to use imagePullSecret
-        run: |
-          kubectl patch deployment python-application \
-            -n kasadara \
-            --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
+#       - name: Patch deployment to use imagePullSecret
+#         run: |
+#           kubectl patch deployment python-application \
+#             -n kasadara \
+#             --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
 
