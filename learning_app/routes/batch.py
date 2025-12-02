@@ -196,8 +196,6 @@ async def assign_students_to_batch(
         "already_in_same_batch": skipped
     }
 
-
-
 ######## update assigned students #########
 @router.put("/update", tags=["batches"])
 async def update_student_batch(
