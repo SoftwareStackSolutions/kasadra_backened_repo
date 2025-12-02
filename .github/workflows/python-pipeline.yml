@@ -1,8 +1,9 @@
-name: python CI/CD - Feature to Development
+# name: python CI/CD - Feature to Development
+name: python CI/CD - Feature to Main
 
 on:
   pull_request:
-    branches: [development]
+    branches: [main]
     types: [closed]
   workflow_dispatch:
 
@@ -163,45 +164,45 @@ jobs:
           git push origin main
 
 
-  create-pr-development-to-main:
-    needs: build-and-publish-artifact
-    runs-on: ubuntu-latest
-    outputs:
-      pr_url: ${{ steps.create_pr.outputs.pr_url }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+  # create-pr-development-to-main:
+  #   needs: build-and-publish-artifact
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     pr_url: ${{ steps.create_pr.outputs.pr_url }}
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
 
-      - name: Create Pull Request from development to main
-        id: create_pr
-        uses: repo-sync/pull-request@v2
-        with:
-          source_branch: development
-          destination_branch: main
-          pr_title: "Auto PR: development to main"
-          pr_body: |
-            This PR was created from the development to main branch.
-        env:
-          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+  #     - name: Create Pull Request from development to main
+  #       id: create_pr
+  #       uses: repo-sync/pull-request@v2
+  #       with:
+  #         source_branch: development
+  #         destination_branch: main
+  #         pr_title: "Auto PR: development to main"
+  #         pr_body: |
+  #           This PR was created from the development to main branch.
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-      - name: Wait for PR Merge
-        run: |
-          while true; do
-            STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
-            if [ "$STATE" = "MERGED" ]; then
-              echo " PR #$PR_NUMBER has been merged!"
-              break
-            else
-              echo "Not merged yet. Waiting for approval..."
-              sleep 30
-            fi
-          done
-        env:
-         GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+  #     - name: Wait for PR Merge
+  #       run: |
+  #         while true; do
+  #           STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
+  #           if [ "$STATE" = "MERGED" ]; then
+  #             echo " PR #$PR_NUMBER has been merged!"
+  #             break
+  #           else
+  #             echo "Not merged yet. Waiting for approval..."
+  #             sleep 30
+  #           fi
+  #         done
+  #       env:
+  #        GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
   Container-Build-and-Publish-into-Registry:
     name: Container Build and Publish into Registry
-    needs: create-pr-development-to-main
+    needs: build-and-publish-artifact
     runs-on: ubuntu-latest
 
     steps:
