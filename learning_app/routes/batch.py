@@ -151,60 +151,53 @@ async def assign_students_to_batch(
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
 
-    assigned_students = await db.execute(
-        select(BatchStudent).where(BatchStudent.batch_id == batch_id)
-    )
-    assigned_count = len(assigned_students.all())
-
-    available_slots = batch.num_students - assigned_count
-
-    if len(student_ids) > available_slots:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Batch full. Limit: {batch.num_students} students."
-        )
-
     assigned = []
-    already_exists = []
+    moved = []
+    skipped = []
 
     for student_id in student_ids:
 
+        # check if already exists
         result = await db.execute(
-            select(BatchStudent).where(
-                BatchStudent.batch_id == batch_id,
-                BatchStudent.student_id == student_id
-            )
+            select(BatchStudent).where(BatchStudent.student_id == student_id)
         )
+        existing_assignment = result.scalar_one_or_none()
 
-        if result.scalar_one_or_none():
-            already_exists.append(student_id)
-            continue
+        if existing_assignment:
+            # if same batch → skip
+            if existing_assignment.batch_id == batch_id:
+                skipped.append(student_id)
+                continue
 
-        db.add(
-            BatchStudent(
-                student_id=student_id,
-                batch_id=batch_id,
-                batch_name=batch.batch_name  # ✅ now storing batch name
+            # update to new batch
+            existing_assignment.batch_id = batch_id
+            existing_assignment.batch_name = batch.batch_name
+            moved.append(student_id)
+
+        else:
+            # new insert
+            db.add(
+                BatchStudent(
+                    student_id=student_id,
+                    batch_id=batch_id,
+                    batch_name=batch.batch_name
+                )
             )
-        )
-
-        assigned.append(student_id)
+            assigned.append(student_id)
 
     await db.commit()
 
     return {
         "status": "success",
-        "message": "Students assigned successfully",
-        "batch_name": batch.batch_name,
-        "limit": batch.num_students,
-        "assigned": assigned,
-        "already_assigned": already_exists
+        "message": "Batch assignment completed",
+        "batch": batch.batch_name,
+        "new_assigned": assigned,
+        "moved_from_other_batches": moved,
+        "already_in_same_batch": skipped
     }
 
-
 ######## update assigned students #########
-
-@router.put("/assign", tags=["batches"])
+@router.put("/update", tags=["batches"])
 async def update_student_batch(
     data: AssignStudentsRequest,
     db: AsyncSession = Depends(get_session)
@@ -213,6 +206,7 @@ async def update_student_batch(
     batch_id = data.batch_id
     student_ids = data.student_ids
 
+    # Validate batch
     batch = await db.get(Batch, batch_id)
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
@@ -222,27 +216,14 @@ async def update_student_batch(
 
     for student_id in student_ids:
 
-        # Fetch student batch record (regardless of batch)
+        # Fetch all batch assignments for the student
         result = await db.execute(
             select(BatchStudent).where(BatchStudent.student_id == student_id)
         )
-        record = result.scalar_one_or_none()
+        assignments = result.scalars().all()
 
-        if record:
-            # 🚨 If same batch → throw error
-            if record.batch_id == batch_id:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Student {student_id} is already assigned to this batch."
-                )
-
-            # 🔁 Move to new batch
-            record.batch_id = batch_id
-            record.batch_name = batch.batch_name
-            moved_students.append(student_id)
-
-        else:
-            # 🆕 Assign new student
+        if not assignments:
+            # Student not assigned anywhere, create a new record
             db.add(
                 BatchStudent(
                     student_id=student_id,
@@ -251,14 +232,25 @@ async def update_student_batch(
                 )
             )
             assigned_new.append(student_id)
+        else:
+            # Update the first record to new batch
+            main_assignment = assignments[0]
+            if main_assignment.batch_id != batch_id:
+                main_assignment.batch_id = batch_id
+                main_assignment.batch_name = batch.batch_name
+                moved_students.append(student_id)
+
+            # Delete all duplicate extra rows if any
+            if len(assignments) > 1:
+                for extra in assignments[1:]:
+                    await db.delete(extra)
 
     await db.commit()
 
     return {
         "status": "success",
         "message": "Batch assignment updated successfully",
-        "batch_name": batch.batch_name,
+        "batch": batch.batch_name,
         "assigned_new": assigned_new,
-        "moved_students": moved_students,
-        "total_processed": len(student_ids)
+        "moved_students": moved_students
     }
