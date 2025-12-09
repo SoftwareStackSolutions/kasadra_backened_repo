@@ -21,11 +21,15 @@ from schemas.course import BatchCreate
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
 from schemas.batch import AssignStudentsRequest
-
-
 from dependencies.auth_dep import get_current_user
+from typing import List
 
 router = APIRouter()
+
+class AssignStudentsRequest(BaseModel):
+    batch_id: int
+    course_id: int  # REQUIRED NOW
+    student_ids: List[int]
 
 @router.post("/add", tags=["batches"])
 async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session)):
@@ -195,8 +199,8 @@ async def update_student_batch(
     data: AssignStudentsRequest,
     db: AsyncSession = Depends(get_session)
 ):
-
     batch_id = data.batch_id
+    course_id = data.course_id  # NEW
     student_ids = data.student_ids
 
     # Validate batch
@@ -209,40 +213,39 @@ async def update_student_batch(
 
     for student_id in student_ids:
 
-        # Fetch all batch assignments for the student
+        # Fetch batch assignment **only for this course**
         result = await db.execute(
-            select(BatchStudent).where(BatchStudent.student_id == student_id)
+            select(BatchStudent).where(
+                BatchStudent.student_id == student_id,
+                BatchStudent.course_id == course_id
+            )
         )
-        assignments = result.scalars().all()
+        assignment = result.scalars().first()
 
-        if not assignments:
-            # Student not assigned anywhere, create a new record
+        if not assignment:
+            # Create new assignment only for this course
             db.add(
                 BatchStudent(
                     student_id=student_id,
+                    course_id=course_id,  # NEW
                     batch_id=batch_id,
                     batch_name=batch.batch_name
                 )
             )
             assigned_new.append(student_id)
         else:
-            # Update the first record to new batch
-            main_assignment = assignments[0]
-            if main_assignment.batch_id != batch_id:
-                main_assignment.batch_id = batch_id
-                main_assignment.batch_name = batch.batch_name
+            # Update batch only for this course
+            if assignment.batch_id != batch_id:
+                assignment.batch_id = batch_id
+                assignment.batch_name = batch.batch_name
                 moved_students.append(student_id)
-
-            # Delete all duplicate extra rows if any
-            if len(assignments) > 1:
-                for extra in assignments[1:]:
-                    await db.delete(extra)
 
     await db.commit()
 
     return {
         "status": "success",
         "message": "Batch assignment updated successfully",
+        "course_id": course_id,
         "batch": batch.batch_name,
         "assigned_new": assigned_new,
         "moved_students": moved_students
