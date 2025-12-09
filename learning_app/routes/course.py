@@ -29,8 +29,6 @@ class CourseResponse(BaseModel):
         orm_mode = True
 
 
-##################################################################################################################################
-## AK Owner Thumbnail
 
 @router.post("/add", tags=["courses"], response_model=CourseResponse)
 async def add_course(
@@ -87,56 +85,6 @@ async def add_course(
         "thumbnail_url": thumbnail_url,
     }
 
-
-##################################################################################################################################333
-
-################## Course APIs ##################
-# @router.post("/add", tags=["courses"], response_model=CourseResponse)
-# async def add_course(
-#     title: str = Form(...),
-#     description: str = Form(...),
-#     duration: str = Form(...),
-#     instructor_id: int = Form(...),
-#     thumbnail: Optional[UploadFile] = File(None),
-#     db: AsyncSession = Depends(get_session),
-# ):
-#     # Validate instructor
-#     result = await db.execute(select(User).where(User.id == instructor_id))
-#     instructor = result.scalar_one_or_none()
-#     if not instructor:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-#     if instructor.role != RoleEnum.instructor:
-#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not an instructor")
-
-#     # Upload thumbnail to S3
-#     thumbnail_url = None
-#     if thumbnail:
-#         filename = f"courses/{datetime.utcnow().timestamp()}_{thumbnail.filename}"
-#         thumbnail_url = await upload_file_to_gcs(thumbnail, filename)
-
-#     # Create new course
-#     new_course = Course(
-#         instructor_id=instructor_id,
-#         title=title,
-#         description=description,
-#         duration=duration,
-#         thumbnail_url=thumbnail_url,  # store URL instead of binary
-#         created_at=datetime.utcnow(),
-#     )
-
-#     db.add(new_course)
-#     await db.commit()
-#     await db.refresh(new_course, attribute_names=["instructor"])
-
-#     # Return course info with S3 URL
-#     return {
-#         "course_id": new_course.id,
-#         "title": new_course.title,
-#         "instructor_id": instructor.id,
-#         "instructor_name": instructor.name,
-#         "course_name": new_course.title,
-#         "thumbnail_url": thumbnail_url,
-#     }
 
 ######################## Get all courses ########################
 
