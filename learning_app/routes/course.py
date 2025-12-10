@@ -28,7 +28,7 @@ class CourseResponse(BaseModel):
     class Config:
         orm_mode = True
 
-
+######################## Post courses details ########################
 
 @router.post("/add", tags=["courses"], response_model=CourseResponse)
 async def add_course(
@@ -51,15 +51,11 @@ async def add_course(
     # THUMBNAIL HANDLING
     # ----------------------
     if thumbnail:
-        # If FE uploaded a file → upload to GCS
         filename = f"courses/{datetime.utcnow().timestamp()}_{thumbnail.filename}"
         thumbnail_url = await upload_file_to_gcs(thumbnail, filename)
     else:
-        # No thumbnail from FE → use default image URL
-        # thumbnail_url = "https://your-bucket-name.storage.googleapis.com/defaults/default-course.jpg"
+
         thumbnail_url = "https://storage.googleapis.com/kasadra-project-bucket/courses/1762473654.889926_Screenshot%202024-05-14%20165211.png"
-        # ↑ Change this to your actual default image URL inside GCS bucket
-        # Example path: gs://yourbucket/defaults/default-course.jpg
 
     # Create new course
     new_course = Course(
