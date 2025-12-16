@@ -37,15 +37,14 @@ class DescriptionRequest(BaseModel):
 @router.post("/api/ask-ai", tags=["chat bot"])
 async def generate_description(req: DescriptionRequest):
     prompt = f"""
-    Write a professional, clear, and engaging course description
-    for an online learning platform.
+    Write a VERY SHORT course description (1–2 lines only).
 
     Course Title: {req.course_title}
 
     Rules:
-    - 4 to 6 sentences
+    - Maximum 25 words
+    - Simple and professional
     - Beginner friendly
-    - No markdown
     - Plain text only
     """
 
