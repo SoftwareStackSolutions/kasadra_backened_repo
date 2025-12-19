@@ -28,8 +28,8 @@ class CourseResponse(BaseModel):
     class Config:
         orm_mode = True
 
+######################## Post courses details ########################
 
-################## Course APIs ##################
 @router.post("/add", tags=["courses"], response_model=CourseResponse)
 async def add_course(
     title: str = Form(...),
@@ -47,11 +47,15 @@ async def add_course(
     if instructor.role != RoleEnum.instructor:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not an instructor")
 
-    # Upload thumbnail to S3
-    thumbnail_url = None
+    # ----------------------
+    # THUMBNAIL HANDLING
+    # ----------------------
     if thumbnail:
         filename = f"courses/{datetime.utcnow().timestamp()}_{thumbnail.filename}"
         thumbnail_url = await upload_file_to_gcs(thumbnail, filename)
+    else:
+
+        thumbnail_url = "https://storage.googleapis.com/kasadra-project-bucket/courses/1762473654.889926_Screenshot%202024-05-14%20165211.png"
 
     # Create new course
     new_course = Course(
@@ -76,6 +80,7 @@ async def add_course(
         "course_name": new_course.title,
         "thumbnail_url": thumbnail_url,
     }
+
 
 ######################## Get all courses ########################
 

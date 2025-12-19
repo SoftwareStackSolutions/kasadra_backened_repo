@@ -70,19 +70,12 @@ class Batch(Base):
 class BatchStudent(Base):
     __tablename__ = "batch_students"
 
-    id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"), nullable=False)
-    batch_name = Column(String, nullable=True)
-
-    # 🔥 This ensures a student can only belong to ONE batch
-    __table_args__ = (
-        UniqueConstraint("student_id", name="unique_student_assignment"),
-    )
-
-    batch = relationship("Batch")
-    student = relationship("User")
-
+    id = Column(Integer, primary_key=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=False)
+    batch_name = Column(String, nullable=False)
+    __table_args__ = (UniqueConstraint("student_id", "course_id", name="uq_student_course"),)
 
 class CourseCalendar(Base):
     __tablename__ = "course_calendar"

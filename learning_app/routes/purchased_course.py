@@ -194,45 +194,56 @@ async def get_all_courses_for_student(student_id: int, db: AsyncSession = Depend
 ######### get students list by course ID ########3
 
 @router.get("/course/{course_id}/students", tags=["purchased"])
-async def get_purchased_students(
-    course_id: int,
-    db: AsyncSession = Depends(get_session)
-):
-    # Fetch with LEFT JOIN so unassigned students are included
-    result = await db.execute(
+async def get_students_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
+
+    # Validate course exists
+    course = await db.get(Course, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    query = (
         select(
-            User.id,
+            User.id.label("student_id"),
             User.name,
             User.email,
             PurchasedCourse.purchased_at,
-            Batch.batch_name
+            Batch.batch_name,
         )
         .join(PurchasedCourse, PurchasedCourse.student_id == User.id)
         .outerjoin(
-            BatchStudent, BatchStudent.student_id == User.id
+            BatchStudent, 
+            (BatchStudent.student_id == User.id) & 
+            (BatchStudent.course_id == course_id)   # 🔥 FIX HERE
         )
-        .outerjoin(
-            Batch,
-            (Batch.id == BatchStudent.batch_id) & (Batch.course_id == course_id)
-        )
+        .outerjoin(Batch, Batch.id == BatchStudent.batch_id)
         .where(PurchasedCourse.course_id == course_id)
     )
 
-    students = [
-        {
-            "student_id": row.id,
-            "name": row.name,
-            "email": row.email,
-            "purchased_at": row.purchased_at,
-            "batch_name": row.batch_name,
-            "status": "Assigned" if row.batch_name else "Unassigned"   # <-- ADDED LOGIC
-        }
-        for row in result.all()
-    ]
+    result = await db.execute(query)
+    records = result.mappings().all()
+
+    # Deduplicate logic (already good)
+    student_map = {}
+    for row in records:
+        sid = row["student_id"]
+
+        if sid not in student_map:
+            student_map[sid] = {
+                "student_id": sid,
+                "name": row["name"],
+                "email": row["email"],
+                "purchased_at": row["purchased_at"],
+                "batch_name": row["batch_name"],
+                "status": "Assigned" if row["batch_name"] else "Unassigned",
+            }
+        else:
+            if student_map[sid]["batch_name"] is None and row["batch_name"] is not None:
+                student_map[sid]["batch_name"] = row["batch_name"]
+                student_map[sid]["status"] = "Assigned"
 
     return {
         "status": "success",
         "course_id": course_id,
-        "total_students": len(students),
-        "students": students
+        "total_students": len(student_map),
+        "students": list(student_map.values())
     }
