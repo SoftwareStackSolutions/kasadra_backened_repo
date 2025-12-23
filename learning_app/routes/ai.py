@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from openai import OpenAI
 
+
 # router = APIRouter()
 
 # client = OpenAI(api_key="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")
