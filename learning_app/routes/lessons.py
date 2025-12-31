@@ -182,22 +182,58 @@ async def get_lesson_by_id(
     }
 ###################### Get lessons by course_id #####################
 
+# @router.get("/all/{course_id}", tags=["lessons"])
+# async def get_lessons_by_course_id(
+#     course_id: int,
+#     db: AsyncSession = Depends(get_session)
+# ):
+#     result = await db.execute(
+#         select(Lesson).where(Lesson.course_id == course_id).options(selectinload(Lesson.course))
+#     )
+#     lessons = result.scalars().all()
+
+#     if not lessons:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No lessons found for this course")
+
+#     return {
+#         "status": "success",
+#         "course_id": course_id,
+#         "lessons": [
+#             {
+#                 "lesson_id": l.id,
+#                 "title": l.lesson_title,
+#                 "course_title": l.course.title,
+#                 "description": l.description,
+#                 "created_at": l.created_at,
+#             } for l in lessons
+#         ]
+#     }
+
 @router.get("/all/{course_id}", tags=["lessons"])
 async def get_lessons_by_course_id(
     course_id: int,
     db: AsyncSession = Depends(get_session)
 ):
     result = await db.execute(
-        select(Lesson).where(Lesson.course_id == course_id).options(selectinload(Lesson.course))
+        select(Lesson)
+        .where(Lesson.course_id == course_id)
+        .options(selectinload(Lesson.course))
     )
     lessons = result.scalars().all()
 
+    # ✅ No lessons → still return 200 with message
     if not lessons:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No lessons found for this course")
+        return {
+            "status": "success",
+            "course_id": course_id,
+            "message": "No lessons found for this course",
+            "lessons": []
+        }
 
     return {
         "status": "success",
         "course_id": course_id,
+        "message": "Lessons fetched successfully",
         "lessons": [
             {
                 "lesson_id": l.id,
@@ -205,7 +241,8 @@ async def get_lessons_by_course_id(
                 "course_title": l.course.title,
                 "description": l.description,
                 "created_at": l.created_at,
-            } for l in lessons
+            }
+            for l in lessons
         ]
     }
 
