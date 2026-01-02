@@ -182,22 +182,58 @@ async def get_lesson_by_id(
     }
 ###################### Get lessons by course_id #####################
 
+# @router.get("/all/{course_id}", tags=["lessons"])
+# async def get_lessons_by_course_id(
+#     course_id: int,
+#     db: AsyncSession = Depends(get_session)
+# ):
+#     result = await db.execute(
+#         select(Lesson).where(Lesson.course_id == course_id).options(selectinload(Lesson.course))
+#     )
+#     lessons = result.scalars().all()
+
+#     if not lessons:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No lessons found for this course")
+
+#     return {
+#         "status": "success",
+#         "course_id": course_id,
+#         "lessons": [
+#             {
+#                 "lesson_id": l.id,
+#                 "title": l.lesson_title,
+#                 "course_title": l.course.title,
+#                 "description": l.description,
+#                 "created_at": l.created_at,
+#             } for l in lessons
+#         ]
+#     }
+
 @router.get("/all/{course_id}", tags=["lessons"])
 async def get_lessons_by_course_id(
     course_id: int,
     db: AsyncSession = Depends(get_session)
 ):
     result = await db.execute(
-        select(Lesson).where(Lesson.course_id == course_id).options(selectinload(Lesson.course))
+        select(Lesson)
+        .where(Lesson.course_id == course_id)
+        .options(selectinload(Lesson.course))
     )
     lessons = result.scalars().all()
 
+    # ✅ No lessons → still return 200 with message
     if not lessons:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No lessons found for this course")
+        return {
+            "status": "success",
+            "course_id": course_id,
+            "message": "No lessons found for this course",
+            "lessons": []
+        }
 
     return {
         "status": "success",
         "course_id": course_id,
+        "message": "Lessons fetched successfully",
         "lessons": [
             {
                 "lesson_id": l.id,
@@ -205,7 +241,8 @@ async def get_lessons_by_course_id(
                 "course_title": l.course.title,
                 "description": l.description,
                 "created_at": l.created_at,
-            } for l in lessons
+            }
+            for l in lessons
         ]
     }
 
@@ -258,3 +295,114 @@ async def delete_lesson(lesson_id: int, db: AsyncSession = Depends(get_session))
     await db.commit()
 
     return {"status": "success", "message": "Lesson deleted successfully"}
+
+
+###################### Get Course Lessons With Full Content ########################################
+
+@router.get("/courses/{course_id}/lessons/details", tags=["lessons"])
+async def get_course_lessons_with_full_content(
+    course_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    # Validate course
+    course = await db.get(Course, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Fetch lessons for the course
+    lessons_result = await db.execute(
+        select(Lesson).where(Lesson.course_id == course_id)
+    )
+    lessons = lessons_result.scalars().all()
+
+    if not lessons:
+        return {
+            "status": "success",
+            "course_id": course_id,
+            "course_title": course.title,
+            "lessons": []
+        }
+
+    response_lessons = []
+
+    for lesson in lessons:
+        # PDFs
+        pdfs = (await db.execute(
+            select(Pdf).where(Pdf.lesson_id == lesson.id)
+        )).scalars().all()
+
+        # WebLinks
+        weblinks = (await db.execute(
+            select(WebLink).where(WebLink.lesson_id == lesson.id)
+        )).scalars().all()
+
+        # Quizzes
+        quizzes = (await db.execute(
+            select(Quiz).where(Quiz.lesson_id == lesson.id)
+        )).scalars().all()
+
+        # Labs
+        labs = (await db.execute(
+            select(Lab).where(Lab.lesson_id == lesson.id)
+        )).scalars().all()
+
+        # Notes
+        notes = (await db.execute(
+            select(Note).where(Note.lesson_id == lesson.id)
+        )).scalars().all()
+
+        response_lessons.append({
+            "lesson_id": lesson.id,
+            "lesson_title": lesson.lesson_title,
+            "description": lesson.description,
+            "created_at": lesson.created_at,
+
+            "pdfs": [
+                {
+                    "id": pdf.id,
+                    "file_url": pdf.file_url
+                } for pdf in pdfs
+            ],
+
+            "weblinks": [
+                {
+                    "id": link.id,
+                    "url": link.link_url
+                } for link in weblinks
+            ],
+
+            "quizzes": [
+                {
+                    "id": quiz.id,
+                    "name": quiz.name,
+                    "description": quiz.description,
+                    "url": quiz.url,
+                    "file_url": quiz.file_url
+                } for quiz in quizzes
+            ],
+
+            "labs": [
+                {
+                    "id": lab.id,
+                    "name": lab.name,
+                    "description": lab.description,
+                    "url": lab.url,
+                    "file_url": lab.file_url
+                } for lab in labs
+            ],
+
+            "notes": [
+                {
+                    "id": note.id,
+                    "notes": note.notes,
+                    "instructor_id": note.instructor_id
+                } for note in notes
+            ]
+        })
+
+    return {
+        "status": "success",
+        "course_id": course_id,
+        "course_title": course.title,
+        "lessons": response_lessons
+    }
