@@ -253,7 +253,7 @@ async def instructor_login(
         )
 
 #########################################################
-##Instructor  assigns course directly
+## Instructor assigns course directly
 #########################################################
 
 
