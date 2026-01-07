@@ -6,12 +6,14 @@ import re
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from models.user import User, RoleEnum
+from models.course import Course
+from models.purchased_courses import AssignedCourse
 from database.db import get_session
 from common import get_user_by_email
 from utils.auth import create_access_token
 from datetime import timedelta
 from dependencies.auth_dep import get_current_user
-
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -249,3 +251,61 @@ async def instructor_login(
                 "data": {}
             }
         )
+
+#########################################################
+##Instructor  assigns course directly
+#########################################################
+
+
+@router.post("/assign-course/{student_id}/{course_id}", tags=["instructors"])
+async def assign_course_to_student(
+    student_id: int,
+    course_id: int,
+    assigned_by: int,  # instructor/admin id
+    db: AsyncSession = Depends(get_session)
+):
+    # 1. Validate student
+    student = await db.get(User, student_id)
+    if not student or student.role != RoleEnum.student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # 2. Validate course
+    course = await db.get(Course, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # 3. Validate instructor
+    instructor = await db.get(User, assigned_by)
+    if not instructor:
+        raise HTTPException(status_code=404, detail="Instructor not found")
+
+    # 4. Prevent duplicate assignment
+    result = await db.execute(
+        select(AssignedCourse).where(
+            AssignedCourse.student_id == student_id,
+            AssignedCourse.course_id == course_id
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        return {
+            "status": "success",
+            "message": "Course already assigned to student"
+        }
+
+    # 5. Assign course
+    assigned = AssignedCourse(
+        student_id=student_id,
+        course_id=course_id,
+        assigned_by=assigned_by
+    )
+    db.add(assigned)
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": "Course assigned successfully",
+        "student_id": student_id,
+        "course_id": course_id,
+        "assigned_by": assigned_by
+    }
