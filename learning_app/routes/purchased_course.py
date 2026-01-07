@@ -7,7 +7,9 @@ from models.add_to_cart import Cart
 from models.course import User, Course
 from models.course import Batch, BatchStudent
 from database.db import get_session
-
+from sqlalchemy import select, func, not_
+from sqlalchemy.orm import joinedload
+from fastapi import Depends, APIRouter
 
 router = APIRouter()
 
@@ -22,7 +24,7 @@ async def buy_course(
     course_id: int,
     db: AsyncSession = Depends(get_session)
 ):
-    # Step 1: Check if course exists in cart
+    # Check if course exists in cart
     result = await db.execute(
         select(Cart).where(Cart.student_id == student_id, Cart.course_id == course_id)
     )
@@ -30,10 +32,10 @@ async def buy_course(
     if not cart_item:
         return {"status": "error", "error": "Course not found in cart"}
 
-    # Step 2: Remove from cart
+    # Remove from cart
     await db.delete(cart_item)
 
-    # Step 3: Add to purchased courses
+    # Add to purchased courses
     purchased = PurchasedCourse(student_id=student_id, course_id=course_id)
     db.add(purchased)
 
@@ -42,32 +44,7 @@ async def buy_course(
     return {"status": "success", "message": "Course purchased successfully"}
 
 
-# @router.get("/purchased/{student_id}", tags=["purchased"])
-# async def view_purchased_courses(
-#     student_id: int,
-#     db: AsyncSession = Depends(get_session)
-# ):
-#     result = await db.execute(
-#         select(Course.id, Course.title, Course.duration)
-#         .join(PurchasedCourse, Course.id == PurchasedCourse.course_id)
-#         .where(PurchasedCourse.student_id == student_id)
-#     )
-#     courses = result.all()
-#     data = [dict(c._mapping) for c in courses]
 
-#     if not data:
-#         return {"status": "success", "data": [], "message": "No purchased courses yet"}
-
-#     return {"status": "success", "data": data}
-
-
-from sqlalchemy import select, func, not_
-from sqlalchemy.orm import joinedload
-from models.course import Course
-from models.purchased_courses import PurchasedCourse
-# from database import get_session
-from fastapi import Depends, APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession
 
 @router.get("/all/{student_id}", tags=["recommended-ak"])
 async def get_courses(student_id: int, db: AsyncSession = Depends(get_session)):
@@ -122,6 +99,7 @@ async def get_courses(student_id: int, db: AsyncSession = Depends(get_session)):
         message = "Showing recommended courses"
 
     return {"status": "success", "data": data, "message": message}
+
 
 @router.get("/courses/{student_id}", tags=["recommand"])
 async def get_all_courses_for_student(student_id: int, db: AsyncSession = Depends(get_session)):
@@ -213,7 +191,7 @@ async def get_students_by_course(course_id: int, db: AsyncSession = Depends(get_
         .outerjoin(
             BatchStudent, 
             (BatchStudent.student_id == User.id) & 
-            (BatchStudent.course_id == course_id)   # 🔥 FIX HERE
+            (BatchStudent.course_id == course_id)  
         )
         .outerjoin(Batch, Batch.id == BatchStudent.batch_id)
         .where(PurchasedCourse.course_id == course_id)
