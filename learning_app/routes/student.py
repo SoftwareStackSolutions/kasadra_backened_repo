@@ -21,7 +21,7 @@ from datetime import datetime, date
 
 from models.course import Course
 from models.purchased_courses import PurchasedCourse
-
+from models.purchased_courses import AssignedCourse
 router = APIRouter()
 
 MAX_BCRYPT_PASSWORD_BYTES = 72
@@ -236,12 +236,63 @@ async def get_all_students(
 ## GET Student by ID + Purchased Courses Without JWT
 ##########################################################################################################
 
+# @router.get("/{student_id}", tags=["students"])
+# async def get_student_by_id(
+#     student_id: int,
+#     db: AsyncSession = Depends(get_session)
+# ):
+#     # Fetch student
+#     stmt = select(User).where(
+#         User.id == student_id,
+#         User.role == RoleEnum.student
+#     )
+#     result = await db.execute(stmt)
+#     student = result.scalar_one_or_none()
+
+#     if not student:
+#         return {
+#             "status": "success",
+#             "message": f"Student with ID {student_id} not found",
+#             "data": {}
+#         }
+
+#     # Fetch purchased courses (JOIN purchased_courses + courses)
+#     course_stmt = (
+#         select(Course)
+#         .join(PurchasedCourse, PurchasedCourse.course_id == Course.id)
+#         .where(PurchasedCourse.student_id == student_id)
+#     )
+#     course_result = await db.execute(course_stmt)
+#     courses = course_result.scalars().all()
+
+#     # Build response
+#     return {
+#         "status": "success",
+#         "message": "Student fetched successfully",
+#         "data": {
+#             "id": student.id,
+#             "name": student.name,
+#             "email": student.email,
+#             "phone_no": student.phone_no,
+#             "registered_on": student.created_at,
+
+#             # Assigned Course (Purchased)
+#             "assigned_courses": [
+#                 {
+#                     "course_id": c.id,
+#                     "course_name": c.title
+#                 }
+#                 for c in courses
+#             ] if courses else "N/A"
+#         }
+#     }
+
 @router.get("/{student_id}", tags=["students"])
 async def get_student_by_id(
     student_id: int,
     db: AsyncSession = Depends(get_session)
 ):
-    # Fetch student
+    # 1️⃣ Fetch student
     stmt = select(User).where(
         User.id == student_id,
         User.role == RoleEnum.student
@@ -256,16 +307,45 @@ async def get_student_by_id(
             "data": {}
         }
 
-    # Fetch purchased courses (JOIN purchased_courses + courses)
-    course_stmt = (
+    # 2️⃣ Fetch purchased courses
+    purchased_stmt = (
         select(Course)
         .join(PurchasedCourse, PurchasedCourse.course_id == Course.id)
         .where(PurchasedCourse.student_id == student_id)
     )
-    course_result = await db.execute(course_stmt)
-    courses = course_result.scalars().all()
+    purchased_result = await db.execute(purchased_stmt)
+    purchased_courses = purchased_result.scalars().all()
 
-    # Build response
+    # 3️⃣ Fetch assigned courses
+    assigned_stmt = (
+        select(Course)
+        .join(AssignedCourse, AssignedCourse.course_id == Course.id)
+        .where(AssignedCourse.student_id == student_id)
+    )
+    assigned_result = await db.execute(assigned_stmt)
+    assigned_courses = assigned_result.scalars().all()
+
+    # 4️⃣ Merge & remove duplicates
+    courses_map = {}
+
+    for c in purchased_courses:
+        courses_map[c.id] = {
+            "course_id": c.id,
+            "course_name": c.title,
+            "access_type": "purchased"
+        }
+
+    for c in assigned_courses:
+        if c.id not in courses_map:
+            courses_map[c.id] = {
+                "course_id": c.id,
+                "course_name": c.title,
+                "access_type": "assigned"
+            }
+
+    assigned_courses_response = list(courses_map.values())
+
+    # 5️⃣ Final response
     return {
         "status": "success",
         "message": "Student fetched successfully",
@@ -275,17 +355,10 @@ async def get_student_by_id(
             "email": student.email,
             "phone_no": student.phone_no,
             "registered_on": student.created_at,
-
-            # Assigned Course (Purchased)
-            "assigned_courses": [
-                {
-                    "course_id": c.id,
-                    "course_name": c.title
-                }
-                for c in courses
-            ] if courses else "N/A"
+            "assigned_courses": assigned_courses_response if assigned_courses_response else "N/A"
         }
     }
+
 
 ##############################
 ## Put Method
