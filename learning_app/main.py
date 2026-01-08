@@ -33,6 +33,8 @@ from routes import contents, lesson_activate
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncpg
 from routes.ai import router as ai_router
+from routes.holidaydir import holiday
+
 
 app = FastAPI(
     title="Learning_App",
@@ -60,7 +62,7 @@ app.include_router(contents.lab_router,prefix="/api/contents")
 app.include_router(meeting_link.router,prefix="/api")
 app.include_router(lesson_activate.router,prefix="/api/activate")
 app.include_router(ai_router)
-
+app.include_router(holiday.router,prefix="/api")
 origins = [
     "http://localhost:5173",   # React dev server
     "http://127.0.0.1:5173",   
