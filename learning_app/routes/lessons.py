@@ -217,11 +217,11 @@ async def get_lessons_by_course_id(
     result = await db.execute(
         select(Lesson)
         .where(Lesson.course_id == course_id)
+        .order_by(Lesson.id.asc())
         .options(selectinload(Lesson.course))
     )
     lessons = result.scalars().all()
 
-    # ✅ No lessons → still return 200 with message
     if not lessons:
         return {
             "status": "success",
