@@ -86,7 +86,11 @@ async def get_lesson_by_id(
     db: AsyncSession = Depends(get_session)
 ):
     # Fetch lesson
-    result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    result = await db.execute(
+        select(Lesson)
+        .where(Lesson.id == lesson_id)
+        .order_by(Lesson.id.asc()) 
+    )
     lesson = result.scalar_one_or_none()
 
     if not lesson:
@@ -97,30 +101,40 @@ async def get_lesson_by_id(
 
     # Fetch PDFs
     pdfs_result = await db.execute(
-        select(Pdf).where(Pdf.lesson_id == lesson_id)
+        select(Pdf)
+        .where(Pdf.lesson_id == lesson_id)
+        .order_by(Pdf.id.asc())
     )
     pdfs = pdfs_result.scalars().all()
 
     # Fetch WebLinks
     weblinks_result = await db.execute(
-        select(WebLink).where(WebLink.lesson_id == lesson_id)
+        select(WebLink)
+        .where(WebLink.lesson_id == lesson_id)
+        .order_by(WebLink.id.asc())
     )
     weblinks = weblinks_result.scalars().all()
 
     # Fetch Quizzes
     quizzes_result = await db.execute(
-        select(Quiz).where(Quiz.lesson_id == lesson_id)
+        select(Quiz)
+        .where(Quiz.lesson_id == lesson_id)
+        .order_by(Quiz.id.asc())
     )
     quizzes = quizzes_result.scalars().all()
 
     # Fetch Labs
     labs_result = await db.execute(
-        select(Lab).where(Lab.lesson_id == lesson_id)
+        select(Lab)
+        .where(Lab.lesson_id == lesson_id)
+        .order_by(Lab.id.asc())
     )
     labs = labs_result.scalars().all()
     
     notes_result = await db.execute(
-    select(Note).where(Note.lesson_id == lesson_id)
+    select(Note)
+    .where(Note.lesson_id == lesson_id)
+    .order_by(Note.id.asc())
     )
     notes = notes_result.scalars().all()
     return {
