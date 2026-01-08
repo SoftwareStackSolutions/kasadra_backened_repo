@@ -13,3 +13,19 @@ class PurchasedCourse(Base):
 
     student = relationship("User")
     course = relationship("Course")
+
+###########################################
+## Instructor  assigns course directly
+###########################################
+
+class AssignedCourse(Base):
+    __tablename__ = "assigned_courses"
+
+    id = Column(Integer, primary_key=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    assigned_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # instructor/admin
+    assigned_at = Column(DateTime, default=datetime.utcnow)
+
+    student = relationship("User", foreign_keys=[student_id])
+    course = relationship("Course")

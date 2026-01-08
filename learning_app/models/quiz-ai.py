@@ -78,3 +78,5 @@ attempt_count = await db.execute(
 
 if attempt_count.scalars().first():
     quiz.is_locked = True
+
+
