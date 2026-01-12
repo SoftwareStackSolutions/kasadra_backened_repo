@@ -154,21 +154,9 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
 
 @router.get("/all", tags=["students"])
 async def get_all_students(
-    db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    db: AsyncSession = Depends(get_session)
 ):
-    # 1️⃣ Permission check
-    if current_user.role != RoleEnum.instructor:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "status": "error",
-                "message": "Only instructors can access students list",
-                "data": {}
-            }
-        )
-
-    # 2️⃣ Fetch all students
+    # 1️⃣ Fetch all students
     result = await db.execute(
         select(User).where(User.role == RoleEnum.student)
     )
@@ -184,7 +172,7 @@ async def get_all_students(
 
     student_ids = [s.id for s in students]
 
-    # 3️⃣ Fetch all purchased courses (one query)
+    # 2️⃣ Fetch all purchased courses
     purchased_result = await db.execute(
         select(PurchasedCourse.student_id, PurchasedCourse.course_id)
         .where(PurchasedCourse.student_id.in_(student_ids))
@@ -194,7 +182,7 @@ async def get_all_students(
     for student_id, course_id in purchased_result.all():
         purchased_map.setdefault(student_id, []).append(course_id)
 
-    # 4️⃣ Fetch all assigned courses (one query)
+    # 3️⃣ Fetch all assigned courses
     assigned_result = await db.execute(
         select(AssignedCourse.student_id, AssignedCourse.course_id)
         .where(AssignedCourse.student_id.in_(student_ids))
@@ -204,13 +192,12 @@ async def get_all_students(
     for student_id, course_id in assigned_result.all():
         assigned_map.setdefault(student_id, []).append(course_id)
 
-    # 5️⃣ Build response
+    # 4️⃣ Build response
     data = []
     for s in students:
         purchased_ids = purchased_map.get(s.id, [])
         assigned_ids = assigned_map.get(s.id, [])
 
-        # merge without duplicates
         combined_courses = [
             {"course_id": cid}
             for cid in set(purchased_ids + assigned_ids)
