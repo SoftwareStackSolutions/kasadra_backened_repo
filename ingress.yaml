@@ -10,7 +10,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
 spec:
   rules:
-    - host: "learn.softwarestack.xyz"
+    - host: "learn.digidense.com"
       http:
         paths:
           - path: /api
