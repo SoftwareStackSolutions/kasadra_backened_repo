@@ -127,62 +127,113 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
 ## Get All Students JWT
 ##############################
 
+# @router.get("/all", tags=["students"])
+# async def get_all_students(
+#     db: AsyncSession = Depends(get_session),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     if current_user.role != RoleEnum.instructor:
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN,
+#             detail={"status": "error", "message": "Only instructors can access students list", "data": {}}
+#         )
+
+#     stmt = select(User).where(User.role == RoleEnum.student)
+#     result = await db.execute(stmt)
+#     students = result.scalars().all()
+
+#     return {
+#         "detail": {
+#             "status": "success",
+#             "data": [
+#                 {"id": s.id, "name": s.name, "email": s.email}
+#                 for s in students
+#             ]
+#         }
+#     }
+
 @router.get("/all", tags=["students"])
 async def get_all_students(
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
+    # 1️⃣ Permission check
     if current_user.role != RoleEnum.instructor:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"status": "error", "message": "Only instructors can access students list", "data": {}}
+            detail={
+                "status": "error",
+                "message": "Only instructors can access students list",
+                "data": {}
+            }
         )
 
-    stmt = select(User).where(User.role == RoleEnum.student)
-    result = await db.execute(stmt)
+    # 2️⃣ Fetch all students
+    result = await db.execute(
+        select(User).where(User.role == RoleEnum.student)
+    )
     students = result.scalars().all()
+
+    if not students:
+        return {
+            "detail": {
+                "status": "success",
+                "data": []
+            }
+        }
+
+    student_ids = [s.id for s in students]
+
+    # 3️⃣ Fetch all purchased courses (one query)
+    purchased_result = await db.execute(
+        select(PurchasedCourse.student_id, PurchasedCourse.course_id)
+        .where(PurchasedCourse.student_id.in_(student_ids))
+    )
+
+    purchased_map = {}
+    for student_id, course_id in purchased_result.all():
+        purchased_map.setdefault(student_id, []).append(course_id)
+
+    # 4️⃣ Fetch all assigned courses (one query)
+    assigned_result = await db.execute(
+        select(AssignedCourse.student_id, AssignedCourse.course_id)
+        .where(AssignedCourse.student_id.in_(student_ids))
+    )
+
+    assigned_map = {}
+    for student_id, course_id in assigned_result.all():
+        assigned_map.setdefault(student_id, []).append(course_id)
+
+    # 5️⃣ Build response
+    data = []
+    for s in students:
+        purchased_ids = purchased_map.get(s.id, [])
+        assigned_ids = assigned_map.get(s.id, [])
+
+        # merge without duplicates
+        combined_courses = [
+            {"course_id": cid}
+            for cid in set(purchased_ids + assigned_ids)
+        ]
+
+        data.append({
+            "id": s.id,
+            "name": s.name,
+            "email": s.email,
+            "phone_no": s.phone_no,
+            "assigned_courses": combined_courses,
+            "purchased_courses": [
+                {"course_id": cid} for cid in purchased_ids
+            ]
+        })
 
     return {
         "detail": {
             "status": "success",
-            "data": [
-                {"id": s.id, "name": s.name, "email": s.email}
-                for s in students
-            ]
+            "data": data
         }
     }
 
-# @router.get("/all", tags=["students"])
-# async def get_all_students(db: Session = Depends(get_session)):
-#     try:
-#         stmt = select(User).where(User.role == RoleEnum.student)
-#         result = await db.execute(stmt)
-#         students = result.scalars().all()
-
-#         return {
-#             "detail": {
-#                 "status": "success",
-#                 "message": "Students fetched successfully",
-#                 "data": [ 
-#                     {
-#                         "id": i.id,
-#                         "name": i.name,
-#                         "email": i.email,
-#                         "phone_no": i.phone_no,
-#                         "created_at": i.created_at.isoformat() 
-#                     } for i in students
-#                 ]
-#             }
-#         }
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500,
-#             detail={
-#                 "status": "error",
-#                 "message": f"Failed to fetch students: {str(e)}",
-#                 "data": {}
-#             }
-#         )
 
 
 #####################################################################################################################################
