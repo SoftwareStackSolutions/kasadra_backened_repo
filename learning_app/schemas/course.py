@@ -82,13 +82,6 @@ class MeetingResponse(BaseModel):
 ## Notes
 #####################
 
-# class NoteCreate(BaseModel):
-#     course_id: int
-#     lesson_id: int
-#     instructor_id: int
-#     notes: Any
-
-
 class NoteCreate(BaseModel):
     course_id: int
     lesson_id: int
@@ -100,6 +93,7 @@ class NoteResponse(BaseModel):
     id: int
     course_id: int
     lesson_id: int
+    title: str | None = None
     notes: Any
 
     class Config:

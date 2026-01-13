@@ -190,9 +190,6 @@ async def delete_course(
 # NOTES Post API
 ###################################
 
-
-
-
 @router.post("/notes", tags=["Notes"])
 async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_session)):
 
@@ -251,17 +248,12 @@ async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_sessio
             detail="You do not own this lesson"
         )
 
-    title = note_in.title
-    if not title:
-        title = note_in.notes.strip().splitlines()[0][:100]
-
     # Create note
     new_note = Note(
         course_id=note_in.course_id,
         lesson_id=note_in.lesson_id,
         instructor_id=note_in.instructor_id,
-        title=title,
-        #title=note_in.title, 
+        title=note_in.title,
         notes=note_in.notes
     )
 
@@ -347,6 +339,7 @@ async def get_note_by_full_hierarchy(
             "course_id": note.course_id,
             "lesson_id": note.lesson_id,
             "instructor_id": note.instructor_id,
+            "title":note.title,
             "notes": note.notes
         }
     }
@@ -374,6 +367,7 @@ async def update_note(
     note.course_id = note_data.course_id
     note.lesson_id = note_data.lesson_id
     note.instructor_id = note_data.instructor_id
+    note.title = note_data.title
     note.notes = note_data.notes
 
     # 3. Save to DB
@@ -389,6 +383,7 @@ async def update_note(
             "instructor_id": note.instructor_id,
             "course_id": note.course_id,
             "lesson_id": note.lesson_id,
+            "title": note.title,
             "notes": note.notes
         }
     }
@@ -492,6 +487,7 @@ async def get_all_notes(
             "course_id": n.course_id,
             "lesson_id": n.lesson_id,
             "instructor_id": n.instructor_id,
+            "title" : n.title,
             "notes": n.notes
         }
         for n in notes
