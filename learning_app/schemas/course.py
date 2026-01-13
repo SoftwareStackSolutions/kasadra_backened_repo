@@ -66,6 +66,7 @@ class MeetingCreate(BaseModel):
     instructor_id: int     # temporary until JWT added
     course_id: int
     batch_id: int
+    title: str | None = None 
     meeting_url: HttpUrl
 
 class MeetingResponse(BaseModel):
@@ -73,6 +74,7 @@ class MeetingResponse(BaseModel):
     instructor_id: int
     course_id: int
     batch_id: int
+    title: str | None = None 
     meeting_url: str
 
     class Config:
