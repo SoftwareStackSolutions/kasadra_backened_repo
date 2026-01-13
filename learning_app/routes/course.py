@@ -190,6 +190,9 @@ async def delete_course(
 # NOTES Post API
 ###################################
 
+
+
+
 @router.post("/notes", tags=["Notes"])
 async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_session)):
 
@@ -248,11 +251,17 @@ async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_sessio
             detail="You do not own this lesson"
         )
 
+    title = note_in.title
+    if not title:
+        title = note_in.notes.strip().splitlines()[0][:100]
+
     # Create note
     new_note = Note(
         course_id=note_in.course_id,
         lesson_id=note_in.lesson_id,
         instructor_id=note_in.instructor_id,
+        title=title,
+        #title=note_in.title, 
         notes=note_in.notes
     )
 
@@ -268,6 +277,7 @@ async def create_note(note_in: NoteCreate, db: AsyncSession = Depends(get_sessio
             "course_id": new_note.course_id,
             "lesson_id": new_note.lesson_id,
             "instructor_id": new_note.instructor_id,
+            "title": new_note.title,
             "notes": new_note.notes
         }
     }
