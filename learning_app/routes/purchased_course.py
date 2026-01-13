@@ -12,7 +12,6 @@ from sqlalchemy.orm import joinedload
 from fastapi import Depends, APIRouter
 from models.purchased_courses import AssignedCourse
 
-
 router = APIRouter()
 
 
