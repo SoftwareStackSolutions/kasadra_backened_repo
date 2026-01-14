@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from datetime import date
 from models.user import User
 from sqlalchemy import Time,  UniqueConstraint
-
+from models.holidays import Holiday
 from .base import Base
 
 class Course(Base):
@@ -77,21 +77,23 @@ class BatchStudent(Base):
     batch_name = Column(String, nullable=False)
     __table_args__ = (UniqueConstraint("student_id", "course_id", name="uq_student_course"),)
 
+
 class CourseCalendar(Base):
     __tablename__ = "course_calendar"
 
     id = Column(Integer, primary_key=True, index=True)
-    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=True)  # ✅ FIX
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=True)
     batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"), nullable=True)
-    lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=True)
+
     select_date = Column(Date, nullable=True)
-    day = Column(String, nullable=False)
-    start_time = Column(String, nullable=True)
-    end_time = Column(String, nullable=True)
-    # Relationships
+    start_time = Column(Time, nullable=True)
+    end_time = Column(Time, nullable=True)
+
     course = relationship("Course", back_populates="calendar_entries")
     batch = relationship("Batch", back_populates="calendar_entries")
-    lesson = relationship("Lesson")
+
+
+
 
 class MeetingLink(Base):
     __tablename__ = "meeting_links"
