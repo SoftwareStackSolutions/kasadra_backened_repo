@@ -31,7 +31,7 @@ async def save_holidays_to_db(
         iso_date = h["date"]["iso"]
         holiday_date = datetime.strptime(
             iso_date.split("T")[0],
-            "%Y-%m-%d"
+            "%d-%m-%Y"
         ).date()
 
         result = await db.execute(

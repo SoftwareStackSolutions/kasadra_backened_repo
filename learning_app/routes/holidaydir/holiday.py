@@ -18,8 +18,8 @@ async def get_holidays(
     db: AsyncSession = Depends(get_session)
 ):
     #start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
-    start_date = datetime.strptime(startDate, "%m-%d-%Y").date()
-    end_date = datetime.strptime(endDate, "%m-%d-%Y").date()
+    start_date = datetime.strptime(startDate, "%d-%m-%Y").date()
+    end_date = datetime.strptime(endDate, "%d-%m-%Y").date()
 
     # Ensure holidays exist for that year
     await load_holidays_if_not_exists(db, start_date.year, country)
