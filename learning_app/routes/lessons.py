@@ -386,6 +386,7 @@ async def get_course_lessons_with_full_content(
             "pdfs": [
                 {
                     "id": pdf.id,
+                    "title": pdf.title,
                     "file_url": pdf.file_url
                 } for pdf in pdfs
             ],
@@ -393,6 +394,7 @@ async def get_course_lessons_with_full_content(
             "weblinks": [
                 {
                     "id": link.id,
+                    "title": link.title,
                     "url": link.link_url
                 } for link in weblinks
             ],
@@ -420,6 +422,7 @@ async def get_course_lessons_with_full_content(
             "notes": [
                 {
                     "id": note.id,
+                    "title": note.title,
                     "notes": note.notes,
                     "instructor_id": note.instructor_id
                 } for note in notes

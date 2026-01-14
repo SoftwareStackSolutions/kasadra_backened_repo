@@ -127,62 +127,100 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_sessi
 ## Get All Students JWT
 ##############################
 
+# @router.get("/all", tags=["students"])
+# async def get_all_students(
+#     db: AsyncSession = Depends(get_session),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     if current_user.role != RoleEnum.instructor:
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN,
+#             detail={"status": "error", "message": "Only instructors can access students list", "data": {}}
+#         )
+
+#     stmt = select(User).where(User.role == RoleEnum.student)
+#     result = await db.execute(stmt)
+#     students = result.scalars().all()
+
+#     return {
+#         "detail": {
+#             "status": "success",
+#             "data": [
+#                 {"id": s.id, "name": s.name, "email": s.email}
+#                 for s in students
+#             ]
+#         }
+#     }
+
 @router.get("/all", tags=["students"])
 async def get_all_students(
-    db: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user)
+    db: AsyncSession = Depends(get_session)
 ):
-    if current_user.role != RoleEnum.instructor:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"status": "error", "message": "Only instructors can access students list", "data": {}}
-        )
-
-    stmt = select(User).where(User.role == RoleEnum.student)
-    result = await db.execute(stmt)
+    # 1️⃣ Fetch all students
+    result = await db.execute(
+        select(User).where(User.role == RoleEnum.student)
+    )
     students = result.scalars().all()
+
+    if not students:
+        return {
+            "detail": {
+                "status": "success",
+                "data": []
+            }
+        }
+
+    student_ids = [s.id for s in students]
+
+    # 2️⃣ Fetch all purchased courses
+    purchased_result = await db.execute(
+        select(PurchasedCourse.student_id, PurchasedCourse.course_id)
+        .where(PurchasedCourse.student_id.in_(student_ids))
+    )
+
+    purchased_map = {}
+    for student_id, course_id in purchased_result.all():
+        purchased_map.setdefault(student_id, []).append(course_id)
+
+    # 3️⃣ Fetch all assigned courses
+    assigned_result = await db.execute(
+        select(AssignedCourse.student_id, AssignedCourse.course_id)
+        .where(AssignedCourse.student_id.in_(student_ids))
+    )
+
+    assigned_map = {}
+    for student_id, course_id in assigned_result.all():
+        assigned_map.setdefault(student_id, []).append(course_id)
+
+    # 4️⃣ Build response
+    data = []
+    for s in students:
+        purchased_ids = purchased_map.get(s.id, [])
+        assigned_ids = assigned_map.get(s.id, [])
+
+        combined_courses = [
+            {"course_id": cid}
+            for cid in set(purchased_ids + assigned_ids)
+        ]
+
+        data.append({
+            "id": s.id,
+            "name": s.name,
+            "email": s.email,
+            "phone_no": s.phone_no,
+            "assigned_courses": combined_courses,
+            "purchased_courses": [
+                {"course_id": cid} for cid in purchased_ids
+            ]
+        })
 
     return {
         "detail": {
             "status": "success",
-            "data": [
-                {"id": s.id, "name": s.name, "email": s.email}
-                for s in students
-            ]
+            "data": data
         }
     }
 
-# @router.get("/all", tags=["students"])
-# async def get_all_students(db: Session = Depends(get_session)):
-#     try:
-#         stmt = select(User).where(User.role == RoleEnum.student)
-#         result = await db.execute(stmt)
-#         students = result.scalars().all()
-
-#         return {
-#             "detail": {
-#                 "status": "success",
-#                 "message": "Students fetched successfully",
-#                 "data": [ 
-#                     {
-#                         "id": i.id,
-#                         "name": i.name,
-#                         "email": i.email,
-#                         "phone_no": i.phone_no,
-#                         "created_at": i.created_at.isoformat() 
-#                     } for i in students
-#                 ]
-#             }
-#         }
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500,
-#             detail={
-#                 "status": "error",
-#                 "message": f"Failed to fetch students: {str(e)}",
-#                 "data": {}
-#             }
-#         )
 
 
 #####################################################################################################################################
@@ -514,175 +552,6 @@ async def student_login(request: LoginRequestDetails, db: Session = Depends(get_
 #####################################################################################################################
 ## OWNER AKHILESH this code using http cookie
 #####################################################################################################################
-
-
-
-
-# # from .schemas import StudentUpdate  
-
-# class StudentUpdate(BaseModel):   
-#     Name: str
-#     Email: EmailStr
-#     PhoneNo: str = Field(..., alias="Phone No")
-
-#     @field_validator("PhoneNo")
-#     def validate_phone(cls, v):
-#         if v is None:
-#             return v
-#         if not v.isdigit():
-#             raise ValueError("Phone number must contain only digits.")
-#         if len(v) != 10:
-#             raise ValueError("Phone number must be exactly 10 digits long.")
-#         return v
-
-# @router.put("{student_id}", tags=["students"])
-# async def update_student(
-#     student_id: int,
-#     update_data: StudentUpdate,
-#     db: AsyncSession = Depends(get_session),
-#     current_user: User = Depends(get_current_user)  # ✅ JWT protection
-# ):
-#     try:
-#         # ✅ Only allow logged-in student to update their own profile
-#         if current_user.id != student_id:
-#             raise HTTPException(
-#                 status_code=status.HTTP_403_FORBIDDEN,
-#                 detail={
-#                     "status": "error",
-#                     "message": "You are not authorized to update this profile",
-#                     "data": {}
-#                 }
-#             )
-
-#         # Fetch student from DB
-#         stmt = select(User).where(User.id == student_id)
-#         result = await db.execute(stmt)
-#         student = result.scalar_one_or_none()
-
-#         if not student:
-#             raise HTTPException(
-#                 status_code=status.HTTP_404_NOT_FOUND,
-#                 detail={
-#                     "status": "error",
-#                     "message": "Student not found",
-#                     "data": {}
-#                 }
-#             )
-
-#         # Update only allowed fields
-#         if update_data.Name is not None:
-#             student.name = update_data.Name
-#         if update_data.Email is not None:
-#             student.email = update_data.Email
-#         if update_data.PhoneNo is not None:
-#             student.phone_no = update_data.PhoneNo
-
-#         db.add(student)
-#         await db.commit()
-#         await db.refresh(student)
-
-#         return {
-#             "detail": {
-#                 "status": "success",
-#                 "message": "Student updated successfully",
-#                 "data": {
-#                     "id": student.id,
-#                     "name": student.name,
-#                     "email": student.email,
-#                     "phone_no": student.phone_no
-#                 }
-#             }
-#         }
-
-#     except IntegrityError as e:
-#         await db.rollback()
-#         if "users_email_key" in str(e.orig):
-#             raise HTTPException(
-#                 status_code=status.HTTP_409_CONFLICT,
-#                 detail={
-#                     "status": "error",
-#                     "message": "Email already exists",
-#                     "data": {}
-#                 }
-#             )
-#         elif "users_phone_no_key" in str(e.orig):
-#             raise HTTPException(
-#                 status_code=status.HTTP_409_CONFLICT,
-#                 detail={
-#                     "status": "error",
-#                     "message": "Phone number already exists",
-#                     "data": {}
-#                 }
-#             )
-
-#     except Exception as e:
-#         await db.rollback()
-#         raise HTTPException(
-#             status_code=500,
-#             detail={
-#                 "status": "error",
-#                 "message": f"Failed to update student: {str(e)}",
-#                 "data": {}
-#             }
-#         )
-
-
-# @router.post("/login", tags=["students"])
-# async def student_login(request: LoginRequestDetails, response: Response, db: Session = Depends(get_session)):
-#     try:
-#         student = await get_user_by_email(request.Email, db)
-
-#         if student is None or student.role != RoleEnum.student:
-#             raise HTTPException(
-#                 status_code=status.HTTP_404_NOT_FOUND,
-#                 detail={"status": "error", "message": "Incorrect email.", "data": {}}
-#             )
-
-#         if not verify_password(request.Password, student.password):
-#             raise HTTPException(
-#                 status_code=status.HTTP_401_UNAUTHORIZED,
-#                 detail={"status": "error", "message": "Incorrect password.", "data": {}}
-#             )
-
-#         # Create JWT token
-#         access_token = create_access_token(
-#             data={"sub": student.id},
-#             expires_delta=timedelta(minutes=30)
-#         )
-
-#         # ✅ Store token in HTTP-only cookie
-#         response.set_cookie(
-#             key="access_token",
-#             value=access_token,
-#             httponly=True,        # JS cannot access
-#             secure=True,          # Only send via HTTPS
-#             samesite="lax",       # Prevent CSRF (use "strict" or "none" depending on frontend)
-#             max_age=1800          # 30 minutes
-#         )
-
-#         return {
-#             "detail": {
-#                 "status": "success",
-#                 "message": "Logged in successfully",
-#                 "data": {
-#                     "id": student.id,
-#                     "studentName": student.name
-#                 }
-#             }
-#         }
-
-#     except HTTPException as e:
-#         raise e
-
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500,
-#             detail={
-#                 "status": "error",
-#                 "message": f"Failed to process login request: {str(e)}",
-#                 "data": {}
-#             }
-#         )
 
 
 

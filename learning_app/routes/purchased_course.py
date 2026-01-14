@@ -12,8 +12,8 @@ from sqlalchemy.orm import joinedload
 from fastapi import Depends, APIRouter
 from models.purchased_courses import AssignedCourse
 
-
 router = APIRouter()
+
 
 
 ############################################
@@ -289,10 +289,66 @@ async def get_all_courses_for_student(
 
 ######### get students list by course ID ########3
 
+# @router.get("/course/{course_id}/students", tags=["purchased"])
+# async def get_students_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
+
+#     # Validate course exists
+#     course = await db.get(Course, course_id)
+#     if not course:
+#         raise HTTPException(status_code=404, detail="Course not found")
+
+#     query = (
+#         select(
+#             User.id.label("student_id"),
+#             User.name,
+#             User.email,
+#             PurchasedCourse.purchased_at,
+#             Batch.batch_name,
+#         )
+#         .join(PurchasedCourse, PurchasedCourse.student_id == User.id)
+#         .outerjoin(
+#             BatchStudent, 
+#             (BatchStudent.student_id == User.id) & 
+#             (BatchStudent.course_id == course_id)  
+#         )
+#         .outerjoin(Batch, Batch.id == BatchStudent.batch_id)
+#         .where(PurchasedCourse.course_id == course_id)
+#     )
+
+#     result = await db.execute(query)
+#     records = result.mappings().all()
+
+#     # Deduplicate logic (already good)
+#     student_map = {}
+#     for row in records:
+#         sid = row["student_id"]
+
+#         if sid not in student_map:
+#             student_map[sid] = {
+#                 "student_id": sid,
+#                 "name": row["name"],
+#                 "email": row["email"],
+#                 "purchased_at": row["purchased_at"],
+#                 "batch_name": row["batch_name"],
+#                 "status": "Assigned" if row["batch_name"] else "Unassigned",
+#             }
+#         else:
+#             if student_map[sid]["batch_name"] is None and row["batch_name"] is not None:
+#                 student_map[sid]["batch_name"] = row["batch_name"]
+#                 student_map[sid]["status"] = "Assigned"
+
+#     return {
+#         "status": "success",
+#         "course_id": course_id,
+#         "total_students": len(student_map),
+#         "students": list(student_map.values())
+#     }
+
+
 @router.get("/course/{course_id}/students", tags=["purchased"])
 async def get_students_by_course(course_id: int, db: AsyncSession = Depends(get_session)):
 
-    # Validate course exists
+    # 1. Validate course
     course = await db.get(Course, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -303,25 +359,55 @@ async def get_students_by_course(course_id: int, db: AsyncSession = Depends(get_
             User.name,
             User.email,
             PurchasedCourse.purchased_at,
+            AssignedCourse.id.label("assigned_id"),
             Batch.batch_name,
         )
-        .join(PurchasedCourse, PurchasedCourse.student_id == User.id)
+        .select_from(User)
         .outerjoin(
-            BatchStudent, 
-            (BatchStudent.student_id == User.id) & 
-            (BatchStudent.course_id == course_id)  
+            PurchasedCourse,
+            (PurchasedCourse.student_id == User.id) &
+            (PurchasedCourse.course_id == course_id)
         )
-        .outerjoin(Batch, Batch.id == BatchStudent.batch_id)
-        .where(PurchasedCourse.course_id == course_id)
+        .outerjoin(
+            AssignedCourse,
+            (AssignedCourse.student_id == User.id) &
+            (AssignedCourse.course_id == course_id)
+        )
+        .outerjoin(
+            BatchStudent,
+            BatchStudent.student_id == User.id
+        )
+        .outerjoin(
+            Batch,
+            (Batch.id == BatchStudent.batch_id) &
+            (Batch.course_id == course_id)
+        )
+        .where(
+            (PurchasedCourse.course_id.is_not(None)) |
+            (AssignedCourse.course_id.is_not(None))
+        )
     )
 
     result = await db.execute(query)
     records = result.mappings().all()
 
-    # Deduplicate logic (already good)
+    # 2. Deduplicate & status logic
     student_map = {}
+
     for row in records:
         sid = row["student_id"]
+
+        purchased = row["purchased_at"] is not None
+        assigned = row["assigned_id"] is not None
+
+        if purchased and assigned:
+            status = "Purchased + Assigned"
+        elif purchased:
+            status = "Purchased"
+        elif assigned:
+            status = "Assigned"
+        else:
+            status = "Unassigned"
 
         if sid not in student_map:
             student_map[sid] = {
@@ -330,12 +416,12 @@ async def get_students_by_course(course_id: int, db: AsyncSession = Depends(get_
                 "email": row["email"],
                 "purchased_at": row["purchased_at"],
                 "batch_name": row["batch_name"],
-                "status": "Assigned" if row["batch_name"] else "Unassigned",
+                "status": status,
             }
         else:
+            # Prefer batch info if found later
             if student_map[sid]["batch_name"] is None and row["batch_name"] is not None:
                 student_map[sid]["batch_name"] = row["batch_name"]
-                student_map[sid]["status"] = "Assigned"
 
     return {
         "status": "success",
@@ -343,3 +429,4 @@ async def get_students_by_course(course_id: int, db: AsyncSession = Depends(get_
         "total_students": len(student_map),
         "students": list(student_map.values())
     }
+

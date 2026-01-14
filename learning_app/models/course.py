@@ -11,13 +11,14 @@ class Course(Base):
     __tablename__ = "courses"
 
     id = Column(Integer, primary_key=True)
-    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
     duration = Column(String, nullable=False)
     thumbnail_url = Column(String, nullable=True)    # store file as binary
     created_at = Column(Date, default=date.today)
 
+    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
     instructor = relationship("User", back_populates="courses")
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")
     cart_entries = relationship("Cart", back_populates="course", cascade="all, delete-orphan")
@@ -53,14 +54,16 @@ class Batch(Base):
     __tablename__ = "batches"
 
     id = Column(Integer, primary_key=True)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     batch_name = Column(String, nullable=False)
     num_students = Column(Integer, nullable=False)
-    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
     timing = Column(String, nullable=True)  # Can be "10:00-12:00" or separate start/end
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False) 
     created_at = Column(Date, default=date.today)
+
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    instructor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     course = relationship("Course")
     instructor = relationship("User")
@@ -100,8 +103,10 @@ class MeetingLink(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     instructor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"))  # ✅ FIX
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"))  
     batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"))
+
+    title = Column(String, nullable=False)
     meeting_url = Column(String(255), nullable=False)
 
     # Relationships (optional, for easy access)
@@ -116,6 +121,8 @@ class Pdf(Base):
     id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+
+    title = Column(String, nullable=False)
     file_url = Column(String, nullable=False)
     created_at = Column(Date, default=date.today)
 
@@ -129,6 +136,8 @@ class WebLink(Base):
     id = Column(Integer, primary_key=True, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+
+    title = Column(String, nullable=False)
     link_url = Column(String, nullable=False)
     created_at = Column(Date, default=date.today)
 
@@ -138,27 +147,31 @@ class WebLink(Base):
 
 class Quiz(Base):
     __tablename__ = "quiz"
+    
     id = Column(Integer, primary_key=True, index=True)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
-    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     url = Column(String, nullable=True)
     file_url = Column(String, nullable=True)
     
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+
     course = relationship("Course", back_populates="quizzes")
     lesson = relationship("Lesson", back_populates="quizzes")
 
 class Lab(Base):
     __tablename__ = "labs"
+
     id = Column(Integer, primary_key=True, index=True)
-    course_id = Column(Integer, ForeignKey("courses.id"))
-    lesson_id = Column(Integer, ForeignKey("lessons.id"))
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     url = Column(String, nullable=True)
     file_url = Column(String, nullable=True)
     
+    course_id = Column(Integer, ForeignKey("courses.id"))
+    lesson_id = Column(Integer, ForeignKey("lessons.id"))
+
     course = relationship("Course", back_populates="labs")
     lesson = relationship("Lesson", back_populates="labs")
 
@@ -170,7 +183,7 @@ class Note(Base):
     lesson_id = Column(Integer, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False)
     instructor_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
-
+    title = Column(String, nullable=False)
     notes = Column(Text, nullable=False)
     course = relationship("Course", back_populates="notes", lazy="joined")
     lesson = relationship("Lesson", back_populates="notes", lazy="joined")
