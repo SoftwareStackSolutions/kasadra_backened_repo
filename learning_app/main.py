@@ -72,9 +72,12 @@ origins = [
     "http://127.0.0.1:8000", 
     "http://127.0.0.1:8000/docs",
     "http://127.0.0.1:8000/api/docs",
-    "http://www.softwarestack.xyz/api/",
-    "http://www.softwarestack.xyz",
-    "http://www.softwarestack.xyz/api/docs"
+    # "http://www.softwarestack.xyz/api/",
+    # "http://www.softwarestack.xyz",
+    # "http://www.softwarestack.xyz/api/docs",
+    "http:learn.digidense.com/api/",
+    "http:learn.digidense.com/api/docs",
+    "http:learn.digidense.com"
 
 ]
 
