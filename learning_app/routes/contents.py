@@ -4,7 +4,7 @@ from sqlalchemy.future import select
 from models.course import Course, Lesson, Pdf, WebLink, Quiz, Lab
 from database.db import get_session
 from utils.gcp import upload_file_to_gcs  
-
+from typing import Optional
 
 pdf_router = APIRouter(tags=["PDF"])
 weblink_router = APIRouter(tags=["WebLink"])
@@ -16,6 +16,7 @@ lab_router = APIRouter(tags=["Lab"])
 async def upload_pdf(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
+    title: Optional[str] = Form(None),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_session),
 ):
@@ -45,6 +46,7 @@ async def upload_pdf(
     pdf_entry = Pdf(
         course_id=course_id,
         lesson_id=lesson_id,
+        title=title if title else "Untitled PDF",
         file_url=file_url,
     )
 
@@ -57,6 +59,7 @@ async def upload_pdf(
         "message": "PDF uploaded successfully",
         "data": {
             "pdf_id": pdf_entry.id,
+            "title": title,
             "file_url": file_url,
         },
     }
@@ -68,6 +71,7 @@ async def update_pdf(
     pdf_id: int,
     course_id: int = Form(...),
     lesson_id: int = Form(...),
+    title: Optional[str] = Form(None),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_session),
 ):
@@ -102,6 +106,7 @@ async def update_pdf(
     # Update DB entry
     pdf_entry.course_id = course_id
     pdf_entry.lesson_id = lesson_id
+    pdf_entry.title     = title
     pdf_entry.file_url = new_file_url
 
     await db.commit()
@@ -112,6 +117,7 @@ async def update_pdf(
         "message": "PDF updated successfully",
         "data": {
             "pdf_id": pdf_entry.id,
+            "title" : title,
             "file_url": new_file_url,
         },
     }
@@ -137,12 +143,14 @@ async def delete_pdf(
         "message": "PDF deleted successfully",
     }
 
-############# Add WebLink #############
+#############################################################################################################################
+  ###################################### Add WebLink ####################################################
 
 @weblink_router.post("/add/weblink")
 async def upload_weblink(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
+    title: Optional[str] = Form(None),
     link_url: str = Form(...),
     db: AsyncSession = Depends(get_session),
 ):
@@ -168,6 +176,7 @@ async def upload_weblink(
     weblink_entry = WebLink(
         course_id=course_id,
         lesson_id=lesson_id,
+        title = title,
         link_url=link_url,
     )
 
@@ -180,6 +189,7 @@ async def upload_weblink(
         "message": "Web link added successfully",
         "data": {
             "weblink_id": weblink_entry.id,
+            "title" : title,
             "link_url": link_url,
         },
     }
@@ -192,6 +202,7 @@ async def update_weblink(
     weblink_id: int,
     course_id: int = Form(...),
     lesson_id: int = Form(...),
+    title: Optional[str] = Form(None),
     link_url: str = Form(...),
     db: AsyncSession = Depends(get_session),
 ):
@@ -226,6 +237,7 @@ async def update_weblink(
     # Update DB entry
     weblink_entry.course_id = course_id
     weblink_entry.lesson_id = lesson_id
+    weblink_entry.title = title
     weblink_entry.link_url = link_url
 
     await db.commit()
@@ -236,6 +248,7 @@ async def update_weblink(
         "message": "WebLink updated successfully",
         "data": {
             "weblink_id": weblink_entry.id,
+            "title": title,
             "link_url": link_url,
         },
     }
