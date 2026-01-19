@@ -244,10 +244,22 @@ async def get_course_calendar(
     }
 
 
+#############################
+## Updated Calander
+#############################
+
+class CourseCalendarUpdate(BaseModel):
+    course_id: int
+    batch_id: Optional[int] = None
+    select_date: str   
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
+
+
 @router.put("/update/{calendar_id}")
 async def update_course_calendar(
     calendar_id: int,
-    calendar_data: CourseCalendarCreate,
+    calendar_data: CourseCalendarUpdate,
     db: AsyncSession = Depends(get_session),
 ):
     # ----------------------------
@@ -255,10 +267,7 @@ async def update_course_calendar(
     # ----------------------------
     calendar = await db.get(CourseCalendar, calendar_id)
     if not calendar:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Calendar ID {calendar_id} not found"
-        )
+        raise HTTPException(status_code=404, detail="Schedule entry not found")
 
     # ----------------------------
     # 2. Validate Course
@@ -280,41 +289,48 @@ async def update_course_calendar(
             raise HTTPException(status_code=404, detail="Batch not found")
 
     # ----------------------------
-    # 4. Convert Date
+    # 4. Convert Date (ANY DATE ALLOWED)
     # ----------------------------
     select_date = datetime.strptime(
-        calendar_data.start_date, "%d-%m-%Y"
+        calendar_data.select_date, "%d-%m-%Y"
     ).date()
 
     # ----------------------------
-    # 5. Check Holiday
+    # 5. Prevent duplicate date (same course + batch)
     # ----------------------------
-    holiday = await db.scalar(
-        select(Holiday).where(Holiday.date == select_date)
+    duplicate = await db.scalar(
+        select(CourseCalendar).where(
+            CourseCalendar.course_id == calendar_data.course_id,
+            CourseCalendar.batch_id == calendar_data.batch_id,
+            CourseCalendar.select_date == select_date,
+            CourseCalendar.id != calendar_id
+        )
     )
-    if holiday:
+    if duplicate:
         raise HTTPException(
             status_code=400,
-            detail="Selected date is a holiday"
+            detail="Another class already exists on this date"
         )
 
     # ----------------------------
-    # 6. Update Fields
+    # 6. Update ONLY provided fields
     # ----------------------------
     calendar.course_id = calendar_data.course_id
     calendar.batch_id = calendar_data.batch_id
     calendar.select_date = select_date
-    calendar.start_time = calendar_data.start_time
-    calendar.end_time = calendar_data.end_time
 
-    # ----------------------------
-    # 7. Save
-    # ----------------------------
+    # 👉 IMPORTANT PART
+    if calendar_data.start_time is not None:
+        calendar.start_time = calendar_data.start_time
+
+    if calendar_data.end_time is not None:
+        calendar.end_time = calendar_data.end_time
+
     await db.commit()
     await db.refresh(calendar)
 
     # ----------------------------
-    # 8. Response
+    # 7. Response
     # ----------------------------
     return {
         "status": "success",
@@ -325,10 +341,8 @@ async def update_course_calendar(
             "batch_id": calendar.batch_id,
             "date": calendar.select_date.strftime("%d-%m-%Y"),
             "day": calendar.select_date.strftime("%A"),
-            "start_time": calendar.start_time.strftime("%I:%M:%S %p").lower()
-            if calendar.start_time else None,
-            "end_time": calendar.end_time.strftime("%I:%M:%S %p").lower()
-            if calendar.end_time else None,
+            "start_time": calendar.start_time.strftime("%I:%M:%S %p").lower(),
+            "end_time": calendar.end_time.strftime("%I:%M:%S %p").lower(),
         }
     }
 
