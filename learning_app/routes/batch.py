@@ -11,7 +11,6 @@ from models.user import User
 from sqlalchemy.future import select
 from models.course import Course, Lesson
 from schemas.course import CourseCreate, LessonCreate
-from schemas.batch import AssignStudentsRequest
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi import Form
 from typing import Optional
@@ -26,10 +25,13 @@ from typing import List
 
 router = APIRouter()
 
-class AssignStudentsRequest(BaseModel):
-    batch_id: int
-    course_id: int  # REQUIRED NOW
-    student_ids: List[int]
+class BatchCreate(BaseModel):
+    course_id: int
+    batch_name: str
+    instructor_id: int
+
+    class Config:
+        from_attributes = True
 
 @router.post("/add", tags=["batches"])
 async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session)):
@@ -67,12 +69,14 @@ async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session))
     new_batch = Batch(
         course_id=batch.course_id,
         batch_name=batch.batch_name,
-        num_students=batch.num_students,
         instructor_id=batch.instructor_id,
-        timing=batch.timing,
-        start_date=batch.start_date,
-        end_date=batch.end_date,    
         created_at=datetime.utcnow()
+
+        # num_students=batch.num_students,
+        # timing=batch.timing,
+        # start_date=batch.start_date,
+        # end_date=batch.end_date,    
+
     )
 
     db.add(new_batch)
@@ -86,11 +90,12 @@ async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session))
             "batch_id": new_batch.id,
             "course_id": new_batch.course_id,
             "batch_name": new_batch.batch_name,
-            "num_students": new_batch.num_students,
             "instructor_id": new_batch.instructor_id,
-            "timing": new_batch.timing,
-            "start_date": new_batch.start_date,
-            "end_date": new_batch.end_date
+
+            # "num_students": new_batch.num_students,
+            # "timing": new_batch.timing,
+            # "start_date": new_batch.start_date,
+            # "end_date": new_batch.end_date
         }
     }
 
@@ -128,13 +133,14 @@ async def get_batches_by_course(
             {
                 "batch_id": batch.id,
                 "batch_name": batch.batch_name,
-                "num_students": batch.num_students,
                 "course_id": batch.course_id,
                 "course_name": batch.course.title if batch.course else None,
                 "instructor_id": batch.instructor_id,
                 "instructor_name": batch.instructor.name if batch.instructor else None,
-                "timing": batch.timing,
-                "start_date": batch.start_date,
+
+                # "num_students": batch.num_students,
+                # "timing": batch.timing,
+                # "start_date": batch.start_date,
             }
             for batch in batches
         ]
@@ -176,7 +182,7 @@ async def assign_students_to_batch(data: AssignStudentsRequest, db: AsyncSession
                 BatchStudent(
                     student_id=student_id,
                     batch_id=data.batch_id,
-                    course_id=batch.course_id,   # 🔥 required
+                    course_id=batch.course_id,   
                     batch_name=batch.batch_name
                 )
             )

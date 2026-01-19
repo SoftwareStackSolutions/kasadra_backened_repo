@@ -80,7 +80,7 @@ async def add_lesson(
 
 ################## Get lessons by lesson_id #################
 
-@router.get("{lesson_id}", tags=["lessons"])
+@router.get("/{lesson_id}", tags=["lessons"])
 async def get_lesson_by_id(
     lesson_id: int,
     db: AsyncSession = Depends(get_session)
@@ -151,6 +151,7 @@ async def get_lesson_by_id(
             "pdfs": [
                 {
                     "id": pdf.id,
+                    "title": pdf.title,
                     "file_url": pdf.file_url
                 }
                 for pdf in pdfs
@@ -158,6 +159,7 @@ async def get_lesson_by_id(
             "weblinks": [
                 {
                     "id": link.id,
+                    "title": link.title,
                     "url": link.link_url
                 }
                 for link in weblinks
@@ -188,6 +190,7 @@ async def get_lesson_by_id(
                     "course_id": n.course_id,
                     "lesson_id": n.lesson_id,
                     "instructor_id": n.instructor_id,
+                    "title": n.title,
                     "notes": n.notes
                 }
                 for n in notes
