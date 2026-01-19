@@ -248,103 +248,153 @@ async def get_course_calendar(
 ## Updated Calander
 #############################
 
-class CourseCalendarUpdate(BaseModel):
+# class CourseCalendarUpdate(BaseModel):
+#     course_id: int
+#     batch_id: Optional[int] = None
+#     select_date: str   
+#     start_time: Optional[time] = None
+#     end_time: Optional[time] = None
+
+
+# @router.put("/update/{calendar_id}")
+# async def update_course_calendar(
+#     calendar_id: int,
+#     calendar_data: CourseCalendarUpdate,
+#     db: AsyncSession = Depends(get_session),
+# ):
+#     # ----------------------------
+#     # 1. Fetch Calendar Entry
+#     # ----------------------------
+#     calendar = await db.get(CourseCalendar, calendar_id)
+#     if not calendar:
+#         raise HTTPException(status_code=404, detail="Schedule entry not found")
+
+#     # ----------------------------
+#     # 2. Validate Course
+#     # ----------------------------
+#     course = await db.scalar(
+#         select(Course).where(Course.id == calendar_data.course_id)
+#     )
+#     if not course:
+#         raise HTTPException(status_code=404, detail="Course not found")
+
+#     # ----------------------------
+#     # 3. Validate Batch (optional)
+#     # ----------------------------
+#     if calendar_data.batch_id:
+#         batch = await db.scalar(
+#             select(Batch).where(Batch.id == calendar_data.batch_id)
+#         )
+#         if not batch:
+#             raise HTTPException(status_code=404, detail="Batch not found")
+
+#     # ----------------------------
+#     # 4. Convert Date (ANY DATE ALLOWED)
+#     # ----------------------------
+#     select_date = datetime.strptime(
+#         calendar_data.select_date, "%d-%m-%Y"
+#     ).date()
+
+#     # ----------------------------
+#     # 5. Prevent duplicate date (same course + batch)
+#     # ----------------------------
+#     duplicate = await db.scalar(
+#         select(CourseCalendar).where(
+#             CourseCalendar.course_id == calendar_data.course_id,
+#             CourseCalendar.batch_id == calendar_data.batch_id,
+#             CourseCalendar.select_date == select_date,
+#             CourseCalendar.id != calendar_id
+#         )
+#     )
+#     if duplicate:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Another class already exists on this date"
+#         )
+
+#     # ----------------------------
+#     # 6. Update ONLY provided fields
+#     # ----------------------------
+#     calendar.course_id = calendar_data.course_id
+#     calendar.batch_id = calendar_data.batch_id
+#     calendar.select_date = select_date
+
+#     # 👉 IMPORTANT PART
+#     if calendar_data.start_time is not None:
+#         calendar.start_time = calendar_data.start_time
+
+#     if calendar_data.end_time is not None:
+#         calendar.end_time = calendar_data.end_time
+
+#     await db.commit()
+#     await db.refresh(calendar)
+
+#     # ----------------------------
+#     # 7. Response
+#     # ----------------------------
+#     return {
+#         "status": "success",
+#         "message": "Schedule updated successfully",
+#         "data": {
+#             "calendar_id": calendar.id,
+#             "course_id": calendar.course_id,
+#             "batch_id": calendar.batch_id,
+#             "date": calendar.select_date.strftime("%d-%m-%Y"),
+#             "day": calendar.select_date.strftime("%A"),
+#             "start_time": calendar.start_time.strftime("%I:%M:%S %p").lower(),
+#             "end_time": calendar.end_time.strftime("%I:%M:%S %p").lower(),
+#         }
+#     }
+
+class CalendarUpdateRequest(BaseModel):
     course_id: int
-    batch_id: Optional[int] = None
-    select_date: str   
-    start_time: Optional[time] = None
-    end_time: Optional[time] = None
+    batch_id: int | None = None
+    calendar_ids: list[int]
+    new_dates: list[str]  # "DD-MM-YYYY"
 
-
-@router.put("/update/{calendar_id}")
+@router.put("/update")
 async def update_course_calendar(
-    calendar_id: int,
-    calendar_data: CourseCalendarUpdate,
-    db: AsyncSession = Depends(get_session),
+    payload: CalendarUpdateRequest,
+    db: AsyncSession = Depends(get_session)
 ):
-    # ----------------------------
-    # 1. Fetch Calendar Entry
-    # ----------------------------
-    calendar = await db.get(CourseCalendar, calendar_id)
-    if not calendar:
-        raise HTTPException(status_code=404, detail="Schedule entry not found")
+    if not payload.calendar_ids:
+        raise HTTPException(status_code=400, detail="No schedule selected")
 
-    # ----------------------------
-    # 2. Validate Course
-    # ----------------------------
-    course = await db.scalar(
-        select(Course).where(Course.id == calendar_data.course_id)
-    )
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    # ----------------------------
-    # 3. Validate Batch (optional)
-    # ----------------------------
-    if calendar_data.batch_id:
-        batch = await db.scalar(
-            select(Batch).where(Batch.id == calendar_data.batch_id)
-        )
-        if not batch:
-            raise HTTPException(status_code=404, detail="Batch not found")
-
-    # ----------------------------
-    # 4. Convert Date (ANY DATE ALLOWED)
-    # ----------------------------
-    select_date = datetime.strptime(
-        calendar_data.select_date, "%d-%m-%Y"
-    ).date()
-
-    # ----------------------------
-    # 5. Prevent duplicate date (same course + batch)
-    # ----------------------------
-    duplicate = await db.scalar(
-        select(CourseCalendar).where(
-            CourseCalendar.course_id == calendar_data.course_id,
-            CourseCalendar.batch_id == calendar_data.batch_id,
-            CourseCalendar.select_date == select_date,
-            CourseCalendar.id != calendar_id
-        )
-    )
-    if duplicate:
+    if len(payload.calendar_ids) != len(payload.new_dates):
         raise HTTPException(
             status_code=400,
-            detail="Another class already exists on this date"
+            detail="calendar_ids and new_dates count must match"
         )
 
-    # ----------------------------
-    # 6. Update ONLY provided fields
-    # ----------------------------
-    calendar.course_id = calendar_data.course_id
-    calendar.batch_id = calendar_data.batch_id
-    calendar.select_date = select_date
+    result = await db.execute(
+        select(CourseCalendar).where(
+            CourseCalendar.id.in_(payload.calendar_ids),
+            CourseCalendar.course_id == payload.course_id,
+            CourseCalendar.batch_id == payload.batch_id
+        )
+    )
 
-    # 👉 IMPORTANT PART
-    if calendar_data.start_time is not None:
-        calendar.start_time = calendar_data.start_time
+    calendars = result.scalars().all()
 
-    if calendar_data.end_time is not None:
-        calendar.end_time = calendar_data.end_time
+    if not calendars:
+        raise HTTPException(status_code=404, detail="Schedules not found")
+
+    date_map = {
+        cid: datetime.strptime(date, "%d-%m-%Y").date()
+        for cid, date in zip(payload.calendar_ids, payload.new_dates)
+    }
+
+    for calendar in calendars:
+        calendar.select_date = date_map[calendar.id]
+        # ⛔ start_time & end_time NOT touched
 
     await db.commit()
-    await db.refresh(calendar)
 
-    # ----------------------------
-    # 7. Response
-    # ----------------------------
     return {
         "status": "success",
-        "message": "Schedule updated successfully",
-        "data": {
-            "calendar_id": calendar.id,
-            "course_id": calendar.course_id,
-            "batch_id": calendar.batch_id,
-            "date": calendar.select_date.strftime("%d-%m-%Y"),
-            "day": calendar.select_date.strftime("%A"),
-            "start_time": calendar.start_time.strftime("%I:%M:%S %p").lower(),
-            "end_time": calendar.end_time.strftime("%I:%M:%S %p").lower(),
-        }
+        "message": f"{len(calendars)} schedule(s) updated successfully"
     }
+
 
 
 @router.delete("/delete/{calendar_id}")
@@ -374,16 +424,6 @@ async def delete_course_calendar(
     return {
         "status": "success",
         "message": "Schedule deleted successfully",
-        # "data": {
-        #     "calendar_id": calendar_id,
-        #     "course_id": calendar.course_id,
-        #     "batch_id": calendar.batch_id,
-        #     "date": calendar.select_date.strftime("%d-%m-%Y"),
-        #     "start_time": calendar.start_time.strftime("%I:%M:%S %p").lower()
-        #     if calendar.start_time else None,
-        #     "end_time": calendar.end_time.strftime("%I:%M:%S %p").lower()
-        #     if calendar.end_time else None,
-        # }
     }
 
 
