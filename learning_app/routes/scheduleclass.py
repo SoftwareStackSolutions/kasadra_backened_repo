@@ -350,7 +350,12 @@ class CalendarUpdateRequest(BaseModel):
     course_id: int
     batch_id: int | None = None
     calendar_ids: list[int]
-    new_dates: list[str]  # "DD-MM-YYYY"
+    new_dates: list[str]          # "DD-MM-YYYY"
+
+    start_time: str | None = None # "02:00:00 pm"
+    end_time: str | None = None   # "05:00:00 pm"
+
+
 
 @router.put("/update")
 async def update_course_calendar(
@@ -385,8 +390,15 @@ async def update_course_calendar(
     }
 
     for calendar in calendars:
+        # ✅ Update date always
         calendar.select_date = date_map[calendar.id]
-        # ⛔ start_time & end_time NOT touched
+
+        # ✅ Update time ONLY if sent
+        if payload.start_time:
+            calendar.start_time = payload.start_time
+
+        if payload.end_time:
+            calendar.end_time = payload.end_time
 
     await db.commit()
 
