@@ -66,62 +66,6 @@ async def upload_pdf(
 
 ######### Update PDF file ###########
 
-# @pdf_router.put("/update/pdf/{pdf_id}")
-# async def update_pdf(
-#     pdf_id: int,
-#     course_id: int = Form(...),
-#     lesson_id: int = Form(...),
-#     title: Optional[str] = Form(None),
-#     file: Optional[UploadFile] = File(None),
-#     db: AsyncSession = Depends(get_session),
-# ):
-#     # Verify PDF
-#     pdf_entry = (
-#         await db.execute(select(Pdf).where(Pdf.id == pdf_id))
-#     ).scalar_one_or_none()
-#     if not pdf_entry:
-#         raise HTTPException(status_code=404, detail="PDF not found")
-
-#     # Verify course
-#     course = (
-#         await db.execute(select(Course).where(Course.id == course_id))
-#     ).scalar_one_or_none()
-#     if not course:
-#         raise HTTPException(status_code=404, detail="Course not found")
-
-#     lesson = (
-#         await db.execute(select(Lesson).where(Lesson.id == lesson_id))
-#     ).scalar_one_or_none()
-#     if not lesson:
-#         raise HTTPException(status_code=404, detail="Lesson not found")
-
-#     if lesson.course_id != course_id:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="The given lesson does not belong to the specified course",
-#         )
-
-#     new_file_url = await upload_file_to_gcs(file, "pdfs")
-
-#     # Update DB entry
-#     pdf_entry.course_id = course_id
-#     pdf_entry.lesson_id = lesson_id
-#     pdf_entry.title     = title
-#     pdf_entry.file_url = new_file_url
-
-#     await db.commit()
-#     await db.refresh(pdf_entry)
-
-#     return {
-#         "status": "success",
-#         "message": "PDF updated successfully",
-#         "data": {
-#             "pdf_id": pdf_entry.id,
-#             "title" : title,
-#             "file_url": new_file_url,
-#         },
-#     }
-
 @pdf_router.put("/update/pdf/{pdf_id}")
 async def update_pdf(
     pdf_id: int,
