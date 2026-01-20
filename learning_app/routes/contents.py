@@ -72,7 +72,7 @@ async def update_pdf(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
     title: Optional[str] = Form(None),
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_session),
 ):
     # Verify PDF
