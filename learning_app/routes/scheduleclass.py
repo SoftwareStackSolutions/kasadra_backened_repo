@@ -407,36 +407,45 @@ async def update_course_calendar(
         "message": f"{len(calendars)} schedule(s) updated successfully"
     }
 
+class CalendarDeleteRequest(BaseModel):
+    calendar_ids: list[int]
 
 
-@router.delete("/delete/{calendar_id}")
+@router.delete("/delete")
 async def delete_course_calendar(
-    calendar_id: int,
+    payload: CalendarDeleteRequest,
     db: AsyncSession = Depends(get_session)
 ):
-    # ----------------------------
-    # 1. Fetch Calendar Entry
-    # ----------------------------
-    calendar = await db.get(CourseCalendar, calendar_id)
-    if not calendar:
+    if not payload.calendar_ids:
         raise HTTPException(
-            status_code=404,
-            detail="Course schedule not found"
+            status_code=400,
+            detail="No schedule selected for deletion"
         )
 
-    # ----------------------------
-    # 2. Delete Entry
-    # ----------------------------
-    await db.delete(calendar)
+    result = await db.execute(
+        select(CourseCalendar).where(
+            CourseCalendar.id.in_(payload.calendar_ids)
+        )
+    )
+
+    calendars = result.scalars().all()
+
+    if not calendars:
+        raise HTTPException(
+            status_code=404,
+            detail="No matching schedules found"
+        )
+
+    for calendar in calendars:
+        await db.delete(calendar)
+
     await db.commit()
 
-    # ----------------------------
-    # 3. Response
-    # ----------------------------
     return {
         "status": "success",
-        "message": "Schedule deleted successfully",
+        "message": f"{len(calendars)} schedule(s) deleted successfully"
     }
+
 
 
 ###############################################
