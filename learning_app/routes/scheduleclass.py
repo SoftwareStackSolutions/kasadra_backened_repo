@@ -251,65 +251,89 @@ async def get_course_calendar(
 ## PUT API
 ################################################################
 
-class CalendarUpdateRequest(BaseModel):
-    course_id: int
-    batch_id: int | None = None
-    calendar_ids: list[int]
-    new_dates: list[str]          # "DD-MM-YYYY"
+from pydantic import BaseModel
+from typing import List, Optional
 
-    start_time: str | None = None # "02:00:00 pm"
-    end_time: str | None = None   # "05:00:00 pm"
+class CalendarUpdateItem(BaseModel):
+    calendar_id: int
+    date: Optional[str] = None            # "18-01-2026"
+    start_time: Optional[str] = None      # "03:00:00 pm"
+    end_time: Optional[str] = None        # "06:00:00 pm"
+
+class BulkCalendarUpdate(BaseModel):
+    updates: List[CalendarUpdateItem]
 
 
-@router.put("/update")
-async def update_course_calendar(
-    payload: CalendarUpdateRequest,
+from datetime import datetime, time
+
+def parse_time(value: str) -> time:
+    """
+    Converts '03:00:00 pm' -> time(15, 0)
+    """
+    return datetime.strptime(value.lower(), "%I:%M:%S %p").time()
+
+
+
+@router.put("/update", tags=["calendar"])
+async def bulk_update_course_calendar(
+    payload: BulkCalendarUpdate,
     db: AsyncSession = Depends(get_session)
 ):
-    if not payload.calendar_ids:
-        raise HTTPException(status_code=400, detail="No schedule selected")
+    updated = []
 
-    if len(payload.calendar_ids) != len(payload.new_dates):
+    for item in payload.updates:
+        calendar = await db.get(CourseCalendar, item.calendar_id)
+
+        if not calendar:
+            continue  # silently skip invalid IDs
+
+        # ----------------------------
+        # Update date (if provided)
+        # ----------------------------
+        if item.date:
+            calendar.select_date = datetime.strptime(
+                item.date, "%d-%m-%Y"
+            ).date()
+
+        # ----------------------------
+        # Update time (if provided)
+        # ----------------------------
+        if item.start_time:
+            calendar.start_time = parse_time(item.start_time)
+
+        if item.end_time:
+            calendar.end_time = parse_time(item.end_time)
+
+        updated.append(calendar)
+
+    if not updated:
         raise HTTPException(
             status_code=400,
-            detail="calendar_ids and new_dates count must match"
+            detail="No valid calendar entries updated"
         )
-
-    result = await db.execute(
-        select(CourseCalendar).where(
-            CourseCalendar.id.in_(payload.calendar_ids),
-            CourseCalendar.course_id == payload.course_id,
-            CourseCalendar.batch_id == payload.batch_id
-        )
-    )
-
-    calendars = result.scalars().all()
-
-    if not calendars:
-        raise HTTPException(status_code=404, detail="Schedules not found")
-
-    date_map = {
-        cid: datetime.strptime(date, "%d-%m-%Y").date()
-        for cid, date in zip(payload.calendar_ids, payload.new_dates)
-    }
-
-    for calendar in calendars:
-        #  Update date always
-        calendar.select_date = date_map[calendar.id]
-
-        # Update time ONLY if sent
-        if payload.start_time:
-            calendar.start_time = payload.start_time
-
-        if payload.end_time:
-            calendar.end_time = payload.end_time
 
     await db.commit()
 
+    # ----------------------------
+    # Response (UI friendly)
+    # ----------------------------
     return {
         "status": "success",
-        "message": f"{len(calendars)} schedule(s) updated successfully"
+        "updated_count": len(updated),
+        "data": [
+            {
+                "calendar_id": c.id,
+                "date": c.select_date.strftime("%d-%m-%Y"),
+                "start_time": c.start_time.strftime("%I:%M:%S %p").lower()
+                if c.start_time else None,
+                "end_time": c.end_time.strftime("%I:%M:%S %p").lower()
+                if c.end_time else None
+            }
+            for c in updated
+        ]
     }
+
+
 
 
 ################################################################
