@@ -232,6 +232,7 @@ async def get_course_calendar(
         data.append({
             "calendar_id": calendar.id,
             "course_id": calendar.course_id,
+            "batch_id": calendar.batch_id,
             "batch_name": batch_name,
             "date": calendar.select_date.strftime("%d-%m-%Y"),
             "day": calendar.select_date.strftime("%A"),
