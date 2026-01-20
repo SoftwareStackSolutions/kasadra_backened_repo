@@ -27,7 +27,7 @@ metadata:
   name: python-app-ingress
   namespace: kasadara
   annotations:
-    kubernetes.io/ingress.class: "nginx"
+    kubernetes.io/ingress.class: "gce"
     networking.gke.io/managed-certificates: digidense-cert
     kubernetes.io/ingress.allow-http: "false"
 spec:
