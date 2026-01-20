@@ -55,11 +55,10 @@ class Batch(Base):
 
     id = Column(Integer, primary_key=True)
     batch_name = Column(String, nullable=False)
-    num_students = Column(Integer, nullable=False)
-    
-    timing = Column(String, nullable=True)  # Can be "10:00-12:00" or separate start/end
-    start_date = Column(Date, nullable=False)
-    end_date = Column(Date, nullable=False) 
+    # num_students = Column(Integer, nullable=False)
+    # timing = Column(String, nullable=True)  # Can be "10:00-12:00" or separate start/end
+    # start_date = Column(Date, nullable=False)
+    # end_date = Column(Date, nullable=False) 
     created_at = Column(Date, default=date.today)
 
     course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
@@ -106,7 +105,7 @@ class MeetingLink(Base):
     course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"))  
     batch_id = Column(Integer, ForeignKey("batches.id", ondelete="CASCADE"))
 
-    title = Column(String, nullable=False)
+    # title = Column(String, nullable=False)
     meeting_url = Column(String(255), nullable=False)
 
     # Relationships (optional, for easy access)

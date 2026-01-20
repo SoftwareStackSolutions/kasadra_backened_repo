@@ -80,7 +80,7 @@ async def add_lesson(
 
 ################## Get lessons by lesson_id #################
 
-@router.get("{lesson_id}", tags=["lessons"])
+@router.get("/{lesson_id}", tags=["lessons"])
 async def get_lesson_by_id(
     lesson_id: int,
     db: AsyncSession = Depends(get_session)
@@ -151,6 +151,7 @@ async def get_lesson_by_id(
             "pdfs": [
                 {
                     "id": pdf.id,
+                    "title": pdf.title,
                     "file_url": pdf.file_url
                 }
                 for pdf in pdfs
@@ -158,6 +159,7 @@ async def get_lesson_by_id(
             "weblinks": [
                 {
                     "id": link.id,
+                    "title": link.title,
                     "url": link.link_url
                 }
                 for link in weblinks
@@ -188,40 +190,16 @@ async def get_lesson_by_id(
                     "course_id": n.course_id,
                     "lesson_id": n.lesson_id,
                     "instructor_id": n.instructor_id,
+                    "title": n.title,
                     "notes": n.notes
                 }
                 for n in notes
             ]  # Placeholder for notes if needed in future
         },
     }
+
+
 ###################### Get lessons by course_id #####################
-
-# @router.get("/all/{course_id}", tags=["lessons"])
-# async def get_lessons_by_course_id(
-#     course_id: int,
-#     db: AsyncSession = Depends(get_session)
-# ):
-#     result = await db.execute(
-#         select(Lesson).where(Lesson.course_id == course_id).options(selectinload(Lesson.course))
-#     )
-#     lessons = result.scalars().all()
-
-#     if not lessons:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No lessons found for this course")
-
-#     return {
-#         "status": "success",
-#         "course_id": course_id,
-#         "lessons": [
-#             {
-#                 "lesson_id": l.id,
-#                 "title": l.lesson_title,
-#                 "course_title": l.course.title,
-#                 "description": l.description,
-#                 "created_at": l.created_at,
-#             } for l in lessons
-#         ]
-#     }
 
 @router.get("/all/{course_id}", tags=["lessons"])
 async def get_lessons_by_course_id(

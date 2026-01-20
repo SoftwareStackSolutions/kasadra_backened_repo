@@ -31,7 +31,7 @@ async def create_meeting_link(
         instructor_id=meeting_in.instructor_id,
         course_id=meeting_in.course_id,
         batch_id=meeting_in.batch_id,
-        title = meeting_in.title,
+        # title = meeting_in.title,
         meeting_url=str(meeting_in.meeting_url)
     )
 
@@ -43,7 +43,7 @@ async def create_meeting_link(
         "id": meeting.id,
         "course_title": course.title,
         "batch_name": batch.batch_name,
-        "title" : meeting.title,   
+        # "title" : meeting.title,   
         "meeting_url": meeting.meeting_url
     }
 
@@ -79,7 +79,7 @@ async def get_meeting_links_by_instructor(
             "batch_id": m.batch_id,         # added
             "course_title": course.title if course else None,
             "batch_name": batch.batch_name if batch else None,
-            "title": m.title,
+            # "title": m.title,
             "meeting_url": m.meeting_url
         })
 
@@ -112,7 +112,7 @@ async def update_meeting_link(
     # Update allowed fields
     meeting.course_id = meeting_in.course_id
     meeting.batch_id = meeting_in.batch_id
-    meeting.title = str(meeting_in.title)
+    # meeting.title = str(meeting_in.title)
     meeting.meeting_url = str(meeting_in.meeting_url)
 
     # Commit changes
@@ -130,7 +130,7 @@ async def update_meeting_link(
             "id": meeting.id,
             "course_title": course.title if course else None,
             "batch_name": batch.batch_name if batch else None,
-            "title": meeting.title,
+            # "title": meeting.title,
             "meeting_url": meeting.meeting_url
         }
     }
@@ -260,6 +260,6 @@ async def get_student_meeting(student_id: int, course_id: int, db: AsyncSession 
         "course_title": course.title if course else None,
         "batch_id": batch.id,
         "batch_name": batch.batch_name,
-        "title" : meeting.title,
+        # "title" : meeting.title,
         "meeting_url": meeting.meeting_url
     }

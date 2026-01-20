@@ -52,7 +52,9 @@ def generate_schedule_dates(start_date, end_date, schedule_type, custom_dates):
 
     return dates
 
-# API Endpoint
+################################################################
+## POST API
+################################################################
 
 @router.post("/add")
 async def add_course_calendar(
@@ -134,10 +136,10 @@ async def add_course_calendar(
 
     for date in generated_dates:
         if date in holiday_dates:
-            continue  # ❌ skip holidays
+            continue 
 
         if date in existing_dates:
-            continue  # ❌ skip duplicates
+            continue  
 
         entries.append(
             CourseCalendar(
@@ -179,9 +181,9 @@ async def add_course_calendar(
         ]
     }
 
-######################################################################
-
-# view calaneder by course ID
+################################################################
+## GET API
+################################################################
 
 @router.get("/view/{course_id}")
 async def get_course_calendar(
@@ -230,6 +232,7 @@ async def get_course_calendar(
         data.append({
             "calendar_id": calendar.id,
             "course_id": calendar.course_id,
+            "batch_id": calendar.batch_id,
             "batch_name": batch_name,
             "date": calendar.select_date.strftime("%d-%m-%Y"),
             "day": calendar.select_date.strftime("%A"),
@@ -244,138 +247,144 @@ async def get_course_calendar(
     }
 
 
-@router.put("/update/{calendar_id}")
-async def update_course_calendar(
-    calendar_id: int,
-    calendar_data: CourseCalendarCreate,
-    db: AsyncSession = Depends(get_session),
-):
-    # ----------------------------
-    # 1. Fetch Calendar Entry
-    # ----------------------------
-    calendar = await db.get(CourseCalendar, calendar_id)
-    if not calendar:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Calendar ID {calendar_id} not found"
-        )
+################################################################
+## PUT API
+################################################################
 
-    # ----------------------------
-    # 2. Validate Course
-    # ----------------------------
-    course = await db.scalar(
-        select(Course).where(Course.id == calendar_data.course_id)
-    )
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
+from pydantic import BaseModel
+from typing import List, Optional
 
-    # ----------------------------
-    # 3. Validate Batch (optional)
-    # ----------------------------
-    if calendar_data.batch_id:
-        batch = await db.scalar(
-            select(Batch).where(Batch.id == calendar_data.batch_id)
-        )
-        if not batch:
-            raise HTTPException(status_code=404, detail="Batch not found")
+class CalendarUpdateItem(BaseModel):
+    calendar_id: int
+    date: Optional[str] = None            # "18-01-2026"
+    start_time: Optional[str] = None      # "03:00:00 pm"
+    end_time: Optional[str] = None        # "06:00:00 pm"
 
-    # ----------------------------
-    # 4. Convert Date
-    # ----------------------------
-    select_date = datetime.strptime(
-        calendar_data.start_date, "%d-%m-%Y"
-    ).date()
-
-    # ----------------------------
-    # 5. Check Holiday
-    # ----------------------------
-    holiday = await db.scalar(
-        select(Holiday).where(Holiday.date == select_date)
-    )
-    if holiday:
-        raise HTTPException(
-            status_code=400,
-            detail="Selected date is a holiday"
-        )
-
-    # ----------------------------
-    # 6. Update Fields
-    # ----------------------------
-    calendar.course_id = calendar_data.course_id
-    calendar.batch_id = calendar_data.batch_id
-    calendar.select_date = select_date
-    calendar.start_time = calendar_data.start_time
-    calendar.end_time = calendar_data.end_time
-
-    # ----------------------------
-    # 7. Save
-    # ----------------------------
-    await db.commit()
-    await db.refresh(calendar)
-
-    # ----------------------------
-    # 8. Response
-    # ----------------------------
-    return {
-        "status": "success",
-        "message": "Schedule updated successfully",
-        "data": {
-            "calendar_id": calendar.id,
-            "course_id": calendar.course_id,
-            "batch_id": calendar.batch_id,
-            "date": calendar.select_date.strftime("%d-%m-%Y"),
-            "day": calendar.select_date.strftime("%A"),
-            "start_time": calendar.start_time.strftime("%I:%M:%S %p").lower()
-            if calendar.start_time else None,
-            "end_time": calendar.end_time.strftime("%I:%M:%S %p").lower()
-            if calendar.end_time else None,
-        }
-    }
+class BulkCalendarUpdate(BaseModel):
+    updates: List[CalendarUpdateItem]
 
 
-@router.delete("/delete/{calendar_id}")
-async def delete_course_calendar(
-    calendar_id: int,
+from datetime import datetime, time
+
+def parse_time(value: str) -> time:
+    """
+    Converts '03:00:00 pm' -> time(15, 0)
+    """
+    return datetime.strptime(value.lower(), "%I:%M:%S %p").time()
+
+
+
+@router.put("/update", tags=["calendar"])
+async def bulk_update_course_calendar(
+    payload: BulkCalendarUpdate,
     db: AsyncSession = Depends(get_session)
 ):
-    # ----------------------------
-    # 1. Fetch Calendar Entry
-    # ----------------------------
-    calendar = await db.get(CourseCalendar, calendar_id)
-    if not calendar:
+    updated = []
+
+    for item in payload.updates:
+        calendar = await db.get(CourseCalendar, item.calendar_id)
+
+        if not calendar:
+            continue  # silently skip invalid IDs
+
+        # ----------------------------
+        # Update date (if provided)
+        # ----------------------------
+        if item.date:
+            calendar.select_date = datetime.strptime(
+                item.date, "%d-%m-%Y"
+            ).date()
+
+        # ----------------------------
+        # Update time (if provided)
+        # ----------------------------
+        if item.start_time:
+            calendar.start_time = parse_time(item.start_time)
+
+        if item.end_time:
+            calendar.end_time = parse_time(item.end_time)
+
+        updated.append(calendar)
+
+    if not updated:
         raise HTTPException(
-            status_code=404,
-            detail="Course schedule not found"
+            status_code=400,
+            detail="No valid calendar entries updated"
         )
 
-    # ----------------------------
-    # 2. Delete Entry
-    # ----------------------------
-    await db.delete(calendar)
     await db.commit()
 
     # ----------------------------
-    # 3. Response
+    # Response (UI friendly)
     # ----------------------------
     return {
         "status": "success",
-        "message": "Schedule deleted successfully",
-        # "data": {
-        #     "calendar_id": calendar_id,
-        #     "course_id": calendar.course_id,
-        #     "batch_id": calendar.batch_id,
-        #     "date": calendar.select_date.strftime("%d-%m-%Y"),
-        #     "start_time": calendar.start_time.strftime("%I:%M:%S %p").lower()
-        #     if calendar.start_time else None,
-        #     "end_time": calendar.end_time.strftime("%I:%M:%S %p").lower()
-        #     if calendar.end_time else None,
-        # }
+        "updated_count": len(updated),
+        "data": [
+            {
+                "calendar_id": c.id,
+                "date": c.select_date.strftime("%d-%m-%Y"),
+                "start_time": c.start_time.strftime("%I:%M:%S %p").lower()
+                if c.start_time else None,
+                "end_time": c.end_time.strftime("%I:%M:%S %p").lower()
+                if c.end_time else None
+            }
+            for c in updated
+        ]
     }
+
+
+
+
+################################################################
+## Delete API
+################################################################
+
+class CalendarDeleteRequest(BaseModel):
+    calendar_ids: list[int]
+
+
+@router.delete("/delete")
+async def delete_course_calendar(
+    payload: CalendarDeleteRequest,
+    db: AsyncSession = Depends(get_session)
+):
+    if not payload.calendar_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="No schedule selected for deletion"
+        )
+
+    result = await db.execute(
+        select(CourseCalendar).where(
+            CourseCalendar.id.in_(payload.calendar_ids)
+        )
+    )
+
+    calendars = result.scalars().all()
+
+    if not calendars:
+        raise HTTPException(
+            status_code=404,
+            detail="No matching schedules found"
+        )
+
+    for calendar in calendars:
+        await db.delete(calendar)
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": f"{len(calendars)} schedule(s) deleted successfully"
+    }
+
 
 
 ###############################################
-
 ## Owner AK Get all the dates in student side
+###############################################
+
 
 @router.get("/student/{student_id}/{course_id}")
 async def get_student_calendar(

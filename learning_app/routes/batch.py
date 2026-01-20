@@ -2,38 +2,34 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.user import User, RoleEnum
-from models.course import Lesson
 from models.course import Course
-from routes import course
 from database.db import get_session
 from datetime import datetime
 from models.user import User
 from sqlalchemy.future import select
-from models.course import Course, Lesson
-from schemas.course import CourseCreate, LessonCreate
-from schemas.batch import AssignStudentsRequest
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from models.course import Course
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Form
-from typing import Optional
 from sqlalchemy.orm import selectinload
 from models.course import Batch, BatchStudent
 from schemas.course import BatchCreate
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
 from schemas.batch import AssignStudentsRequest
 from dependencies.auth_dep import get_current_user
-from typing import List
 
 router = APIRouter()
 
-class AssignStudentsRequest(BaseModel):
-    batch_id: int
-    course_id: int  # REQUIRED NOW
-    student_ids: List[int]
+class BatchCreate(BaseModel):
+    course_id: int
+    batch_name: str
+    instructor_id: int
+
+    class Config:
+        from_attributes = True
 
 @router.post("/add", tags=["batches"])
 async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session)):
-    # ✅ Validate course exists
+    # Validate course exists
     course = await db.get(Course, batch.course_id)
     if not course:
         raise HTTPException(
@@ -41,7 +37,7 @@ async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session))
             detail=f"Course with id {batch.course_id} not found"
         )
 
-    # ✅ Validate instructor exists
+    # Validate instructor exists
     instructor = await db.get(User, batch.instructor_id)
     if not instructor:
         raise HTTPException(
@@ -49,29 +45,25 @@ async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session))
             detail=f"Instructor with id {batch.instructor_id} not found"
         )
 
-    # ✅ Check if user has instructor role
+    # Check if user has instructor role
     if instructor.role != RoleEnum.instructor:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"User {batch.instructor_id} is not an instructor"
         )
 
-    # ✅ Check if course belongs to instructor
+    # Check if course belongs to instructor
     if course.instructor_id != batch.instructor_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You don't have access to create this batch."
         )
 
-    # ✅ Create new batch
+    # Create new batch
     new_batch = Batch(
         course_id=batch.course_id,
         batch_name=batch.batch_name,
-        num_students=batch.num_students,
         instructor_id=batch.instructor_id,
-        timing=batch.timing,
-        start_date=batch.start_date,
-        end_date=batch.end_date,    
         created_at=datetime.utcnow()
     )
 
@@ -86,11 +78,7 @@ async def add_batch(batch: BatchCreate, db: AsyncSession = Depends(get_session))
             "batch_id": new_batch.id,
             "course_id": new_batch.course_id,
             "batch_name": new_batch.batch_name,
-            "num_students": new_batch.num_students,
             "instructor_id": new_batch.instructor_id,
-            "timing": new_batch.timing,
-            "start_date": new_batch.start_date,
-            "end_date": new_batch.end_date
         }
     }
 
@@ -99,7 +87,7 @@ async def get_batches_by_course(
     course_id: int,
     db: AsyncSession = Depends(get_session)
 ):
-    # ✅ Validate course exists
+    # Validate course exists
     course = await db.get(Course, course_id)
     if not course:
         raise HTTPException(
@@ -107,7 +95,7 @@ async def get_batches_by_course(
             detail=f"Course with id {course_id} not found"
         )
 
-    # ✅ Query all batches for the given course_id
+    # Query all batches for the given course_id
     result = await db.execute(
         select(Batch)
         .where(Batch.course_id == course_id)
@@ -128,13 +116,10 @@ async def get_batches_by_course(
             {
                 "batch_id": batch.id,
                 "batch_name": batch.batch_name,
-                "num_students": batch.num_students,
                 "course_id": batch.course_id,
                 "course_name": batch.course.title if batch.course else None,
                 "instructor_id": batch.instructor_id,
                 "instructor_name": batch.instructor.name if batch.instructor else None,
-                "timing": batch.timing,
-                "start_date": batch.start_date,
             }
             for batch in batches
         ]
@@ -176,7 +161,7 @@ async def assign_students_to_batch(data: AssignStudentsRequest, db: AsyncSession
                 BatchStudent(
                     student_id=student_id,
                     batch_id=data.batch_id,
-                    course_id=batch.course_id,   # 🔥 required
+                    course_id=batch.course_id,   
                     batch_name=batch.batch_name
                 )
             )
@@ -194,6 +179,7 @@ async def assign_students_to_batch(data: AssignStudentsRequest, db: AsyncSession
 
 
 ######## update assigned students #########
+
 @router.put("/update", tags=["batches"])
 async def update_student_batch(
     data: AssignStudentsRequest,

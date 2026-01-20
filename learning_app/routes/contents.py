@@ -72,7 +72,7 @@ async def update_pdf(
     course_id: int = Form(...),
     lesson_id: int = Form(...),
     title: Optional[str] = Form(None),
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_session),
 ):
     # Verify PDF
@@ -89,6 +89,7 @@ async def update_pdf(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
+    # Verify lesson
     lesson = (
         await db.execute(select(Lesson).where(Lesson.id == lesson_id))
     ).scalar_one_or_none()
@@ -101,13 +102,16 @@ async def update_pdf(
             detail="The given lesson does not belong to the specified course",
         )
 
-    new_file_url = await upload_file_to_gcs(file, "pdfs")
+    # Upload file only if provided
+    if file:
+        new_file_url = await upload_file_to_gcs(file, "pdfs")
+        pdf_entry.file_url = new_file_url
 
-    # Update DB entry
+    # Update other fields
     pdf_entry.course_id = course_id
     pdf_entry.lesson_id = lesson_id
-    pdf_entry.title     = title
-    pdf_entry.file_url = new_file_url
+    if title is not None:
+        pdf_entry.title = title
 
     await db.commit()
     await db.refresh(pdf_entry)
@@ -117,10 +121,11 @@ async def update_pdf(
         "message": "PDF updated successfully",
         "data": {
             "pdf_id": pdf_entry.id,
-            "title" : title,
-            "file_url": new_file_url,
+            "title": pdf_entry.title,
+            "file_url": pdf_entry.file_url,
         },
     }
+
 
 ############# Delete PDF #############
 
