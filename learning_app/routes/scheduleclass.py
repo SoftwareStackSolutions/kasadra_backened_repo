@@ -52,7 +52,9 @@ def generate_schedule_dates(start_date, end_date, schedule_type, custom_dates):
 
     return dates
 
-# API Endpoint
+################################################################
+## POST API
+################################################################
 
 @router.post("/add")
 async def add_course_calendar(
@@ -134,10 +136,10 @@ async def add_course_calendar(
 
     for date in generated_dates:
         if date in holiday_dates:
-            continue  # ❌ skip holidays
+            continue 
 
         if date in existing_dates:
-            continue  # ❌ skip duplicates
+            continue  
 
         entries.append(
             CourseCalendar(
@@ -179,9 +181,9 @@ async def add_course_calendar(
         ]
     }
 
-######################################################################
-
-# view calaneder by course ID
+################################################################
+## GET API
+################################################################
 
 @router.get("/view/{course_id}")
 async def get_course_calendar(
@@ -244,107 +246,9 @@ async def get_course_calendar(
     }
 
 
-#############################
-## Updated Calander
-#############################
-
-# class CourseCalendarUpdate(BaseModel):
-#     course_id: int
-#     batch_id: Optional[int] = None
-#     select_date: str   
-#     start_time: Optional[time] = None
-#     end_time: Optional[time] = None
-
-
-# @router.put("/update/{calendar_id}")
-# async def update_course_calendar(
-#     calendar_id: int,
-#     calendar_data: CourseCalendarUpdate,
-#     db: AsyncSession = Depends(get_session),
-# ):
-#     # ----------------------------
-#     # 1. Fetch Calendar Entry
-#     # ----------------------------
-#     calendar = await db.get(CourseCalendar, calendar_id)
-#     if not calendar:
-#         raise HTTPException(status_code=404, detail="Schedule entry not found")
-
-#     # ----------------------------
-#     # 2. Validate Course
-#     # ----------------------------
-#     course = await db.scalar(
-#         select(Course).where(Course.id == calendar_data.course_id)
-#     )
-#     if not course:
-#         raise HTTPException(status_code=404, detail="Course not found")
-
-#     # ----------------------------
-#     # 3. Validate Batch (optional)
-#     # ----------------------------
-#     if calendar_data.batch_id:
-#         batch = await db.scalar(
-#             select(Batch).where(Batch.id == calendar_data.batch_id)
-#         )
-#         if not batch:
-#             raise HTTPException(status_code=404, detail="Batch not found")
-
-#     # ----------------------------
-#     # 4. Convert Date (ANY DATE ALLOWED)
-#     # ----------------------------
-#     select_date = datetime.strptime(
-#         calendar_data.select_date, "%d-%m-%Y"
-#     ).date()
-
-#     # ----------------------------
-#     # 5. Prevent duplicate date (same course + batch)
-#     # ----------------------------
-#     duplicate = await db.scalar(
-#         select(CourseCalendar).where(
-#             CourseCalendar.course_id == calendar_data.course_id,
-#             CourseCalendar.batch_id == calendar_data.batch_id,
-#             CourseCalendar.select_date == select_date,
-#             CourseCalendar.id != calendar_id
-#         )
-#     )
-#     if duplicate:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="Another class already exists on this date"
-#         )
-
-#     # ----------------------------
-#     # 6. Update ONLY provided fields
-#     # ----------------------------
-#     calendar.course_id = calendar_data.course_id
-#     calendar.batch_id = calendar_data.batch_id
-#     calendar.select_date = select_date
-
-#     # 👉 IMPORTANT PART
-#     if calendar_data.start_time is not None:
-#         calendar.start_time = calendar_data.start_time
-
-#     if calendar_data.end_time is not None:
-#         calendar.end_time = calendar_data.end_time
-
-#     await db.commit()
-#     await db.refresh(calendar)
-
-#     # ----------------------------
-#     # 7. Response
-#     # ----------------------------
-#     return {
-#         "status": "success",
-#         "message": "Schedule updated successfully",
-#         "data": {
-#             "calendar_id": calendar.id,
-#             "course_id": calendar.course_id,
-#             "batch_id": calendar.batch_id,
-#             "date": calendar.select_date.strftime("%d-%m-%Y"),
-#             "day": calendar.select_date.strftime("%A"),
-#             "start_time": calendar.start_time.strftime("%I:%M:%S %p").lower(),
-#             "end_time": calendar.end_time.strftime("%I:%M:%S %p").lower(),
-#         }
-#     }
+################################################################
+## PUT API
+################################################################
 
 class CalendarUpdateRequest(BaseModel):
     course_id: int
@@ -354,7 +258,6 @@ class CalendarUpdateRequest(BaseModel):
 
     start_time: str | None = None # "02:00:00 pm"
     end_time: str | None = None   # "05:00:00 pm"
-
 
 
 @router.put("/update")
@@ -390,10 +293,10 @@ async def update_course_calendar(
     }
 
     for calendar in calendars:
-        # ✅ Update date always
+        #  Update date always
         calendar.select_date = date_map[calendar.id]
 
-        # ✅ Update time ONLY if sent
+        # Update time ONLY if sent
         if payload.start_time:
             calendar.start_time = payload.start_time
 
@@ -406,6 +309,11 @@ async def update_course_calendar(
         "status": "success",
         "message": f"{len(calendars)} schedule(s) updated successfully"
     }
+
+
+################################################################
+## Delete API
+################################################################
 
 class CalendarDeleteRequest(BaseModel):
     calendar_ids: list[int]
@@ -449,8 +357,9 @@ async def delete_course_calendar(
 
 
 ###############################################
-
 ## Owner AK Get all the dates in student side
+###############################################
+
 
 @router.get("/student/{student_id}/{course_id}")
 async def get_student_calendar(
