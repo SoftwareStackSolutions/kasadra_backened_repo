@@ -215,44 +215,122 @@ async def delete_meeting_link(
 from models.user import User,RoleEnum
 from models.course import BatchStudent
 
-@router.get("/student/meeting/{student_id}/{course_id}", tags=["Meeting link"])
-async def get_student_meeting(student_id: int, course_id: int, db: AsyncSession = Depends(get_session)):
+# @router.get("/student/meeting/{student_id}/{course_id}", tags=["Meeting link"])
+# async def get_student_meeting(student_id: int, course_id: int, db: AsyncSession = Depends(get_session)):
 
+#     # 1. Validate student
+#     student = await db.get(User, student_id)
+#     if not student:
+#         raise HTTPException(404, "Student not found")
+#     if student.role != RoleEnum.student:
+#         raise HTTPException(403, "User is not a student")
+
+#     # 2. Find batch assigned to student
+#     mapping = (
+#         await db.execute(
+#             select(BatchStudent).where(BatchStudent.student_id == student_id)
+#         )
+#     ).scalar_one_or_none()
+
+#     if not mapping:
+#         raise HTTPException(404, "Student is not assigned to any batch")
+
+#     batch = await db.get(Batch, mapping.batch_id)
+
+#     # 3. Check batch matches the course
+#     if batch.course_id != course_id:
+#         raise HTTPException(400, "Student is not enrolled in this course")
+
+#     # 4. Fetch meeting for this batch (MAIN PART)
+#     meeting = (
+#         await db.execute(
+#             select(MeetingLink).where(MeetingLink.batch_id == batch.id)
+#         )
+#     ).scalar_one_or_none()
+#     if not meeting:
+#         raise HTTPException(404, "No meeting scheduled for this batch")
+#      # 5. Fetch course for course_name
+#     course = await db.get(Course, course_id)
+
+#     # 5. Final Response (NO CALENDAR!)
+#     return {
+#         "status": "success",
+#         "student_id": student_id,
+#         "course_id": course_id,
+#         "course_title": course.title if course else None,
+#         "batch_id": batch.id,
+#         "batch_name": batch.batch_name,
+#         "meeting_url": meeting.meeting_url
+#     }
+
+
+##########################################################
+### 2026-01-21
+
+from models.user import User, RoleEnum
+from models.course import Batch, BatchStudent
+from models.course import Course
+
+
+@router.get("/student/meeting/{student_id}/{course_id}", tags=["Meeting link"])
+async def get_student_meeting(
+    student_id: int,
+    course_id: int,
+    db: AsyncSession = Depends(get_session)
+):
+    # ------------------------------------------------
     # 1. Validate student
+    # ------------------------------------------------
     student = await db.get(User, student_id)
     if not student:
-        raise HTTPException(404, "Student not found")
+        raise HTTPException(status_code=404, detail="Student not found")
+
     if student.role != RoleEnum.student:
-        raise HTTPException(403, "User is not a student")
+        raise HTTPException(status_code=403, detail="User is not a student")
 
-    # 2. Find batch assigned to student
-    mapping = (
-        await db.execute(
-            select(BatchStudent).where(BatchStudent.student_id == student_id)
+    # ------------------------------------------------
+    # 2. Find batch for this student + course
+    # ------------------------------------------------
+    batch_result = await db.execute(
+        select(Batch)
+        .join(BatchStudent, BatchStudent.batch_id == Batch.id)
+        .where(
+            BatchStudent.student_id == student_id,
+            Batch.course_id == course_id
         )
-    ).scalar_one_or_none()
+    )
+    batch = batch_result.scalar_one_or_none()
 
-    if not mapping:
-        raise HTTPException(404, "Student is not assigned to any batch")
-
-    batch = await db.get(Batch, mapping.batch_id)
-
-    # 3. Check batch matches the course
-    if batch.course_id != course_id:
-        raise HTTPException(400, "Student is not enrolled in this course")
-
-    # 4. Fetch meeting for this batch (MAIN PART)
-    meeting = (
-        await db.execute(
-            select(MeetingLink).where(MeetingLink.batch_id == batch.id)
+    if not batch:
+        raise HTTPException(
+            status_code=404,
+            detail="Student is not assigned to any batch for this course"
         )
-    ).scalar_one_or_none()
+
+    # ------------------------------------------------
+    # 3. Fetch latest meeting link for this batch
+    # ------------------------------------------------
+    meeting_result = await db.execute(
+        select(MeetingLink)
+        .where(MeetingLink.batch_id == batch.id)
+        .order_by(MeetingLink.id.desc())  
+    )
+    meeting = meeting_result.scalars().first()
+
     if not meeting:
-        raise HTTPException(404, "No meeting scheduled for this batch")
-     # 5. Fetch course for course_name
+        raise HTTPException(
+            status_code=404,
+            detail="No meeting scheduled for this batch"
+        )
+
+    # ------------------------------------------------
+    # 4. Fetch course info
+    # ------------------------------------------------
     course = await db.get(Course, course_id)
 
-    # 5. Final Response (NO CALENDAR!)
+    # ------------------------------------------------
+    # 5. Response
+    # ------------------------------------------------
     return {
         "status": "success",
         "student_id": student_id,
@@ -260,6 +338,5 @@ async def get_student_meeting(student_id: int, course_id: int, db: AsyncSession 
         "course_title": course.title if course else None,
         "batch_id": batch.id,
         "batch_name": batch.batch_name,
-        # "title" : meeting.title,
         "meeting_url": meeting.meeting_url
     }
