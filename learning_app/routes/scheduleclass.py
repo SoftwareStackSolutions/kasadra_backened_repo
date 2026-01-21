@@ -420,8 +420,8 @@ async def get_student_calendar(
     # ----------------------------
     # 3. Validate Course
     # ----------------------------
-    if batch.course_id != course_id:
-        raise HTTPException(400, "Student is not enrolled in this course")
+    # if batch.course_id != course_id:
+    #     raise HTTPException(400, "Student is not enrolled in this course")
 
     # ----------------------------
     # 4. Fetch Calendar Entries
