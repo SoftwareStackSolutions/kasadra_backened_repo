@@ -386,6 +386,86 @@ async def delete_course_calendar(
 ###############################################
 
 
+# @router.get("/student/{student_id}/{course_id}")
+# async def get_student_calendar(
+#     student_id: int,
+#     course_id: int,
+#     db: AsyncSession = Depends(get_session)
+# ):
+#     # ----------------------------
+#     # 1. Validate Student
+#     # ----------------------------
+#     student = await db.get(User, student_id)
+#     if not student:
+#         raise HTTPException(404, "Student not found")
+
+#     if student.role != RoleEnum.student:
+#         raise HTTPException(403, "User is not a student")
+
+#     # ----------------------------
+#     # 2. Find Student Batch
+#     # ----------------------------
+#     result = await db.execute(
+#         select(BatchStudent).where(BatchStudent.student_id == student_id)
+#     )
+#     mapping = result.scalar_one_or_none()
+
+#     if not mapping:
+#         raise HTTPException(404, "Student is not assigned to any batch")
+
+#     batch = await db.get(Batch, mapping.batch_id)
+#     if not batch:
+#         raise HTTPException(404, "Batch not found")
+
+#     # ----------------------------
+#     # 3. Validate Course
+#     # ----------------------------
+#     # if batch.course_id != course_id:
+#     #     raise HTTPException(400, "Student is not enrolled in this course")
+
+#     # ----------------------------
+#     # 4. Fetch Calendar Entries
+#     # ----------------------------
+#     calendars = (await db.execute(
+#         select(CourseCalendar)
+#         .where(
+#             CourseCalendar.course_id == course_id,
+#             CourseCalendar.batch_id == batch.id
+#         )
+#         .order_by(CourseCalendar.select_date.asc())
+#     )).scalars().all()
+
+#     if not calendars:
+#         return {
+#             "status": "success",
+#             "message": "No scheduled classes",
+#             "created_count": 0,
+#             "dates": []
+#         }
+
+#     # ----------------------------
+#     # 5. Build SAME Response as POST
+#     # ----------------------------
+#     return {
+#         "status": "success",
+#         "student_id": student_id,
+#         "course_id": course_id,
+#         "batch_id": batch.id,
+#         "batch_name": batch.batch_name,
+#         "created_count": len(calendars),
+#         "dates": [
+#             {
+#                 "date": c.select_date.strftime("%d-%m-%Y"),
+#                 "start_time": c.start_time.strftime("%I:%M:%S %p").lower()
+#                 if c.start_time else None,
+#                 "end_time": c.end_time.strftime("%I:%M:%S %p").lower()
+#                 if c.end_time else None,
+#             }
+#             for c in calendars
+#         ]
+#     }
+
+
 @router.get("/student/{student_id}/{course_id}")
 async def get_student_calendar(
     student_id: int,
@@ -397,43 +477,43 @@ async def get_student_calendar(
     # ----------------------------
     student = await db.get(User, student_id)
     if not student:
-        raise HTTPException(404, "Student not found")
+        raise HTTPException(status_code=404, detail="Student not found")
 
     if student.role != RoleEnum.student:
-        raise HTTPException(403, "User is not a student")
+        raise HTTPException(status_code=403, detail="User is not a student")
 
     # ----------------------------
-    # 2. Find Student Batch
+    # 2. Find Batch for this Student + Course
     # ----------------------------
-    result = await db.execute(
-        select(BatchStudent).where(BatchStudent.student_id == student_id)
-    )
-    mapping = result.scalar_one_or_none()
-
-    if not mapping:
-        raise HTTPException(404, "Student is not assigned to any batch")
-
-    batch = await db.get(Batch, mapping.batch_id)
-    if not batch:
-        raise HTTPException(404, "Batch not found")
-
-    # ----------------------------
-    # 3. Validate Course
-    # ----------------------------
-    # if batch.course_id != course_id:
-    #     raise HTTPException(400, "Student is not enrolled in this course")
-
-    # ----------------------------
-    # 4. Fetch Calendar Entries
-    # ----------------------------
-    calendars = (await db.execute(
-        select(CourseCalendar)
+    batch_result = await db.execute(
+        select(Batch)
+        .join(BatchStudent, BatchStudent.batch_id == Batch.id)
         .where(
-            CourseCalendar.course_id == course_id,
-            CourseCalendar.batch_id == batch.id
+            BatchStudent.student_id == student_id,
+            Batch.course_id == course_id
         )
-        .order_by(CourseCalendar.select_date.asc())
-    )).scalars().all()
+    )
+    batch = batch_result.scalar_one_or_none()
+
+    if not batch:
+        raise HTTPException(
+            status_code=404,
+            detail="Student is not assigned to this course"
+        )
+
+    # ----------------------------
+    # 3. Fetch Calendar Entries
+    # ----------------------------
+    calendars = (
+        await db.execute(
+            select(CourseCalendar)
+            .where(
+                CourseCalendar.course_id == course_id,
+                CourseCalendar.batch_id == batch.id
+            )
+            .order_by(CourseCalendar.select_date.asc())
+        )
+    ).scalars().all()
 
     if not calendars:
         return {
@@ -444,7 +524,7 @@ async def get_student_calendar(
         }
 
     # ----------------------------
-    # 5. Build SAME Response as POST
+    # 4. SAME Response as POST
     # ----------------------------
     return {
         "status": "success",
