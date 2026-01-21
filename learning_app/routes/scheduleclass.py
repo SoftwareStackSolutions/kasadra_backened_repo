@@ -285,7 +285,7 @@ async def bulk_update_course_calendar(
         calendar = await db.get(CourseCalendar, item.calendar_id)
 
         if not calendar:
-            continue  # silently skip invalid IDs
+            continue  
 
         # ----------------------------
         # Update date (if provided)
@@ -498,7 +498,7 @@ async def get_student_calendar(
     if not batch:
         raise HTTPException(
             status_code=404,
-            detail="Student is not assigned to this course"
+            detail= "You are not assigned to this batch."
         )
 
     # ----------------------------

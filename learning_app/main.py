@@ -76,7 +76,7 @@ origins = [
     # "http://www.softwarestack.xyz",
     # "http://www.softwarestack.xyz/api/docs",
     "http://learn.digidense.com/api/",
-    "http://learn.digidense.com/api/docs",
+    # "http://learn.digidense.com/api/docs",
     "http://learn.digidense.com",
 
 ]
