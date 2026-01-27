@@ -285,6 +285,7 @@ jobs:
           kubectl apply -f config.yaml -n kasadara
           kubectl apply -f deployment.yaml -n kasadara
           kubectl apply -f service.yaml -n kasadara
+          kubectl apply -f ingress.yaml -n kasadara
           
           sleep 59
           kubectl rollout restart deployment python-application -n kasadara
