@@ -8,7 +8,6 @@ from schemas.course import MeetingCreate, MeetingResponse
 
 router = APIRouter()
 
-
 ################## Create Meeting Link #################
 
 @router.post("/meeting-links", tags=["Meeting link"])
