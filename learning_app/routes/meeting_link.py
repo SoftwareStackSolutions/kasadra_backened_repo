@@ -10,7 +10,6 @@ router = APIRouter()
 
 ################## Create Meeting Link #################
 
-
 @router.post("/meeting-links", tags=["Meeting link"])
 async def create_meeting_link(
     meeting_in: MeetingCreate,
