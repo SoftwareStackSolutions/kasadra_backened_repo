@@ -8,7 +8,8 @@ from utils.tenent.otp import generate_otp, hash_otp
 from utils.tenent.email import send_otp_email
 from utils.tenent.jwt import create_access_token
 from sqlalchemy import delete
-
+from datetime import datetime, timedelta
+from sqlalchemy import delete, select
 from database.dbconfig import OTP_EXPIRY_MINUTES, MAX_RESEND_ATTEMPTS
 
 router = APIRouter(tags=["Gmail-OTP"])
@@ -19,7 +20,6 @@ router = APIRouter(tags=["Gmail-OTP"])
 
 from datetime import datetime, timedelta
 from sqlalchemy import delete, select
-from fastapi import HTTPException
 
 @router.post("/send-otp")
 async def send_otp(
@@ -144,7 +144,7 @@ async def resend_otp(
 # ✅ VERIFY OTP (with expiry check)
 #######################################################
 
-from sqlalchemy import delete
+# from sqlalchemy import delete
 
 @router.post("/verify-otp")
 async def verify_otp(data: VerifyOTPRequest, db: AsyncSession = Depends(get_session)):
