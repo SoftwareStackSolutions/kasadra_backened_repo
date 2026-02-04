@@ -35,7 +35,10 @@ async def send_otp(
     if existing_otp:
         raise HTTPException(
             status_code=200,
-            detail="Email already exists , please enter new gmail"
+            detail={
+                "message": "Email already exists , please enter new gmail",
+                "error_code": "EMAIL_ALREADY_EXISTS"
+            }
         )
 
     # 2️⃣ DELETE EXPIRED OTPS
@@ -53,7 +56,10 @@ async def send_otp(
     if existing_otp:
         raise HTTPException(
             status_code=400,
-            detail="OTP already sent. Please verify or wait for expiry."
+            detail={
+                "message":"OTP already sent. Please verify or wait for expiry.",
+                "error_code": "OTP_ALREADY_USED"
+            }
         )
 
     # 4️⃣ GENERATE & SEND OTP
@@ -91,21 +97,30 @@ async def resend_otp(
     if not record:
         raise HTTPException(
             status_code=404,
-            detail="OTP not requested yet. Please request OTP first."
+            detail={
+                "message": "OTP not requested yet. Please request OTP first.",
+                "error_code":"OTP_INVALID"
+            }
         )
 
     # 2️⃣ OTP STILL VALID
     if record.expires_at > datetime.utcnow():
         raise HTTPException(
             status_code=400,
-            detail="OTP already sent and still valid. Please wait before resending."
+            detail={
+                 "message":"OTP already sent and still valid. Please wait before resending.",
+                 "error_code":"OTP_RESEND_TOO_SOON"
+            }
         )
 
     # 3️⃣ RESEND LIMIT
     if record.resend_count >= MAX_RESEND_ATTEMPTS:
         raise HTTPException(
             status_code=429,
-            detail="Too many resend attempts. Please try again later."
+            detail={
+                "message":"Too many resend attempts. Please try again later.",
+                "error_code":"OTP_TO_MANY_RESEND_ATTEMPTS"
+            }
         )
 
     # 4️⃣ RESEND OTP
