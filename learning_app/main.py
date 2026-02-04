@@ -152,8 +152,8 @@ if __name__ == "__main__":
 
 ############################################# T   E   N   E   N   T  ########################################################
 
-from learning_app.routes.tenent import otp
+from routes.tenent import gmail_otp
 
 app.include_router(lesson_activate.router,prefix="/api/activate")
 
-app.include_router(otp.router, prefix="/api")
+app.include_router(gmail_otp.router, prefix="/api")
