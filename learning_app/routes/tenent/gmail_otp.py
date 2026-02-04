@@ -165,7 +165,7 @@ async def verify_otp(data: VerifyOTPRequest, db: AsyncSession = Depends(get_sess
         raise HTTPException(status_code=400,
          detail={
             "message":"Invalid OTP",
-            "error_code": "Invalid OTP"
+            "error_code": "OTP_INVALID"
          }
     )
 
