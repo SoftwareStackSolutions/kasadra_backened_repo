@@ -144,38 +144,36 @@ async def resend_otp(
 # ✅ VERIFY OTP (with expiry check)
 #######################################################
 
-# from sqlalchemy import delete
-
 @router.post("/verify-otp")
 async def verify_otp(data: VerifyOTPRequest, db: AsyncSession = Depends(get_session)):
-
+ 
     result = await db.execute(
         select(EmailOTP).where(EmailOTP.email == data.email)
     )
     record = result.scalar_one_or_none()
-
+ 
     if not record:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail={
                 "message":"OTP not found",
                 "error_code":"OTP not found"
             }
         )
-
+ 
     if record.expires_at < datetime.utcnow():
         await db.execute(
             delete(EmailOTP).where(EmailOTP.email == data.email)
         )
         await db.commit()
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail={
-                "message": "OTP expired",   
+                "message": "OTP expired",  
                 "error_code": "OTP_EXPIRED"
             }
         )
-
+ 
     if record.otp_hash != hash_otp(data.otp):
         raise HTTPException(status_code=400,
          detail={
@@ -183,11 +181,12 @@ async def verify_otp(data: VerifyOTPRequest, db: AsyncSession = Depends(get_sess
             "error_code": "OTP_INVALID"
          }
     )
-
+ 
     # success → delete OTP
     await db.execute(
         delete(EmailOTP).where(EmailOTP.email == data.email)
     )
     await db.commit()
-
+ 
     return {"message": "Email verified successfully"}
+ 
