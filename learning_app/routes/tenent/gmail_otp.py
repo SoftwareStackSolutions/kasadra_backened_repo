@@ -140,17 +140,34 @@ async def verify_otp(data: VerifyOTPRequest, db: AsyncSession = Depends(get_sess
     record = result.scalar_one_or_none()
 
     if not record:
-        raise HTTPException(status_code=400, detail="OTP not found")
+        raise HTTPException(
+            status_code=400, 
+            detail={
+                "message":"OTP not found",
+                "error_code":"OTP not found"
+            }
+        )
 
     if record.expires_at < datetime.utcnow():
         await db.execute(
             delete(EmailOTP).where(EmailOTP.email == data.email)
         )
         await db.commit()
-        raise HTTPException(status_code=400, detail="OTP expired")
+        raise HTTPException(
+            status_code=400, 
+            detail={
+                "message": "OTP expired",   
+                "error_code": "OTP_EXPIRED"
+            }
+        )
 
     if record.otp_hash != hash_otp(data.otp):
-        raise HTTPException(status_code=400, detail="Invalid OTP")
+        raise HTTPException(status_code=400,
+         detail={
+            "message":"Invalid OTP",
+            "error_code": "Invalid OTP"
+         }
+    )
 
     # success → delete OTP
     await db.execute(
