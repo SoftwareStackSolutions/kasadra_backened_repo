@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Numeric, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Numeric
+from datetime import datetime
 from sqlalchemy.sql import func
 
 from models.base import Base
@@ -20,3 +21,19 @@ class SubscriptionPlan(Base):
         DateTime(timezone=True),
         server_default=func.now()
     )
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id = Column(Integer, primary_key=True)
+    org_name = Column(String, nullable=False)
+    domain_name = Column(String, nullable=False, unique=True)
+    site_url = Column(String, nullable=False, unique=True)
+
+    subscription_id = Column(
+        Integer,
+        ForeignKey("subscription_plans.id"),
+        nullable=False
+    )
+
+    password_hash = Column(String, nullable=False)

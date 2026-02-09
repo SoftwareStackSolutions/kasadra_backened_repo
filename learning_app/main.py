@@ -20,6 +20,7 @@ sys.path.append(os.path.join(root_dir, "data"))
 from database.dbconfig import engine
 
 from routes.tenent import subscription_plan
+from routes.tenent import org_signup
 from routes import student
 from routes import instructor
 from routes import course
@@ -52,6 +53,7 @@ app = FastAPI(
 
 # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(subscription_plan.router, prefix="/api/tenant")  # Subscription plan routes  # Tenant-specific routes
+app.include_router(org_signup.router, prefix="/api/tenant")  # Organization signup routes
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
 app.include_router(course.router, prefix="/api/courses")
