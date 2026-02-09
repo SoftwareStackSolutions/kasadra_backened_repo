@@ -19,7 +19,7 @@ sys.path.append(os.path.join(root_dir, "data"))
 
 from database.dbconfig import engine
 
-from routes.tenent import subcription
+from routes.tenent import subscription_plan
 from routes import student
 from routes import instructor
 from routes import course
@@ -37,6 +37,8 @@ from routes.ai import router as ai_router
 from routes.holidaydir import holiday
 
 
+
+
 app = FastAPI(
     title="Learning_App",
     description="agent backend",
@@ -47,8 +49,9 @@ app = FastAPI(
     # openapi_url="/api/openapi.json" # OpenAPI schema
 )
 
+
 # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-app.include_router(subcription.router, prefix="/api/tenent")  # Tenant-specific routes
+app.include_router(subscription_plan.router, prefix="/api/tenant")  # Subscription plan routes  # Tenant-specific routes
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
 app.include_router(course.router, prefix="/api/courses")
@@ -91,6 +94,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from database.db import init_db
+from seed.subscription_seed import seed_subscription_plans
+
+@app.on_event("startup")
+async def startup():
+    await init_db()
+    await seed_subscription_plans()
 
 @app.on_event("startup")
 async def on_startup():
