@@ -125,9 +125,18 @@ async def universal_exception_handler(request, exc):
 from database.db import init_db  # NOT from models.base
 
 ## health check
-@app.get("/api")
-async def health_check():
-    return {"status": "ok"}
+# @app.get("/api")
+# async def health_check():
+#     return {"status": "ok"}
+
+# @app.get("/health")
+# def health_check():
+#     return {"status": "healthy"}
+
+
+@app.get("/")
+def health_check():
+    return {"message": "Backend running"}
 
 
 ## DB setup
