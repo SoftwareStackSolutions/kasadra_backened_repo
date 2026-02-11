@@ -200,102 +200,92 @@ jobs:
   #       env:
   #        GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-  Container-Build-and-Publish-into-Registry:
-    name: Container Build and Publish into Registry
-    needs: build-and-publish-artifact
-    runs-on: ubuntu-latest
-
-    steps:
-
-      - name: Checkout main repository (kasadra_backened_repo)
-        uses: actions/checkout@v3
-        with:
-          ref: main
-
-      - name: Checkout artifact repository
-        uses: actions/checkout@v3
-        with:
-          repository: SoftwareStackSolutions/Artifact_Storage
-          token: ${{ secrets.MY_GITHUB_TOKEN }}
-          path: Artifact_Storage
-
-      
-      - name: Prepare artifact for Docker build
-        run: |
-          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
-          
-   
-      - name: Log in to GitHub Container Registry (GHCR)
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.MY_GITHUB_TOKEN }}
-
-      
-      - name: Build Docker image
-        run: |
-          docker build -t python-application:latest -f Dockerfile . 
-            
-      - name: Tag image for GHCR
-        run: |
-          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker tag python-application:latest ghcr.io/${REPO_OWNER_LC}/python-application:latest
-      
-      - name: Push image to GHCR
-        run: |
-          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
-          docker push ghcr.io/${REPO_OWNER_LC}/python-application:latest      
-
   Deploy-Application-to-GKE:
     name: Deploy Application to GKE
-    needs: Container-Build-and-Publish-into-Registry
+    needs: build-and-publish-artifact
     runs-on: ubuntu-latest
+  
+    permissions:
+      contents: read
+      id-token: write   # REQUIRED for WIF
+  
+    env:
+      PROJECT_ID: project-aa11a70a-3781-4397-8ac
+      CLUSTER_NAME: digi-cluster
+      CLUSTER_ZONE: us-central1-c
+      USE_GKE_GCLOUD_AUTH_PLUGIN: "true"
+  
     steps:
+      # ---------------------------
+      # Checkout Repository
+      # ---------------------------
       - name: Checkout main repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: main
-
   
-      - name: Authenticate to GCP
+      # ---------------------------
+      # Authenticate to Google Cloud (WIF)
+      # ---------------------------
+      - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          workload_identity_provider: projects/163657280531/locations/global/workloadIdentityPools/kasadra-wif-pool/providers/github
+          service_account: kasadra-service-account@project-aa11a70a-3781-4397-8ac.iam.gserviceaccount.com
   
-      - name: Set up kubectl
-        uses: google-github-actions/get-gke-credentials@v2
+      # ---------------------------
+      # Setup gcloud + GKE Auth Plugin
+      # ---------------------------
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
         with:
-          cluster_name: ${{ secrets.GKE_CLUSTER }}
-          location: ${{ secrets.GKE_ZONE }}
-          project_id: ${{ secrets.GCP_PROJECT }}
+          project_id: ${{ env.PROJECT_ID }}
+          install_components: gke-gcloud-auth-plugin
   
+      # ---------------------------
+      # Get GKE Credentials
+      # ---------------------------
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials "$CLUSTER_NAME" \
+            --zone "$CLUSTER_ZONE" \
+            --project "$PROJECT_ID"
+  
+      # ---------------------------
+      # Create GHCR imagePullSecret
+      # ---------------------------
       - name: Create GHCR imagePullSecret in GKE
         run: |
           kubectl delete secret ghcr-secret --ignore-not-found --namespace=kasadara
+  
           kubectl create secret docker-registry ghcr-secret \
             --docker-server=ghcr.io \
             --docker-username=${{ github.actor }} \
             --docker-password=${{ secrets.MY_GITHUB_TOKEN }} \
             --docker-email=no@email.com \
             --namespace=kasadara
-
+  
+      # ---------------------------
+      # Deploy Application
+      # ---------------------------
       - name: Deploy to GKE
         run: |
           kubectl apply -f config.yaml -n kasadara
           kubectl apply -f deployment.yaml -n kasadara
           kubectl apply -f service.yaml -n kasadara
-          
-          
+  
           sleep 59
           kubectl rollout restart deployment python-application -n kasadara
+  
           kubectl get pods -n kasadara -o wide
           kubectl get svc -n kasadara -o wide
           kubectl get ingress -n kasadara -o wide
-      
+  
+      # ---------------------------
+      # Patch imagePullSecret
+      # ---------------------------
       - name: Patch deployment to use imagePullSecret
         run: |
           kubectl patch deployment python-application \
             -n kasadara \
             --patch '{"spec": {"template": {"spec": {"imagePullSecrets": [{"name": "ghcr-secret"}]}}}}'
-
