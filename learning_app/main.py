@@ -134,9 +134,13 @@ from database.db import init_db  # NOT from models.base
 #     return {"status": "healthy"}
 
 
+# @app.get("/")
+# def health_check():
+#     return {"message": "Backend running"}
+
 @app.get("/")
 def health_check():
-    return {"message": "Backend running"}
+    return {"status": "ok"}
 
 
 ## DB setup
