@@ -1,14 +1,14 @@
-import os
-import sys
+import os, sys
+# import sys
 import uvicorn
 from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from typing import Optional
+# from typing import Optional
 from database.db import Base
-from fastapi.staticfiles import StaticFiles
+# from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
-from json import JSONDecodeError
+# from json import JSONDecodeError
 
 root_dir = os.path.dirname(__file__)
 sys.path.append(root_dir)
@@ -19,6 +19,8 @@ sys.path.append(os.path.join(root_dir, "data"))
 
 from database.dbconfig import engine
 
+from routes.tenent import subscription_plan
+from routes.tenent import org_signup
 from routes import student
 from routes import instructor
 from routes import course
@@ -31,9 +33,11 @@ from routes import purchased_course
 from routes import meeting_link
 from routes import contents, lesson_activate
 from sqlalchemy.ext.asyncio import create_async_engine
-import asyncpg
+# import asyncpg
 from routes.ai import router as ai_router
 from routes.holidaydir import holiday
+
+
 
 
 app = FastAPI(
@@ -46,7 +50,10 @@ app = FastAPI(
     # openapi_url="/api/openapi.json" # OpenAPI schema
 )
 
+
 # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.include_router(subscription_plan.router, prefix="/api/tenant")  # Subscription plan routes  # Tenant-specific routes
+app.include_router(org_signup.router, prefix="/api/tenant")  # Organization signup routes
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
 app.include_router(course.router, prefix="/api/courses")
@@ -90,6 +97,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from database.db import init_db
+from seed.subscription_seed import seed_subscription_plans
+
+@app.on_event("startup")
+async def startup():
+    await init_db()
+    await seed_subscription_plans()
 
 @app.on_event("startup")
 async def on_startup():
@@ -149,3 +163,12 @@ async def custom_validation_handler(request: Request, exc: RequestValidationErro
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
 
+
+
+############################################# T   E   N   E   N   T  ########################################################
+
+from routes.tenent import gmail_otp
+
+app.include_router(lesson_activate.router,prefix="/api/activate")
+
+app.include_router(gmail_otp.router, prefix="/api")

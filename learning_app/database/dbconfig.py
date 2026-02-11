@@ -31,3 +31,7 @@ SQLALCHEMY_DATABASE_URL = (
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL)
 #####################################################################
 
+
+OTP_EXPIRY_MINUTES = 5
+MAX_RESEND_ATTEMPTS = 15
+

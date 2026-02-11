@@ -1,0 +1,28 @@
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from datetime import datetime
+from sqlalchemy.sql import func
+from models.base import Base
+
+class EmailOTP(Base):
+    __tablename__ = "email_otp"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String, index=True, unique=True, nullable=False)
+    otp_hash = Column(String, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    resend_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    # created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# from sqlalchemy import Column, String, DateTime, Integer
+# from datetime import datetime
+
+# class EmailOTP(Base):
+#     __tablename__ = "email_otp"
+
+#     email = Column(String, unique=True, primary_key=True, index=True)
+#     otp_hash = Column(String, nullable=False)
+#     expires_at = Column(DateTime, nullable=False)
+#     resend_count = Column(Integer, default=0)
+#     created_at = Column(DateTime, default=datetime.utcnow)
