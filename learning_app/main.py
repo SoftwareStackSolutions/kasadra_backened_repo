@@ -17,6 +17,7 @@ sys.path.append(os.path.join(root_dir, "models"))
 sys.path.append(os.path.join(root_dir, "routes"))
 sys.path.append(os.path.join(root_dir, "data"))
 
+
 from database.dbconfig import engine
 
 from routes.tenent import subscription_plan
@@ -45,9 +46,9 @@ app = FastAPI(
     description="agent backend",
     version="1.0.0",
     openapi_version="3.0.3",
-    # docs_url="/api/docs",           # Swagger UI
-    # redoc_url="/api/redoc",         # ReDoc
-    # openapi_url="/api/openapi.json" # OpenAPI schema
+    docs_url="/api/docs",           # Swagger UI
+    redoc_url="/api/redoc",         # ReDoc
+    openapi_url="/api/openapi.json" # OpenAPI schema
 )
 
 
@@ -71,12 +72,12 @@ app.include_router(lesson_activate.router,prefix="/api/activate")
 app.include_router(ai_router)
 app.include_router(holiday.router,prefix="/api")
 origins = [
-    "http://localhost:5173",   # React dev server
-    "http://127.0.0.1:5173",   
-    "http://127.0.0.1:8000",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "http://127.0.0.1:8000", 
+    "https://localhost:5173",   # React dev server
+    "https://127.0.0.1:5173",   
+    "https://127.0.0.1:8000",
+    "https://localhost:5174",
+    "https://127.0.0.1:5174",
+    "https://127.0.0.1:8000", 
     "https://127.0.0.1:8000/docs",
     "https://127.0.0.1:8000/api/docs",
     # "http://www.softwarestack.xyz/api/",
@@ -138,8 +139,13 @@ from database.db import init_db  # NOT from models.base
 #     return {"message": "Backend running"}
 
 @app.get("/")
-def health_check():
+async def root():
     return {"status": "ok"}
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
 
 
 ## DB setup

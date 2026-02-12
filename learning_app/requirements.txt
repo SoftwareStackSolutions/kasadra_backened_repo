@@ -1,6 +1,5 @@
 ## owner = Akhilesh ML
 
-
 # Core Framework & Server
 fastapi[standard]
 uvicorn
