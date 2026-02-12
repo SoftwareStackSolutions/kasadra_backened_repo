@@ -46,9 +46,9 @@ app = FastAPI(
     description="agent backend",
     version="1.0.0",
     openapi_version="3.0.3",
-    # docs_url="/api/docs",           # Swagger UI
-    # redoc_url="/api/redoc",         # ReDoc
-    # openapi_url="/api/openapi.json" # OpenAPI schema
+    docs_url="/api/docs",           # Swagger UI
+    redoc_url="/api/redoc",         # ReDoc
+    openapi_url="/api/openapi.json" # OpenAPI schema
 )
 
 
