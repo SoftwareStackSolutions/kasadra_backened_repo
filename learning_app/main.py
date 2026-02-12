@@ -71,12 +71,12 @@ app.include_router(lesson_activate.router,prefix="/api/activate")
 app.include_router(ai_router)
 app.include_router(holiday.router,prefix="/api")
 origins = [
-    "http://localhost:5173",   # React dev server
-    "http://127.0.0.1:5173",   
-    "http://127.0.0.1:8000",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "http://127.0.0.1:8000", 
+    "https://localhost:5173",   # React dev server
+    "https://127.0.0.1:5173",   
+    "https://127.0.0.1:8000",
+    "https://localhost:5174",
+    "https://127.0.0.1:5174",
+    "https://127.0.0.1:8000", 
     "https://127.0.0.1:8000/docs",
     "https://127.0.0.1:8000/api/docs",
     # "http://www.softwarestack.xyz/api/",
@@ -138,8 +138,8 @@ from database.db import init_db  # NOT from models.base
 # def health_check():
 #     return {"message": "Backend running"}
 
-@app.get("/")
-def health_check():
+@app.get("/api/health")
+async def health():
     return {"status": "ok"}
 
 
