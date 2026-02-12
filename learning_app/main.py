@@ -17,6 +17,7 @@ sys.path.append(os.path.join(root_dir, "models"))
 sys.path.append(os.path.join(root_dir, "routes"))
 sys.path.append(os.path.join(root_dir, "data"))
 
+
 from database.dbconfig import engine
 
 from routes.tenent import subscription_plan
