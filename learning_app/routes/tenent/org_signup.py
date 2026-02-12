@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 import os
+from core.security import create_access_token
+
 
 from database.db import get_session
 from models.tenent.subscription_plan import Organization
@@ -54,7 +56,6 @@ async def tenant_signup(
     if result.scalars().first():
         raise HTTPException(status_code=409, detail="Domain already exists")
 
-    # Build tenant URL
     site_url = f"https://{domain}.{BASE_DOMAIN}"
 
     password_hash = pwd_context.hash(payload.password)
@@ -71,10 +72,20 @@ async def tenant_signup(
     await session.commit()
     await session.refresh(org)
 
+    # 🔐 Create JWT (No Role Included)
+    access_token = create_access_token(
+        data={
+            "org_id": org.id,
+            "domain": org.domain_name
+        }
+    )
+
     return {
         "org_id": org.id,
         "org_name": org.org_name,
         "domain_name": org.domain_name,
         "subscription_id": org.subscription_id,
-        "site_url": org.site_url
+        "site_url": org.site_url,
+        "access_token": access_token,
+        "token_type": "bearer"
     }
