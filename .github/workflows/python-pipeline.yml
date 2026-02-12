@@ -1,5 +1,4 @@
-# name: python CI/CD - Feature to Development
-name: python CI/CD - Feature to Main
+name: python CI/CD - Feature to main
 
 on:
   pull_request:
@@ -200,9 +199,94 @@ jobs:
   #       env:
   #        GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
+  Container-Build-and-Publish-into-Registry:
+    name: Container Build and Publish into Registry
+    needs: build-and-publish-artifact
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout main repository (kasadra_backened_repo)
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Checkout artifact repository
+        uses: actions/checkout@v3
+        with:
+          repository: SoftwareStackSolutions/Artifact_Storage
+          token: ${{ secrets.MY_GITHUB_TOKEN }}
+          path: Artifact_Storage
+
+      
+      - name: Prepare artifact for Docker build
+        run: |
+          cp Artifact_Storage/Backend_Artifact/Backend_Artifact-latest.zip ./artifact.zip
+          
+   
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.MY_GITHUB_TOKEN }}
+
+      
+      - name: Build Docker image
+        run: |
+          docker build -t python-application:latest -f Dockerfile . 
+            
+      - name: Tag image for GHCR
+        run: |
+          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          docker tag python-application:latest ghcr.io/${REPO_OWNER_LC}/python-application:latest
+      
+      - name: Push image to GHCR
+        run: |
+          REPO_OWNER_LC=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          docker push ghcr.io/${REPO_OWNER_LC}/python-application:latest      
+
+
+
+  # create-pr-development-to-main:
+  #   needs: build-and-publish-artifact
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     pr_url: ${{ steps.create_pr.outputs.pr_url }}
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+
+  #     - name: Create Pull Request from development to main
+  #       id: create_pr
+  #       uses: repo-sync/pull-request@v2
+  #       with:
+  #         source_branch: development
+  #         destination_branch: main
+  #         pr_title: "Auto PR: development to main"
+  #         pr_body: |
+  #           This PR was created from the development to main branch.
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+
+  #     - name: Wait for PR Merge
+  #       run: |
+  #         while true; do
+  #           STATE=$(gh pr view "$PR_NUMBER" --repo SoftwareStackSolutions/kasadra_backened_repo --json state -q .state)
+  #           if [ "$STATE" = "MERGED" ]; then
+  #             echo " PR #$PR_NUMBER has been merged!"
+  #             break
+  #           else
+  #             echo "Not merged yet. Waiting for approval..."
+  #             sleep 30
+  #           fi
+  #         done
+  #       env:
+  #        GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+
   Deploy-Application-to-GKE:
     name: Deploy Application to GKE
-    needs: build-and-publish-artifact
+    needs: Container-Build-and-Publish-into-Registry
     runs-on: ubuntu-latest
   
     permissions:
