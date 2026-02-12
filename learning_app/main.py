@@ -138,9 +138,14 @@ from database.db import init_db  # NOT from models.base
 # def health_check():
 #     return {"message": "Backend running"}
 
+@app.get("/")
+async def root():
+    return {"status": "ok"}
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
 
 
 ## DB setup
