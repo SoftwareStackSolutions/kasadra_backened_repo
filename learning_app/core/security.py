@@ -1,6 +1,6 @@
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
-from fastapi import HTTPException
+from fastapi import HTTPException, Request, status
 import os
 
 SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
@@ -28,11 +28,29 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 
 # ===============================
-# Decode Token (for future use)
+# Decode Token
 # ===============================
 def decode_access_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+
+
+# ===============================
+# Get Current Org From Cookie
+# ===============================
+def get_current_org(request: Request):
+    token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+
+    return decode_access_token(token)

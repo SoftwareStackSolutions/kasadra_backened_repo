@@ -29,6 +29,7 @@ from seed.subscription_seed import seed_subscription_plans
 from routes.tenent import subscription_plan
 from routes.tenent import org_signup
 from routes.tenent import gmail_otp
+from routes.tenent import auth
 
 from routes import student
 from routes import instructor
@@ -77,6 +78,7 @@ app.add_middleware(
 app.include_router(subscription_plan.router, prefix="/api/tenant")
 app.include_router(org_signup.router, prefix="/api/tenant")
 app.include_router(gmail_otp.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
