@@ -22,11 +22,15 @@ BASE_DOMAIN = os.getenv("BASE_DOMAIN", "digidense.com")
 # =====================
 # Request Schema
 # =====================
+from pydantic import BaseModel, Field, EmailStr
+
 class TenantSignupRequest(BaseModel):
     org_name: str = Field(..., min_length=3)
+    email: EmailStr                      
     domain_name: str = Field(..., min_length=3)
     password: str = Field(..., min_length=8)
     subscription_id: int
+
 
 
 # =====================
@@ -45,16 +49,25 @@ async def tenant_signup(
     session: AsyncSession = Depends(get_session)
 ):
     domain = payload.domain_name.lower().strip()
+    email = payload.email.lower().strip()
 
+    # Validate domain
     if not validate_domain(domain):
         raise HTTPException(status_code=400, detail="Invalid domain name")
 
-    # Check if domain already exists
-    result = await session.execute(
+    # Check domain uniqueness
+    domain_check = await session.execute(
         select(Organization).where(Organization.domain_name == domain)
     )
-    if result.scalars().first():
+    if domain_check.scalars().first():
         raise HTTPException(status_code=409, detail="Domain already exists")
+
+    # ✅ Check email uniqueness
+    email_check = await session.execute(
+        select(Organization).where(Organization.email == email)
+    )
+    if email_check.scalars().first():
+        raise HTTPException(status_code=409, detail="Email already registered")
 
     site_url = f"https://{domain}.{BASE_DOMAIN}"
 
@@ -62,6 +75,7 @@ async def tenant_signup(
 
     org = Organization(
         org_name=payload.org_name,
+        email=email,                 # ✅ SAVE EMAIL
         domain_name=domain,
         site_url=site_url,
         password_hash=password_hash,
@@ -72,20 +86,23 @@ async def tenant_signup(
     await session.commit()
     await session.refresh(org)
 
-    # 🔐 Create JWT (No Role Included)
+    # 🔐 Create JWT
     access_token = create_access_token(
         data={
             "org_id": org.id,
-            "domain": org.domain_name
+            "domain": org.domain_name,
+            "email": org.email
         }
     )
 
     return {
         "org_id": org.id,
         "org_name": org.org_name,
+        "email": org.email,            
         "domain_name": org.domain_name,
         "subscription_id": org.subscription_id,
         "site_url": org.site_url,
         "access_token": access_token,
         "token_type": "bearer"
     }
+
