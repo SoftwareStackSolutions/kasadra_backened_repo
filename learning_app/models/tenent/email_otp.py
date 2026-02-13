@@ -13,16 +13,3 @@ class EmailOTP(Base):
     resend_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     # created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-
-# from sqlalchemy import Column, String, DateTime, Integer
-# from datetime import datetime
-
-# class EmailOTP(Base):
-#     __tablename__ = "email_otp"
-
-#     email = Column(String, unique=True, primary_key=True, index=True)
-#     otp_hash = Column(String, nullable=False)
-#     expires_at = Column(DateTime, nullable=False)
-#     resend_count = Column(Integer, default=0)
-#     created_at = Column(DateTime, default=datetime.utcnow)
