@@ -26,7 +26,11 @@ class Organization(Base):
     __tablename__ = "organizations"
 
     id = Column(Integer, primary_key=True)
+
     org_name = Column(String, nullable=False)
+
+    email = Column(String, nullable=False, unique=True, index=True) 
+
     domain_name = Column(String, nullable=False, unique=True)
     site_url = Column(String, nullable=False, unique=True)
 
