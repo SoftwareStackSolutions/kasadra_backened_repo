@@ -1,9 +1,10 @@
 import os
 import sys
-
 from dotenv import load_dotenv
-import os
 
+# ----------------------------------
+# Load Correct ENV File
+# ----------------------------------
 ENV = os.getenv("ENV", "development")
 
 if ENV == "production":
@@ -16,6 +17,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.cors import CORSMiddleware
+
+# ----------------------------------
+# Fix path
+# ----------------------------------
+root_dir = os.path.dirname(__file__)
+sys.path.append(root_dir)
 
 # --------------------------------------------------
 # Fix path
@@ -61,30 +68,27 @@ from routes.holidaydir import holiday
 # --------------------------------------------------
 app = FastAPI(
     title="Learning_App",
-    description="agent backend",
     version="1.0.0",
-    openapi_version="3.0.3",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json"
 )
 
-# --------------------------------------------------
-# CORS (React localhost fix)
-# --------------------------------------------------
+# ----------------------------------
+# CORS (VERY IMPORTANT)
+# ----------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://digidense.com",
-        "https://learn.digidense.com"
+        "https://learn.digidense.com",
     ],
-    allow_credentials=True,
+    allow_credentials=True,   # MUST be True for cookies
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # --------------------------------------------------
 # Include Routers

@@ -3,21 +3,18 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException, Request, status
 import os
 
-SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 300
 
 
-# ===============================
-# Create Access Token
-# ===============================
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+# -------------------------
+# Create Token
+# -------------------------
+def create_access_token(data: dict):
     to_encode = data.copy()
 
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({
         "exp": expire,
@@ -27,13 +24,12 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-# ===============================
+# -------------------------
 # Decode Token
-# ===============================
+# -------------------------
 def decode_access_token(token: str):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -41,9 +37,9 @@ def decode_access_token(token: str):
         )
 
 
-# ===============================
-# Get Current Org From Cookie
-# ===============================
+# -------------------------
+# Get Current Org
+# -------------------------
 def get_current_org(request: Request):
     token = request.cookies.get("access_token")
 

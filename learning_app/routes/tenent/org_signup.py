@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, EmailStr
 import os
 
 from core.security import create_access_token
@@ -13,31 +12,18 @@ router = APIRouter(prefix="/tenant", tags=["Tenant Signup"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-BASE_DOMAIN = os.getenv("BASE_DOMAIN", "localhost")
-ENV = os.getenv("ENV", "development")
+BASE_DOMAIN = os.getenv("BASE_DOMAIN")
+ENV = os.getenv("ENV")
 
 
-# =====================
-# Request Schema
-# =====================
 class TenantSignupRequest(BaseModel):
-    org_name: str = Field(..., min_length=3)
+    org_name: str
     email: EmailStr
-    domain_name: str = Field(..., min_length=3)
-    password: str = Field(..., min_length=8)
+    domain_name: str
+    password: str
     subscription_id: int
 
 
-# =====================
-# Helpers
-# =====================
-def validate_domain(domain: str) -> bool:
-    return domain.isalnum() and len(domain) >= 3
-
-
-# =====================
-# API
-# =====================
 @router.post("/signup")
 async def tenant_signup(
     payload: TenantSignupRequest,
@@ -47,24 +33,11 @@ async def tenant_signup(
     domain = payload.domain_name.lower().strip()
     email = payload.email.lower().strip()
 
-    if not validate_domain(domain):
-        raise HTTPException(status_code=400, detail="Invalid domain name")
-
-    # Check domain
-    domain_check = await session.execute(
-        select(Organization).where(Organization.domain_name == domain)
+    site_url = (
+        f"http://{domain}.{BASE_DOMAIN}"
+        if ENV == "development"
+        else f"https://{domain}.{BASE_DOMAIN}"
     )
-    if domain_check.scalars().first():
-        raise HTTPException(status_code=409, detail="Domain already exists")
-
-    # Check email
-    email_check = await session.execute(
-        select(Organization).where(Organization.email == email)
-    )
-    if email_check.scalars().first():
-        raise HTTPException(status_code=409, detail="Email already registered")
-
-    site_url = f"http://{domain}.{BASE_DOMAIN}" if ENV == "development" else f"https://{domain}.{BASE_DOMAIN}"
 
     password_hash = pwd_context.hash(payload.password)
 
@@ -82,42 +55,37 @@ async def tenant_signup(
     await session.refresh(org)
 
     # 🔐 Create JWT
-    access_token = create_access_token(
-        data={
-            "org_id": org.id,
-            "domain": org.domain_name,
-            "email": org.email
-        }
-    )
+    access_token = create_access_token({
+        "org_id": org.id,
+        "domain": org.domain_name,
+        "email": org.email
+    })
 
-    # ============================
-# COOKIE CONFIG
-# ============================
-
-    cookie_domain = None
-    secure_flag = False
-    samesite_value = "lax"
-
+    # -------------------------
+    # COOKIE CONFIG
+    # -------------------------
     if ENV == "production":
-        cookie_domain = f".{BASE_DOMAIN}"   # .digidense.com
-        secure_flag = True
-        samesite_value = "none"
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,               # HTTPS required
+            samesite="none",
+            domain=f".{BASE_DOMAIN}",  # .digidense.com
+            max_age=60 * 60 * 5,
+            path="/"
+        )
     else:
-        # For local subdomain support (tenant1.localhost)
-        cookie_domain = ".localhost"
-        secure_flag = False
-        samesite_value = "lax"
-
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=secure_flag,
-        samesite=samesite_value,
-        domain=cookie_domain,
-        max_age=60 * 60 * 5
-    )
-
+        # LOCAL (NO domain!)
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=60 * 60 * 5,
+            path="/"
+        )
 
     return {
         "org_id": org.id,
