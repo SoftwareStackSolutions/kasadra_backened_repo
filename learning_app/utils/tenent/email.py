@@ -2,8 +2,8 @@ import smtplib
 from email.message import EmailMessage
 from utils.tenent.email_template import otp_email_template
 
-SMTP_EMAIL = "akhilmony01@gmail.com"
-SMTP_PASSWORD = "ylegnnhzhrpqytbt"
+SMTP_EMAIL = "digidense.dev@gmail.com"
+SMTP_PASSWORD = "hzipfqwpmnxmjwwv"
 
 def send_otp_email(to_email: str, otp: str):
     msg = EmailMessage()
