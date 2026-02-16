@@ -1,5 +1,16 @@
 import os
 import sys
+
+from dotenv import load_dotenv
+import os
+
+ENV = os.getenv("ENV", "development")
+
+if ENV == "production":
+    load_dotenv(".env.production")
+else:
+    load_dotenv(".env.development")
+
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -66,11 +77,14 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://digidense.com",
+        "https://learn.digidense.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # --------------------------------------------------
 # Include Routers

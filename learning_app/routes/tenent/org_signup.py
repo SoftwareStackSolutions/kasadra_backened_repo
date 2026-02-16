@@ -13,7 +13,8 @@ router = APIRouter(prefix="/tenant", tags=["Tenant Signup"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-BASE_DOMAIN = os.getenv("BASE_DOMAIN", "digidense.com")
+BASE_DOMAIN = os.getenv("BASE_DOMAIN", "localhost")
+ENV = os.getenv("ENV", "development")
 
 
 # =====================
@@ -63,7 +64,7 @@ async def tenant_signup(
     if email_check.scalars().first():
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    site_url = f"https://{domain}.{BASE_DOMAIN}"
+    site_url = f"http://{domain}.{BASE_DOMAIN}" if ENV == "development" else f"https://{domain}.{BASE_DOMAIN}"
 
     password_hash = pwd_context.hash(payload.password)
 
@@ -89,15 +90,34 @@ async def tenant_signup(
         }
     )
 
-    # ✅ Set Cookie (IMPORTANT PART)
+    # ============================
+# COOKIE CONFIG
+# ============================
+
+    cookie_domain = None
+    secure_flag = False
+    samesite_value = "lax"
+
+    if ENV == "production":
+        cookie_domain = f".{BASE_DOMAIN}"   # .digidense.com
+        secure_flag = True
+        samesite_value = "none"
+    else:
+        # For local subdomain support (tenant1.localhost)
+        cookie_domain = ".localhost"
+        secure_flag = False
+        samesite_value = "lax"
+
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,   # ⚠ set True in production (HTTPS)
-        samesite="lax", # use "none" for cross-domain HTTPS
-        max_age=60 * 60 * 5  # 5 hours
+        secure=secure_flag,
+        samesite=samesite_value,
+        domain=cookie_domain,
+        max_age=60 * 60 * 5
     )
+
 
     return {
         "org_id": org.id,
