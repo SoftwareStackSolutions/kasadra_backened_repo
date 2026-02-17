@@ -85,6 +85,7 @@ app.add_middleware(
         "https://digidense.com",
         "https://learn.digidense.com",
     ],
+
     allow_credentials=True,   # MUST be True for cookies
     allow_methods=["*"],
     allow_headers=["*"],
