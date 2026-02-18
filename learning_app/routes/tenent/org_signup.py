@@ -54,7 +54,7 @@ async def tenant_signup(
     await session.commit()
     await session.refresh(org)
 
-    # 🔐 Create JWT
+    # Create JWT
     access_token = create_access_token({
         "org_id": org.id,
         "domain": org.domain_name,
