@@ -23,7 +23,6 @@ class TenantSignupRequest(BaseModel):
     password: str
     subscription_id: int
 
-
 @router.post("/signup")
 async def tenant_signup(
     payload: TenantSignupRequest,
