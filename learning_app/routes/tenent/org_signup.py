@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 import os
-
 from core.security import create_access_token
 from database.db import get_session
 from models.tenent.subscription_plan import Organization
