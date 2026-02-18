@@ -6,7 +6,6 @@ import os
 from core.security import create_access_token
 from database.db import get_session
 from models.tenent.subscription_plan import Organization
-
 router = APIRouter(prefix="/tenant", tags=["Tenant Signup"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
