@@ -32,8 +32,8 @@ class Organization(Base):
     # email = Column(String, nullable=False, unique=True, index=True) 
     email = Column(String, nullable=False, index=True)
 
-    domain_name = Column(String, nullable=False, unique=True)
-    site_url = Column(String, nullable=False, unique=True)
+    domain_name = Column(String, nullable=False, index=True)
+    site_url = Column(String, nullable=False, index=True)
 
     subscription_id = Column(
         Integer,
