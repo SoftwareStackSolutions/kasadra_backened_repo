@@ -84,6 +84,8 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "https://digidense.com",
         "https://learn.digidense.com",
+        "https://nmcc.digidense.com",
+        "https://nmcc.learn.digidense.com",
     ],
     allow_credentials=True,   # MUST be True for cookies
     allow_methods=["*"],
