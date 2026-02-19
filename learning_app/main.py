@@ -80,6 +80,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        
+        "http://api.digidense.local:8000"
         "http://nmcc.localhost:5173",
         "http://localhost:5173",
         "http://nmcc.127.0.1:5173",
