@@ -75,15 +75,15 @@ async def tenant_signup(
     else:
         # LOCAL (NO domain!)
         response.set_cookie(
-    key="access_token",
-    value=access_token,
-    httponly=True,
-    secure=False,
-    samesite="lax",
-    domain=".localhost",   
-    max_age=60 * 60 * 5,
-    path="/"
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=60 * 60 * 5,
+        path="/"
 )
+
 
     return {
         "org_id": org.id,
