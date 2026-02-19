@@ -29,7 +29,8 @@ class Organization(Base):
 
     org_name = Column(String, nullable=False)
 
-    email = Column(String, nullable=False, unique=True, index=True) 
+    # email = Column(String, nullable=False, unique=True, index=True) 
+    email = Column(String, nullable=False, index=True)
 
     domain_name = Column(String, nullable=False, unique=True)
     site_url = Column(String, nullable=False, unique=True)
