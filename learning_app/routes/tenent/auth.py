@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 from core.security import get_current_org
 
 router = APIRouter(prefix="/tenant", tags=["Tenant Auth"])
-
 @router.get("/me")
 async def get_me(current_org: dict = Depends(get_current_org)):
     return {
