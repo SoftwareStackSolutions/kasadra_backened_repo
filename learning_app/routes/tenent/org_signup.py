@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 import os
-from core.security import create_access_token
-from database.db import get_session
-from models.tenent.subscription_plan import Organization
-router = APIRouter(prefix="/tenant", tags=["Tenant Signup"])
 
+from database.db import get_session
+from core.jwt_utils import create_access_token
+from models.tenent.subscription_plan import Organization
+
+router = APIRouter(prefix="/tenant", tags=["Tenant Signup"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 BASE_DOMAIN = os.getenv("BASE_DOMAIN")
@@ -21,12 +22,11 @@ class TenantSignupRequest(BaseModel):
     password: str
     subscription_id: int
 
+
 @router.post("/signup")
-async def tenant_signup(
-    payload: TenantSignupRequest,
-    response: Response,
-    session: AsyncSession = Depends(get_session)
-):
+async def tenant_signup(payload: TenantSignupRequest,
+                        session: AsyncSession = Depends(get_session)):
+
     domain = payload.domain_name.lower().strip()
     email = payload.email.lower().strip()
 
@@ -51,39 +51,12 @@ async def tenant_signup(
     await session.commit()
     await session.refresh(org)
 
-    # Create JWT
+    # Generate JWT for frontend
     access_token = create_access_token({
         "org_id": org.id,
         "domain": org.domain_name,
         "email": org.email
     })
-
-    # -------------------------
-    # COOKIE CONFIG
-    # -------------------------
-    if ENV == "production":
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            secure=True,               # HTTPS required
-            samesite="none",
-            domain=f".{BASE_DOMAIN}",  # .digidense.com
-            max_age=60 * 60 * 5,
-            path="/"
-        )
-    else:
-        # LOCAL (NO domain!)
-        response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=60 * 60 * 5,
-        path="/"
-)
-
 
     return {
         "org_id": org.id,
@@ -92,5 +65,6 @@ async def tenant_signup(
         "domain_name": org.domain_name,
         "subscription_id": org.subscription_id,
         "site_url": org.site_url,
+        "access_token": access_token,
         "message": "Signup successful"
     }
