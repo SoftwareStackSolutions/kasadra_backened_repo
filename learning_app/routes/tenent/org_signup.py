@@ -30,7 +30,6 @@ class TenantLoginRequest(BaseModel):
     email: EmailStr
     password: str
 
-
 # -------------------------------
 # Signup
 # -------------------------------
