@@ -6,6 +6,7 @@ from sqlalchemy import select
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from database.db import get_session
+from core.jwt_utils import create_access_token
 from models.tenent.subscription_plan import Organization
 from core.security import create_access_token
 
