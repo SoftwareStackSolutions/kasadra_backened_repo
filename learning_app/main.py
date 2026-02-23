@@ -3,7 +3,6 @@ import uvicorn
 from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-# from typing import Optional
 from database.db import Base
 # from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
