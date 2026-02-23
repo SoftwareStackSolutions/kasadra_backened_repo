@@ -1,4 +1,4 @@
 # kasandra_backened_repo
-repo for python pipelinesj
+repo for python pipeline
 
 
