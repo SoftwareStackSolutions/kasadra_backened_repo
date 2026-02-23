@@ -9,24 +9,20 @@ ENV = os.getenv("ENV", "development")
 
 if ENV == "production":
     load_dotenv(".env.production")
+    BASE_DOMAIN = os.getenv("BASE_DOMAIN", "digidense.com")
 else:
     load_dotenv(".env.development")
+    BASE_DOMAIN = "localhost"
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.cors import CORSMiddleware
 
 # ----------------------------------
-# Fix path
+# Fix paths for imports
 # ----------------------------------
-root_dir = os.path.dirname(__file__)
-sys.path.append(root_dir)
-
-# --------------------------------------------------
-# Fix path
-# --------------------------------------------------
 root_dir = os.path.dirname(__file__)
 sys.path.append(root_dir)
 sys.path.append(os.path.join(root_dir, "database"))
@@ -44,22 +40,9 @@ from seed.subscription_seed import seed_subscription_plans
 # --------------------------------------------------
 # Routers
 # --------------------------------------------------
-from routes.tenent import subscription_plan
-from routes.tenent import org_signup
-from routes.tenent import gmail_otp
-from routes.tenent import auth
-
-from routes import student
-from routes import instructor
-from routes import course
-from routes import lessons
-from routes import scheduleclass
-from routes import batch
-from routes import contents
-from routes import cart
-from routes import purchased_course
-from routes import meeting_link
-from routes import lesson_activate
+from routes.tenent import subscription_plan, org_signup, gmail_otp, auth
+from routes import student, instructor, course, lessons, scheduleclass, batch
+from routes import contents, cart, purchased_course, meeting_link, lesson_activate
 from routes.ai import router as ai_router
 from routes.holidaydir import holiday
 
@@ -74,34 +57,48 @@ app = FastAPI(
     openapi_url="/api/openapi.json"
 )
 
+
 # ----------------------------------
-# CORS (VERY IMPORTANT)
+# Dynamic CORS for dev subdomains + prod domain
 # ----------------------------------
+class DynamicCORSMiddleware(CORSMiddleware):
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            headers = dict(scope["headers"])
+            origin = headers.get(b"origin")
+            if origin:
+                origin_str = origin.decode()
+                if ENV == "development":
+                    # ✅ allow ANY subdomain of localhost:5173
+                    if origin_str.endswith(".localhost:5173") or origin_str == "http://localhost:5173":
+                        self.allow_origins = [origin_str]
+                else:
+                    # ✅ allow prod domain
+                    if origin_str.endswith(BASE_DOMAIN):
+                        self.allow_origins = [origin_str]
+
+        await super().__call__(scope, receive, send)
+
+
+# --------------------------------------------------
+# Middleware
+# --------------------------------------------------
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        
-        "http://api.digidense.local:8000"
-        "http://nmcc.localhost:5173",
-        "http://localhost:5173",
-        "http://nmcc.127.0.1:5173",
-        "http://127.0.0.1:5173",
-        "https://digidense.com",
-        "https://learn.digidense.com",
-        "https://nmcc.digidense.com",
-        "https://nmcc.learn.digidense.com",
-    ],
-    allow_credentials=True,   # MUST be True for cookies
+    DynamicCORSMiddleware,
+    allow_origins=[f"http://localhost:5173"],  # fallback
+    allow_credentials=True,                     # ✅ must be True for cookies
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 # --------------------------------------------------
 # Include Routers
 # --------------------------------------------------
 app.include_router(subscription_plan.router, prefix="/api/tenant")
 app.include_router(org_signup.router, prefix="/api/tenant")
+
 app.include_router(gmail_otp.router, prefix="/api")
-app.include_router(auth.router, prefix="/api")
+app.include_router(auth.router, prefix="/api/tenant")
 
 app.include_router(student.router, prefix="/api/student")
 app.include_router(instructor.router, prefix="/api/instructor")
@@ -124,7 +121,7 @@ app.include_router(ai_router)
 app.include_router(holiday.router, prefix="/api")
 
 # --------------------------------------------------
-# Startup Event (ONLY ONE)
+# Startup Event
 # --------------------------------------------------
 @app.on_event("startup")
 async def startup():
@@ -157,7 +154,6 @@ async def universal_exception_handler(request: Request, exc: Exception):
 # --------------------------------------------------
 @app.exception_handler(RequestValidationError)
 async def custom_validation_handler(request: Request, exc: RequestValidationError):
-
     for err in exc.errors():
         if err["type"] == "json_invalid":
             return JSONResponse(
@@ -176,6 +172,36 @@ async def custom_validation_handler(request: Request, exc: RequestValidationErro
             "detail": exc.errors()
         }
     )
+
+# --------------------------------------------------
+# Example: set cookie for subdomain
+# --------------------------------------------------
+@app.post("/api/set-cookie")
+async def set_cookie(response: Response):
+    token = "my-access-token"
+    if ENV == "production":
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            domain=f".{BASE_DOMAIN}",
+            max_age=60 * 60 * 5,
+            path="/"
+        )
+    else:
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            domain=".localhost",
+            max_age=60 * 60 * 5,
+            path="/"
+        )
+    return {"status": "cookie set"}
 
 # --------------------------------------------------
 # Run Server
