@@ -1,5 +1,4 @@
 import os, sys
-# import sys
 import uvicorn
 from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
