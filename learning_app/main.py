@@ -203,7 +203,6 @@ async def set_cookie(response: Response):
         )
     return {"status": "cookie set"}
 
-
 # --------------------------------------------------
 # Run Server
 # --------------------------------------------------
