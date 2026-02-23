@@ -137,6 +137,9 @@ async def tenant_login(
     return {
         "org_id": org.id,
         "domain_name": org.domain_name,
+        "email": org.email,
+        "org_name": org.org_name,
+        "site_url": org.site_url,
         "access_token": access_token,
         "message": "Login successful"
     }
