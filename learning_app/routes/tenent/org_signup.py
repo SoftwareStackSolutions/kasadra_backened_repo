@@ -1,19 +1,22 @@
-from fastapi import APIRouter, Depends
+# routes/tenant/auth.py
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
-import os
-
 from database.db import get_session
 from core.jwt_utils import create_access_token
 from models.tenent.subscription_plan import Organization
+from core.security import create_access_token
 
-router = APIRouter(prefix="/tenant", tags=["Tenant Signup"])
+router = APIRouter(prefix="/tenant", tags=["Tenant Auth"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-BASE_DOMAIN = os.getenv("BASE_DOMAIN")
-ENV = os.getenv("ENV")
 
+# -------------------------------
+# Request Schemas
+# -------------------------------
 
 class TenantSignupRequest(BaseModel):
     org_name: str
@@ -23,26 +26,52 @@ class TenantSignupRequest(BaseModel):
     subscription_id: int
 
 
-@router.post("/signup")
-async def tenant_signup(payload: TenantSignupRequest,
-                        session: AsyncSession = Depends(get_session)):
+class TenantLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
-    domain = payload.domain_name.lower().strip()
+
+# -------------------------------
+# Signup
+# -------------------------------
+
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+async def tenant_signup(
+    payload: TenantSignupRequest,
+    session: AsyncSession = Depends(get_session)
+):
     email = payload.email.lower().strip()
+    domain = payload.domain_name.lower().strip()
 
-    site_url = (
-        f"http://{domain}.{BASE_DOMAIN}"
-        if ENV == "development"
-        else f"https://{domain}.{BASE_DOMAIN}"
+    # Check duplicate email
+    existing_email = await session.execute(
+        select(Organization).where(Organization.email == email)
     )
+    if existing_email.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
 
+    # Check duplicate domain
+    existing_domain = await session.execute(
+        select(Organization).where(Organization.domain_name == domain)
+    )
+    if existing_domain.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail="Domain already taken"
+        )
+
+    # Hash password
     password_hash = pwd_context.hash(payload.password)
 
+    # Create organization
     org = Organization(
         org_name=payload.org_name,
         email=email,
         domain_name=domain,
-        site_url=site_url,
+        site_url=f"http://{domain}.localhost",
         password_hash=password_hash,
         subscription_id=payload.subscription_id
     )
@@ -51,11 +80,12 @@ async def tenant_signup(payload: TenantSignupRequest,
     await session.commit()
     await session.refresh(org)
 
-    # Generate JWT for frontend
+    #  Generate JWT
     access_token = create_access_token({
         "org_id": org.id,
         "domain": org.domain_name,
-        "email": org.email
+        "email": org.email,
+        "first_login": True
     })
 
     return {
@@ -67,4 +97,47 @@ async def tenant_signup(payload: TenantSignupRequest,
         "site_url": org.site_url,
         "access_token": access_token,
         "message": "Signup successful"
+    }
+
+
+# -------------------------------
+# Login
+# -------------------------------
+
+@router.post("/login")
+async def tenant_login(
+    payload: TenantLoginRequest,
+    session: AsyncSession = Depends(get_session)
+):
+    email = payload.email.lower().strip()
+
+    result = await session.execute(
+        select(Organization).where(Organization.email == email)
+    )
+    org = result.scalar_one_or_none()
+
+    if not org:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    if not pwd_context.verify(payload.password, org.password_hash):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials"
+        )
+
+    access_token = create_access_token({
+        "org_id": org.id,
+        "domain": org.domain_name,
+        "email": org.email,
+        "first_login": False
+    })
+
+    return {
+        "org_id": org.id,
+        "domain_name": org.domain_name,
+        "access_token": access_token,
+        "message": "Login successful"
     }
