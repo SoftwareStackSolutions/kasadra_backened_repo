@@ -2,7 +2,7 @@ name: python CI/CD - Feature to main
 
 on:
   pull_request:
-    branches: [main]
+    branches: [Kasadara_release_1.1]
     types: [closed]
   workflow_dispatch:
 
