@@ -2,17 +2,25 @@ import os
 import sys
 from dotenv import load_dotenv
 
-# ----------------------------------
-# Load Correct ENV File
-# ----------------------------------
-ENV = os.getenv("ENV", "development")
+from dotenv import load_dotenv
+import os
 
-if ENV == "production":
-    load_dotenv(".env.production")
-    BASE_DOMAIN = os.getenv("BASE_DOMAIN", "digidense.com")
-else:
-    load_dotenv(".env.development")
-    BASE_DOMAIN = "localhost"
+load_dotenv()   # just load .env normally
+
+ENV = os.getenv("ENV", "development")
+BASE_DOMAIN = os.getenv("BASE_DOMAIN", "localhost")
+
+# # ----------------------------------
+# # Load Correct ENV File
+# # ----------------------------------
+# ENV = os.getenv("ENV", "development")
+
+# if ENV == "production":
+#     load_dotenv(".env.production")
+#     BASE_DOMAIN = os.getenv("BASE_DOMAIN", "digidense.com")
+# else:
+#     load_dotenv(".env.development")
+#     BASE_DOMAIN = "localhost"
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
