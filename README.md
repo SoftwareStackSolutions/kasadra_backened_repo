@@ -1,4 +1,4 @@
-# kasandra_backened_repo's
-repo for python pipeline FILES changes commited
+# kasandra_backened_repo
+repo for python pipeline 
 
 
