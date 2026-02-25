@@ -120,6 +120,7 @@ app.include_router(lesson_activate.router, prefix="/api/activate")
 app.include_router(ai_router)
 app.include_router(holiday.router, prefix="/api")
 
+
 # --------------------------------------------------
 # Startup Event
 # --------------------------------------------------
