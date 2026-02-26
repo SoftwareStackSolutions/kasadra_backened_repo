@@ -99,7 +99,8 @@ class DynamicCORSMiddleware(CORSMiddleware):
 # --------------------------------------------------
 app.add_middleware(
     DynamicCORSMiddleware,
-    allow_origins=[f"http://localhost:5173"],  # fallback
+    allow_origin_regex=r"https://.*\.digidense\.com",
+    # allow_origins=[f"http://localhost:5173"],  # fallback
     allow_credentials=True,                     # ✅ must be True for cookies
     allow_methods=["*"],
     allow_headers=["*"],
