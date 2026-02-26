@@ -2,19 +2,19 @@ import os
 import sys
 from dotenv import load_dotenv
 
-ENV = os.getenv("ENV", "development")
-
-if ENV == "production":
-    load_dotenv(".env.production")
-else:
-    load_dotenv(".env.development")
-
-BASE_DOMAIN = os.getenv("BASE_DOMAIN")
-
-# load_dotenv()   # just load .env normally
-
 # ENV = os.getenv("ENV", "development")
-# BASE_DOMAIN = os.getenv("BASE_DOMAIN", "localhost")
+
+# if ENV == "production":
+#     load_dotenv(".env.production")
+# else:
+#     load_dotenv(".env.development")
+
+# BASE_DOMAIN = os.getenv("BASE_DOMAIN")
+
+load_dotenv()   # just load .env normally
+
+ENV = os.getenv("ENV", "development")
+BASE_DOMAIN = os.getenv("BASE_DOMAIN", "localhost")
 
 # # ----------------------------------
 # # Load Correct ENV File
