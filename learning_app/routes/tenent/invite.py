@@ -91,7 +91,7 @@ async def invite_user(
         org_url = f"https://{organization.domain_name}.{BASE_DOMAIN}"
     else:
     # LOCAL DEVELOPMENT
-        org_url = f"http://{organization.domain_name}.localhost:3000"
+        org_url = f"http://{organization.domain_name}.localhost:5173/"
 
         register_url = f"{org_url}/register?token={invite.token}"
 
