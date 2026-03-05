@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from database.db import get_session
 from models.tenent.subscription_plan import Organization,InvitedUser, RoleEnum
 from schemas.tenent.invited_user import InviteCreateSchema
@@ -198,3 +198,66 @@ def send_invite_email(to_email, org_name, org_url, register_url):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(sender_email, app_password)
         server.sendmail(sender_email, to_email, message.as_string())
+
+
+# --------------------------------------------------
+# Verify Invite Token
+# --------------------------------------------------
+
+@router.get("/invite/verify", tags=["Invited user or Instructor"])
+async def verify_invite_token(
+    token: str,
+    db: AsyncSession = Depends(get_session)
+):
+
+    # 1️⃣ Find invite
+    result = await db.execute(
+        select(InvitedUser).where(InvitedUser.token == token)
+    )
+
+    invite = result.scalar_one_or_none()
+
+    if not invite:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "Invalid invitation token",
+                "error_code": "INVALID_TOKEN"
+            }
+        )
+
+    # 2️⃣ Check expiry
+    if invite.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Invitation link has expired",
+                "error_code": "INVITE_EXPIRED"
+            }
+        )
+
+    # 3️⃣ Get organization
+    result = await db.execute(
+        select(Organization).where(Organization.id == invite.tenant_id)
+    )
+
+    organization = result.scalar_one_or_none()
+
+    if not organization:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "Organization not found",
+                "error_code": "ORG_NOT_FOUND"
+            }
+        )
+
+    # 4️⃣ Return invite details
+    return {
+        "valid": True,
+        "email": invite.email,
+        "name": invite.name,
+        "phone": invite.phone,
+        "role": invite.role,
+        "organization": organization.org_name
+    }
