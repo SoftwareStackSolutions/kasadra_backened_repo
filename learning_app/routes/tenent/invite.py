@@ -80,11 +80,22 @@ async def invite_user(
     await db.refresh(invite)
 
     # 3️⃣ Build URL
+    # BASE_DOMAIN = "digidense.com"
+    # org_url = f"https://{organization.domain_name}.{BASE_DOMAIN}"
+    # register_url = f"{org_url}/register?token={invite.token}"
+    
     BASE_DOMAIN = "digidense.com"
-    org_url = f"https://{organization.domain_name}.{BASE_DOMAIN}"
-    register_url = f"{org_url}/register?token={invite.token}"
+    ENV = os.getenv("ENV", "development")  # development or production
 
-    # 4️⃣ 🔥 SEND EMAIL (THIS WAS MISSING)
+    if ENV == "production":
+        org_url = f"https://{organization.domain_name}.{BASE_DOMAIN}"
+    else:
+    # LOCAL DEVELOPMENT
+        org_url = f"http://{organization.domain_name}.localhost:3000"
+
+        register_url = f"{org_url}/register?token={invite.token}"
+
+    # 4️⃣ SEND EMAIL (THIS WAS MISSING)
     send_invite_email(
         to_email=payload.email,
         org_name=organization.org_name,
