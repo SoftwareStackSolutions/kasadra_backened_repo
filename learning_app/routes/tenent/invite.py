@@ -204,6 +204,7 @@ def send_invite_email(to_email, org_name, org_url, register_url):
 # Verify Invite Token
 # --------------------------------------------------
 
+
 @router.get("/invite/verify", tags=["Invited user or Instructor"])
 async def verify_invite_token(
     token: str,
