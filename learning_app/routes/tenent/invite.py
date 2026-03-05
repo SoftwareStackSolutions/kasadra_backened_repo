@@ -93,7 +93,7 @@ async def invite_user(
     # LOCAL DEVELOPMENT
         org_url = f"http://{organization.domain_name}.localhost:5173/"
 
-        register_url = f"{org_url}/register?token={invite.token}"
+        register_url = f"{org_url}/invite/register?token={invite.token}"
 
     # 4️⃣ SEND EMAIL (THIS WAS MISSING)
     send_invite_email(
