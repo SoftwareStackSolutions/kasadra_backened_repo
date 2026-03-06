@@ -71,7 +71,7 @@ async def invite_user(
     if not organization:
         raise HTTPException(status_code=404, detail="Organization not found")
 
-    # 2️⃣ Create invite
+    # 2️⃣ Create invite expiration
     expires_time = datetime.utcnow() + timedelta(hours=24)
 
     invite = InvitedUser(
@@ -87,19 +87,13 @@ async def invite_user(
     await db.commit()
     await db.refresh(invite)
 
-    # 3️⃣ Detect environment
-    ENV = os.getenv("ENV")
+    # 3️⃣ Build production tenant URL
+    org_url = f"https://{organization.domain_name}.{BASE_DOMAIN}"
 
-    # 4️⃣ Generate URL
-    if ENV == "production":
-        org_url = f"https://{organization.domain_name}.{BASE_DOMAIN}"
-    # else:
-    #     # Local Development
-    #     org_url = f"http://{organization.domain_name}.localhost:5173"
-
+    # 4️⃣ Invite registration link
     register_url = f"{org_url}/invite/register?token={invite.token}"
 
-    # 5️⃣ Send email
+    # 5️⃣ Send invite email
     send_invite_email(
         to_email=payload.email,
         org_name=organization.org_name,
