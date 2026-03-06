@@ -43,9 +43,6 @@ async def get_tenant_from_request(request: Request, db: AsyncSession):
 # --------------------------------------------------
 # Create Invite
 # --------------------------------------------------
-# @router.post("/invite", tags=["Invited user or Instructor"])
-# from sqlalchemy import select
-# from datetime import datetime, timedelta
 
 @router.post("/invite", tags=["Invited user or Instructor"])
 async def invite_user(
@@ -80,22 +77,17 @@ async def invite_user(
     await db.refresh(invite)
 
     # 3️⃣ Build URL
-    # BASE_DOMAIN = "digidense.com"
-    # org_url = f"https://{organization.domain_name}.{BASE_DOMAIN}"
-    # register_url = f"{org_url}/register?token={invite.token}"
-    
-    BASE_DOMAIN = "digidense.com"
-    ENV = os.getenv("ENV", "development")  # development or production
+    BASE_DOMAIN = os.getenv("BASE_DOMAIN", "digidense.com")
+    ENV = os.getenv("ENV", "development")
 
     if ENV == "production":
         org_url = f"https://{organization.domain_name}.{BASE_DOMAIN}"
     else:
-    # LOCAL DEVELOPMENT
         org_url = f"http://{organization.domain_name}.localhost:5173"
 
-        register_url = f"{org_url}/invite/register?token={invite.token}"
+    register_url = f"{org_url}/invite/register?token={invite.token}"
 
-    # 4️⃣ SEND EMAIL (THIS WAS MISSING)
+    # 4️⃣ Send Email
     send_invite_email(
         to_email=payload.email,
         org_name=organization.org_name,
@@ -262,3 +254,4 @@ async def verify_invite_token(
         "role": invite.role,
         "organization": organization.org_name
     }
+
