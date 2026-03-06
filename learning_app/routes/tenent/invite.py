@@ -93,9 +93,9 @@ async def invite_user(
     # 4️⃣ Generate URL
     if ENV == "production":
         org_url = f"https://{organization.domain_name}.{BASE_DOMAIN}"
-    else:
-        # Local Development
-        org_url = f"http://{organization.domain_name}.localhost:5173"
+    # else:
+    #     # Local Development
+    #     org_url = f"http://{organization.domain_name}.localhost:5173"
 
     register_url = f"{org_url}/invite/register?token={invite.token}"
 
