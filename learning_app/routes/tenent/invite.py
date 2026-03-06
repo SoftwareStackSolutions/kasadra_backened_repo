@@ -5,8 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta, timezone
 from database.db import get_session
-from models.tenent.subscription_plan import Organization,InvitedUser, RoleEnum
-from schemas.tenent.invited_user import InviteCreateSchema
+from models.tenent.subscription_plan import Organization
+from models.tenent.invited import InvitedUser , OrganizationUsers
+from utils.passwd import hash_password, verify_password
+from schemas.tenent.invited_user import InviteCreateSchema, InviteRegisterSchema
 import uuid
 import os
 
@@ -261,3 +263,69 @@ async def verify_invite_token(
         "organization": organization.org_name
     }
 
+# --------------------------------------------------
+#  Invite Register Instructor and Student
+# --------------------------------------------------
+
+@router.post("/invite/register", tags=["Invited user or Instructor"])
+async def register_invited_user(
+    payload: InviteRegisterSchema,
+    db: AsyncSession = Depends(get_session),
+):
+
+    # 1️⃣ Check invitation token
+    result = await db.execute(
+        select(InvitedUser).where(InvitedUser.token == payload.token)
+    )
+
+    invite = result.scalar_one_or_none()
+
+    if not invite:
+        raise HTTPException(
+            status_code=404,
+            detail="Invalid invitation token"
+        )
+
+    # 2️⃣ Check expiry
+    if invite.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=400,
+            detail="Invitation expired"
+        )
+
+    # 3️⃣ Check if user already exists
+    result = await db.execute(
+        select(OrganizationUsers).where(OrganizationUsers.email == invite.email)
+    )
+
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="User already registered"
+        )
+
+    # 4️⃣ Hash password
+    hashed_password = hash_password(payload.password)
+
+    # 5️⃣ Create new user
+    new_user = OrganizationUsers(
+        name=payload.name,
+        email=invite.email,
+        phone=payload.phone,
+        password=hashed_password,
+        role=invite.role,
+        tenant_id=invite.tenant_id
+    )
+
+    db.add(new_user)
+
+    # 6️⃣ Delete invite OR keep it
+    await db.delete(invite)
+
+    await db.commit()
+
+    return {
+        "message": "Registration successful"
+    }

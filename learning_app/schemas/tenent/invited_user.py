@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from models.tenent.subscription_plan import RoleEnum
+from models.tenent.invited import RoleEnum
 
 
 class InviteCreateSchema(BaseModel):
@@ -8,3 +8,9 @@ class InviteCreateSchema(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     role: RoleEnum
+
+class InviteRegisterSchema(BaseModel):
+    token: str
+    name: str
+    phone: str
+    password: str

@@ -45,30 +45,5 @@ class Organization(Base):
 
     password_hash = Column(String, nullable=False)
     invites = relationship("InvitedUser", back_populates="tenant")
+    users = relationship("OrganizationUsers", back_populates="tenant")
 
-# -------------------------------
-# Invited users
-# -------------------------------
-
-class RoleEnum(str, enum.Enum):
-    student = "student"
-    instructor = "instructor"
-
-class InvitedUser(Base):
-    __tablename__ = "invited_users"
-
-    id = Column(Integer, primary_key=True, index=True)
-
-    email = Column(String, nullable=False)
-    name = Column(String, nullable=True)
-    phone = Column(String, nullable=True)
-    role = Column(Enum(RoleEnum), nullable=False) 
-
-    tenant_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
-
-    token = Column(String, unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
-    expires_at = Column(DateTime(timezone=True), nullable=False)
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    tenant = relationship("Organization", back_populates="invites")
