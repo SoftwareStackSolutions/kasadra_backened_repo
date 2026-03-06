@@ -44,6 +44,17 @@ async def get_tenant_from_request(request: Request, db: AsyncSession):
 # Create Invite
 # --------------------------------------------------
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from datetime import datetime, timedelta
+import os
+
+router = APIRouter()
+
+BASE_DOMAIN = "digidense.com"
+
+
 @router.post("/invite", tags=["Invited user or Instructor"])
 async def invite_user(
     organization_id: int,
@@ -76,18 +87,19 @@ async def invite_user(
     await db.commit()
     await db.refresh(invite)
 
-    # 3️⃣ Build URL
-    BASE_DOMAIN = os.getenv("BASE_DOMAIN", "digidense.com")
-    ENV = os.getenv("ENV", "development")
+    # 3️⃣ Detect environment
+    ENV = os.getenv("ENV")
 
+    # 4️⃣ Generate URL
     if ENV == "production":
         org_url = f"https://{organization.domain_name}.{BASE_DOMAIN}"
     else:
+        # Local Development
         org_url = f"http://{organization.domain_name}.localhost:5173"
 
     register_url = f"{org_url}/invite/register?token={invite.token}"
 
-    # 4️⃣ Send Email
+    # 5️⃣ Send email
     send_invite_email(
         to_email=payload.email,
         org_name=organization.org_name,
